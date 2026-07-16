@@ -69,7 +69,7 @@ function ColabPage() {
         const { error } = await supabase.from("colaboradores").update(clean).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("colaboradores").insert(clean as never);
+        const { error } = await supabase.from("colaboradores").insert(clean as unknown as { nome: string; empresa_id: string });
         if (error) throw error;
       }
     },
