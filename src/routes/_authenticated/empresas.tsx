@@ -50,7 +50,7 @@ function EmpresasPage() {
       const { id, ...rest } = payload;
       const clean = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v === "" ? null : v]));
       if (id) {
-        const { error } = await supabase.from("empresas").update(clean).eq("id", id);
+        const { error } = await supabase.from("empresas").update(clean as unknown as { razao_social?: string }).eq("id", id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("empresas").insert(clean as unknown as { razao_social: string });
