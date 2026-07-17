@@ -182,6 +182,7 @@ function ColabPage() {
           </div>
         </CardContent>
       </Card>
+      <ColaboradorDetalhes colab={detalhes} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
     </div>
   );
 }
