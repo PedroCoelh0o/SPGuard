@@ -13,10 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
+import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
   head: () => ({ meta: [{ title: "Colaboradores — Gestão" }] }),
@@ -29,6 +30,7 @@ type Colab = {
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
+  foto_url: string | null;
 };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
@@ -39,6 +41,7 @@ function ColabPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
+  const [detalhes, setDetalhes] = useState<Colab | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -154,6 +157,7 @@ function ColabPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
                       {canWrite && <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
                         <AlertDialog>
@@ -178,6 +182,7 @@ function ColabPage() {
           </div>
         </CardContent>
       </Card>
+      <ColaboradorDetalhes colab={detalhes} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
     </div>
   );
 }
