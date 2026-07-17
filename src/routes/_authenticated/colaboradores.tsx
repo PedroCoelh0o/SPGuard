@@ -157,6 +157,7 @@ function ColabPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
                       {canWrite && <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
                         <AlertDialog>
