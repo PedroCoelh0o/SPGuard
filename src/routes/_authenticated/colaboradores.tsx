@@ -41,6 +41,7 @@ function ColabPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
+  const [detalhes, setDetalhes] = useState<Colab | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
