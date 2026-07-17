@@ -97,14 +97,17 @@ function ColabPage() {
           <p className="text-sm text-muted-foreground">Cadastro completo por empresa contratada</p>
         </div>
         {canWrite && (
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
-                <Plus className="h-4 w-4" /> Novo colaborador
-              </Button>
-            </DialogTrigger>
-            <ColabForm empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
-          </Dialog>
+          <div className="flex gap-2">
+            <ImportarColaboradores empresas={empresas} onDone={() => qc.invalidateQueries({ queryKey: ["colaboradores"] })} />
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <DialogTrigger asChild>
+                <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
+                  <Plus className="h-4 w-4" /> Novo colaborador
+                </Button>
+              </DialogTrigger>
+              <ColabForm empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+            </Dialog>
+          </div>
         )}
       </div>
 
