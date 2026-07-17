@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      colaborador_documentos: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          id: string
+          nome: string
+          storage_path: string
+          tamanho: number | null
+          tipo: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          id?: string
+          nome: string
+          storage_path: string
+          tamanho?: number | null
+          tipo?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          storage_path?: string
+          tamanho?: number | null
+          tipo?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaborador_documentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       colaboradores: {
         Row: {
           bairro: string | null
