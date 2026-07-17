@@ -30,6 +30,7 @@ type Colab = {
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
+  foto_url: string | null;
 };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
