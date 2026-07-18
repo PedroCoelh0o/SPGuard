@@ -107,7 +107,6 @@ function Consulta() {
             <FileText className="h-4 w-4" /> {exporting === "pdf" ? "Gerando..." : "PDF"}
           </Button>
         </div>
-        </div>
       </div>
       <Card>
         <CardContent className="p-4 space-y-4">
