@@ -13,12 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
-import { exportColaboradoresCSV, exportColaboradoresPDF } from "@/lib/export-colaboradores";
+import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
   head: () => ({ meta: [{ title: "Colaboradores — Gestão" }] }),
@@ -105,6 +105,10 @@ function ColabPage() {
             try { await exportColaboradoresCSV(filtered, empresas, { Busca: q }); toast.success("CSV gerado"); }
             catch (e) { toast.error((e as Error).message); }
           }}><FileDown className="h-4 w-4" /> CSV</Button>
+          <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
+            try { await exportColaboradoresXLSX(filtered, empresas, { Busca: q }); toast.success("XLSX gerado"); }
+            catch (e) { toast.error((e as Error).message); }
+          }}><FileSpreadsheet className="h-4 w-4" /> XLSX</Button>
           <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
             try { await exportColaboradoresPDF(filtered, empresas, { Busca: q }); toast.success("PDF gerado"); }
             catch (e) { toast.error((e as Error).message); }
