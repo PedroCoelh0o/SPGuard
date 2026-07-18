@@ -8,8 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, FileDown, FileText } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { exportColaboradoresCSV, exportColaboradoresPDF } from "@/lib/export-colaboradores";
+import { toast } from "sonner";
+import { useState as useLocalState } from "react";
 
 export const Route = createFileRoute("/_authenticated/consulta")({
   head: () => ({ meta: [{ title: "Consulta — Gestão de Colaboradores" }] }),
@@ -68,11 +72,38 @@ function Consulta() {
     });
   }, [colabs, empresas, q, fEmpresa, fCargo, fCidade, fStatus, admDe, admAte, desDe, desAte]);
 
+  const [exporting, setExporting] = useLocalState<"csv" | "pdf" | null>(null);
+  const currentFilters = {
+    Busca: q, Empresa: fEmpresa !== "all" ? (empresas.find(e => e.id === fEmpresa)?.nome_fantasia || empresas.find(e => e.id === fEmpresa)?.razao_social) : "all",
+    Cargo: fCargo, Cidade: fCidade, Situação: fStatus,
+    "Admitidos de": admDe, "Admitidos até": admAte, "Desligados de": desDe, "Desligados até": desAte,
+  };
+  async function doExport(kind: "csv" | "pdf") {
+    if (filtered.length === 0) { toast.error("Nenhum registro para exportar"); return; }
+    setExporting(kind);
+    try {
+      const fn = kind === "csv" ? exportColaboradoresCSV : exportColaboradoresPDF;
+      await fn(filtered, empresas, currentFilters);
+      toast.success(`Exportação ${kind.toUpperCase()} concluída`);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setExporting(null); }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Consulta de Colaboradores</h1>
-        <p className="text-sm text-muted-foreground">Pesquisa rápida com filtros avançados</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Consulta de Colaboradores</h1>
+          <p className="text-sm text-muted-foreground">Pesquisa rápida com filtros avançados</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => doExport("csv")} disabled={!!exporting}>
+            <FileDown className="h-4 w-4" /> {exporting === "csv" ? "Gerando..." : "Exportar CSV"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => doExport("pdf")} disabled={!!exporting}>
+            <FileText className="h-4 w-4" /> {exporting === "pdf" ? "Gerando..." : "Exportar PDF"}
+          </Button>
+        </div>
       </div>
       <Card>
         <CardContent className="p-4 space-y-4">
