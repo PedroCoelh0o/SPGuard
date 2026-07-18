@@ -13,11 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
+import { exportColaboradoresCSV, exportColaboradoresPDF } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
   head: () => ({ meta: [{ title: "Colaboradores — Gestão" }] }),
