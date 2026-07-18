@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, FileText } from "lucide-react";
+import { Search, FileDown, FileText, FileSpreadsheet } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import { exportColaboradoresCSV, exportColaboradoresPDF } from "@/lib/export-colaboradores";
+import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
 import { useState as useLocalState } from "react";
 
