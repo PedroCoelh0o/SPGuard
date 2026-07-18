@@ -72,7 +72,7 @@ function Consulta() {
     });
   }, [colabs, empresas, q, fEmpresa, fCargo, fCidade, fStatus, admDe, admAte, desDe, desAte]);
 
-  const [exporting, setExporting] = useLocalState<"csv" | "pdf" | null>(null);
+  const [exporting, setExporting] = useLocalState<"csv" | "pdf" | "xlsx" | null>(null);
   const currentFilters = {
     Busca: q, Empresa: fEmpresa !== "all" ? (empresas.find(e => e.id === fEmpresa)?.nome_fantasia || empresas.find(e => e.id === fEmpresa)?.razao_social) : "all",
     Cargo: fCargo, Cidade: fCidade, Situação: fStatus,
