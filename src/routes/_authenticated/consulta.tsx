@@ -78,11 +78,11 @@ function Consulta() {
     Cargo: fCargo, Cidade: fCidade, Situação: fStatus,
     "Admitidos de": admDe, "Admitidos até": admAte, "Desligados de": desDe, "Desligados até": desAte,
   };
-  async function doExport(kind: "csv" | "pdf") {
+  async function doExport(kind: "csv" | "pdf" | "xlsx") {
     if (filtered.length === 0) { toast.error("Nenhum registro para exportar"); return; }
     setExporting(kind);
     try {
-      const fn = kind === "csv" ? exportColaboradoresCSV : exportColaboradoresPDF;
+      const fn = kind === "csv" ? exportColaboradoresCSV : kind === "pdf" ? exportColaboradoresPDF : exportColaboradoresXLSX;
       await fn(filtered, empresas, currentFilters);
       toast.success(`Exportação ${kind.toUpperCase()} concluída`);
     } catch (e) { toast.error((e as Error).message); }
@@ -96,13 +96,17 @@ function Consulta() {
           <h1 className="text-2xl font-bold">Consulta de Colaboradores</h1>
           <p className="text-sm text-muted-foreground">Pesquisa rápida com filtros avançados</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => doExport("csv")} disabled={!!exporting}>
-            <FileDown className="h-4 w-4" /> {exporting === "csv" ? "Gerando..." : "Exportar CSV"}
+            <FileDown className="h-4 w-4" /> {exporting === "csv" ? "Gerando..." : "CSV"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => doExport("xlsx")} disabled={!!exporting}>
+            <FileSpreadsheet className="h-4 w-4" /> {exporting === "xlsx" ? "Gerando..." : "XLSX"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => doExport("pdf")} disabled={!!exporting}>
-            <FileText className="h-4 w-4" /> {exporting === "pdf" ? "Gerando..." : "Exportar PDF"}
+            <FileText className="h-4 w-4" /> {exporting === "pdf" ? "Gerando..." : "PDF"}
           </Button>
+        </div>
         </div>
       </div>
       <Card>
