@@ -155,3 +155,47 @@ export async function exportColaboradoresPDF(
 
   doc.save(`colaboradores-${timestamp()}.pdf`);
 }
+
+export async function exportColaboradoresXLSX(
+  colabs: ColabExport[],
+  empresas: EmpresaLite[],
+  filters: ExportFilters = {},
+) {
+  const anexos = await fetchAnexosCount(colabs.map((c) => c.id));
+  const headers = [
+    "Nome", "Empresa", "CPF", "Matrícula", "Cargo", "Cidade", "UF",
+    "E-mail", "Telefone", "Admissão", "Desligamento", "Situação", "Anexos",
+  ];
+  const rows = colabs.map((c) => [
+    c.nome,
+    empresaLabel(c.empresa_id, empresas),
+    c.cpf ?? "",
+    c.matricula ?? "",
+    c.cargo ?? "",
+    c.cidade ?? "",
+    c.estado ?? "",
+    c.email ?? "",
+    c.telefone ?? c.celular ?? "",
+    formatDate(c.data_admissao),
+    formatDate(c.data_desligamento ?? null),
+    c.status === "ativo" ? "Ativo" : "Desligado",
+    anexos.get(c.id) ?? 0,
+  ]);
+  const meta = [
+    ["Relatório de Colaboradores"],
+    [`Gerado em: ${new Date().toLocaleString("pt-BR")}`],
+    [`Filtros: ${filtersLine(filters)}`],
+    [`Total: ${colabs.length}`],
+    [],
+  ];
+  const aoa = [...meta, headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [
+    { wch: 32 }, { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 22 },
+    { wch: 18 }, { wch: 6 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 8 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
+  XLSX.writeFile(wb, `colaboradores-${timestamp()}.xlsx`);
+}
