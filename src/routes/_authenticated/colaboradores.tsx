@@ -100,19 +100,29 @@ function ColabPage() {
           <h1 className="text-2xl font-bold">Colaboradores</h1>
           <p className="text-sm text-muted-foreground">Cadastro completo por empresa contratada</p>
         </div>
-        {canWrite && (
-          <div className="flex gap-2">
-            <ImportarColaboradores empresas={empresas} onDone={() => qc.invalidateQueries({ queryKey: ["colaboradores"] })} />
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-              <DialogTrigger asChild>
-                <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
-                  <Plus className="h-4 w-4" /> Novo colaborador
-                </Button>
-              </DialogTrigger>
-              <ColabForm empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
-            </Dialog>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
+            try { await exportColaboradoresCSV(filtered, empresas, { Busca: q }); toast.success("CSV gerado"); }
+            catch (e) { toast.error((e as Error).message); }
+          }}><FileDown className="h-4 w-4" /> CSV</Button>
+          <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
+            try { await exportColaboradoresPDF(filtered, empresas, { Busca: q }); toast.success("PDF gerado"); }
+            catch (e) { toast.error((e as Error).message); }
+          }}><FileText className="h-4 w-4" /> PDF</Button>
+          {canWrite && (
+            <>
+              <ImportarColaboradores empresas={empresas} onDone={() => qc.invalidateQueries({ queryKey: ["colaboradores"] })} />
+              <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+                <DialogTrigger asChild>
+                  <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
+                    <Plus className="h-4 w-4" /> Novo colaborador
+                  </Button>
+                </DialogTrigger>
+                <ColabForm empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+              </Dialog>
+            </>
+          )}
+        </div>
       </div>
 
       {empresas.length === 0 && (
