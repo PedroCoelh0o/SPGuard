@@ -106,6 +106,10 @@ function ColabPage() {
             catch (e) { toast.error((e as Error).message); }
           }}><FileDown className="h-4 w-4" /> CSV</Button>
           <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
+            try { await exportColaboradoresXLSX(filtered, empresas, { Busca: q }); toast.success("XLSX gerado"); }
+            catch (e) { toast.error((e as Error).message); }
+          }}><FileSpreadsheet className="h-4 w-4" /> XLSX</Button>
+          <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
             try { await exportColaboradoresPDF(filtered, empresas, { Busca: q }); toast.success("PDF gerado"); }
             catch (e) { toast.error((e as Error).message); }
           }}><FileText className="h-4 w-4" /> PDF</Button>
