@@ -221,4 +221,5 @@ export async function exportColaboradoresXLSX(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
   XLSX.writeFile(wb, `colaboradores-${timestamp()}.xlsx`);
+  await logExportacao("xlsx", filters, colabs.length);
 }
