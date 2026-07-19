@@ -25,6 +25,27 @@ export type EmpresaLite = { id: string; razao_social: string; nome_fantasia: str
 
 export type ExportFilters = Record<string, string | undefined | null>;
 
+async function logExportacao(tipo: "csv" | "pdf" | "xlsx", filtros: ExportFilters, total: number) {
+  try {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    if (!user) return;
+    const cleanFilters = Object.fromEntries(
+      Object.entries(filtros).filter(([, v]) => v != null && v !== "" && v !== "all"),
+    );
+    await supabase.from("audit_exportacoes").insert({
+      user_id: user.id,
+      user_email: user.email ?? null,
+      tipo,
+      modulo: "colaboradores",
+      filtros: cleanFilters,
+      total_registros: total,
+    } as never);
+  } catch (e) {
+    console.warn("Falha ao registrar auditoria de exportação", e);
+  }
+}
+
 function empresaLabel(id: string, empresas: EmpresaLite[]) {
   const e = empresas.find((x) => x.id === id);
   return e ? e.nome_fantasia || e.razao_social : "-";
