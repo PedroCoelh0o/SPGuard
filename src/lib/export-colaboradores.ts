@@ -176,6 +176,7 @@ export async function exportColaboradoresPDF(
   });
 
   doc.save(`colaboradores-${timestamp()}.pdf`);
+  await logExportacao("pdf", filters, colabs.length);
 }
 
 export async function exportColaboradoresXLSX(
