@@ -129,6 +129,7 @@ export async function exportColaboradoresCSV(
   const lines = [...meta, headers, ...rows].map((r) => r.map(csvEscape).join(";")).join("\r\n");
   const blob = new Blob(["\uFEFF" + lines], { type: "text/csv;charset=utf-8" });
   download(blob, `colaboradores-${timestamp()}.csv`);
+  await logExportacao("csv", filters, colabs.length);
 }
 
 export async function exportColaboradoresPDF(
