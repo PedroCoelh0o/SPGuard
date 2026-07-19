@@ -25,6 +25,27 @@ export type EmpresaLite = { id: string; razao_social: string; nome_fantasia: str
 
 export type ExportFilters = Record<string, string | undefined | null>;
 
+async function logExportacao(tipo: "csv" | "pdf" | "xlsx", filtros: ExportFilters, total: number) {
+  try {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    if (!user) return;
+    const cleanFilters = Object.fromEntries(
+      Object.entries(filtros).filter(([, v]) => v != null && v !== "" && v !== "all"),
+    );
+    await supabase.from("audit_exportacoes").insert({
+      user_id: user.id,
+      user_email: user.email ?? null,
+      tipo,
+      modulo: "colaboradores",
+      filtros: cleanFilters,
+      total_registros: total,
+    } as never);
+  } catch (e) {
+    console.warn("Falha ao registrar auditoria de exportação", e);
+  }
+}
+
 function empresaLabel(id: string, empresas: EmpresaLite[]) {
   const e = empresas.find((x) => x.id === id);
   return e ? e.nome_fantasia || e.razao_social : "-";
@@ -108,6 +129,7 @@ export async function exportColaboradoresCSV(
   const lines = [...meta, headers, ...rows].map((r) => r.map(csvEscape).join(";")).join("\r\n");
   const blob = new Blob(["\uFEFF" + lines], { type: "text/csv;charset=utf-8" });
   download(blob, `colaboradores-${timestamp()}.csv`);
+  await logExportacao("csv", filters, colabs.length);
 }
 
 export async function exportColaboradoresPDF(
@@ -154,6 +176,7 @@ export async function exportColaboradoresPDF(
   });
 
   doc.save(`colaboradores-${timestamp()}.pdf`);
+  await logExportacao("pdf", filters, colabs.length);
 }
 
 export async function exportColaboradoresXLSX(
@@ -198,4 +221,5 @@ export async function exportColaboradoresXLSX(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
   XLSX.writeFile(wb, `colaboradores-${timestamp()}.xlsx`);
+  await logExportacao("xlsx", filters, colabs.length);
 }
