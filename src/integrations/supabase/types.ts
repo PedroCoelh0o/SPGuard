@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_exportacoes: {
+        Row: {
+          created_at: string
+          filtros: Json
+          id: string
+          modulo: string
+          tipo: string
+          total_registros: number
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filtros?: Json
+          id?: string
+          modulo?: string
+          tipo: string
+          total_registros?: number
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filtros?: Json
+          id?: string
+          modulo?: string
+          tipo?: string
+          total_registros?: number
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       colaborador_documentos: {
         Row: {
           colaborador_id: string
