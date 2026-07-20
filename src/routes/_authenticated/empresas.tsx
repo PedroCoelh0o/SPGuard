@@ -91,7 +91,7 @@ function EmpresasPage() {
             <DialogTrigger asChild>
               <Button onClick={() => setEditing(empty)}><Plus className="h-4 w-4" /> Nova empresa</Button>
             </DialogTrigger>
-            <EmpresaForm value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+            <EmpresaForm key={editing?.id ?? "new"} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
           </Dialog>
         )}
       </div>
