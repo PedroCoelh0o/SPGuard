@@ -122,7 +122,7 @@ function ColabPage() {
                     <Plus className="h-4 w-4" /> Novo colaborador
                   </Button>
                 </DialogTrigger>
-                <ColabForm empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+                <ColabForm key={editing?.id ?? "new"} empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
               </Dialog>
             </>
           )}
