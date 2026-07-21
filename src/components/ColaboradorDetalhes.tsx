@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Download, Trash2, Camera, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
+import { EletronicosTab } from "@/components/EletronicosTab";
 
 type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; matricula: string | null;
@@ -213,7 +214,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
             <TabsTrigger value="contato">Contato</TabsTrigger>
             <TabsTrigger value="end">Endereço</TabsTrigger>
             <TabsTrigger value="docs">Documentos</TabsTrigger>
+            <TabsTrigger value="eletr">Eletrônicos</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="eletr">
+            <EletronicosTab colaboradorId={colab.id} colaboradorNome={colab.nome} />
+          </TabsContent>
 
           <TabsContent value="pessoal">
             <Card><CardContent className="p-4">
