@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Users, UserCheck, UserX } from "lucide-react";
+import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, LineChart, Line } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -24,10 +24,21 @@ function Dashboard() {
     },
   });
 
+  const { data: eletronicos = [] } = useQuery({
+    queryKey: ["dashboard-eletronicos"],
+    queryFn: async () => {
+      const { data } = await supabase.from("eletronicos" as never).select("tipo");
+      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet" }[];
+    },
+  });
+
   const empresas = data?.empresas ?? [];
   const colabs = data?.colaboradores ?? [];
   const ativos = colabs.filter((c) => c.status === "ativo").length;
   const desligados = colabs.filter((c) => c.status === "desligado").length;
+  const qtdCelulares = eletronicos.filter((e) => e.tipo === "celular").length;
+  const qtdNotebooks = eletronicos.filter((e) => e.tipo === "notebook").length;
+  const qtdTablets = eletronicos.filter((e) => e.tipo === "tablet").length;
 
   const porEmpresa = empresas.map((e) => ({
     name: e.nome_fantasia || e.razao_social,
@@ -79,6 +90,11 @@ function Dashboard() {
         <Kpi title="Colaboradores" value={colabs.length} icon={<Users className="h-5 w-5" />} />
         <Kpi title="Ativos" value={ativos} icon={<UserCheck className="h-5 w-5" />} tone="text-emerald-600" />
         <Kpi title="Desligados" value={desligados} icon={<UserX className="h-5 w-5" />} tone="text-red-600" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Kpi title="Celulares" value={qtdCelulares} icon={<Smartphone className="h-5 w-5" />} />
+        <Kpi title="Notebooks" value={qtdNotebooks} icon={<Laptop className="h-5 w-5" />} />
+        <Kpi title="Tablets" value={qtdTablets} icon={<Tablet className="h-5 w-5" />} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Colaboradores por Empresa">
