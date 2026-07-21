@@ -183,6 +183,53 @@ export type Database = {
           },
         ]
       }
+      eletronicos: {
+        Row: {
+          colaborador_id: string
+          contato: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          imei: string | null
+          modelo: string | null
+          numero_selo: string | null
+          tipo: Database["public"]["Enums"]["eletronico_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          colaborador_id: string
+          contato?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imei?: string | null
+          modelo?: string | null
+          numero_selo?: string | null
+          tipo: Database["public"]["Enums"]["eletronico_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          colaborador_id?: string
+          contato?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imei?: string | null
+          modelo?: string | null
+          numero_selo?: string | null
+          tipo?: Database["public"]["Enums"]["eletronico_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eletronicos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           cidade: string | null
@@ -286,6 +333,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "supervisor" | "consulta"
+      eletronico_tipo: "celular" | "notebook" | "tablet"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -414,6 +462,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "supervisor", "consulta"],
+      eletronico_tipo: ["celular", "notebook", "tablet"],
     },
   },
 } as const
