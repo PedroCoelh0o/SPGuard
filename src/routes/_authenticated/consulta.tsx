@@ -53,7 +53,7 @@ function Consulta() {
     queryFn: async () => {
       const { data } = await supabase.from("colaboradores").select("*").order("nome");
       return (data ?? []) as Array<{
-        id: string; nome: string; empresa_id: string; cargo: string | null; matricula: string | null;
+        id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; matricula: string | null;
         cpf: string | null; cidade: string | null; status: string;
         data_admissao: string | null; data_desligamento: string | null;
       }>;
@@ -74,23 +74,33 @@ function Consulta() {
   };
 
   const [empresaEletronicos, setEmpresaEletronicos] = useState<string>("all");
-  const eletronicosStats = useMemo(() => {
-    const colabsById = new Map(colabs.map((c) => [c.id, c]));
-    const empresasSet = empresaEletronicos === "all" ? empresas.map((e) => e.id) : [empresaEletronicos];
-    return empresasSet.map((empId) => {
-      const eletsDaEmpresa = eletronicos.filter((e) => colabsById.get(e.colaborador_id)?.empresa_id === empId);
-      const colabsComElet = new Set(eletsDaEmpresa.map((e) => e.colaborador_id));
-      return {
-        empresa_id: empId,
-        empresa: empresaLabel(empId),
-        colaboradores_com_eletronicos: colabsComElet.size,
-        celulares: eletsDaEmpresa.filter((e) => e.tipo === "celular").length,
-        notebooks: eletsDaEmpresa.filter((e) => e.tipo === "notebook").length,
-        tablets: eletsDaEmpresa.filter((e) => e.tipo === "tablet").length,
-        total: eletsDaEmpresa.length,
-      };
-    }).sort((a, b) => b.total - a.total);
-  }, [eletronicos, colabs, empresas, empresaEletronicos]);
+  const colabsEletronicosStats = useMemo(() => {
+    const countsByColab = new Map<string, { celular: number; notebook: number; tablet: number }>();
+    eletronicos.forEach((e) => {
+      const cur = countsByColab.get(e.colaborador_id) ?? { celular: 0, notebook: 0, tablet: 0 };
+      cur[e.tipo] += 1;
+      countsByColab.set(e.colaborador_id, cur);
+    });
+    const scope = empresaEletronicos === "all" ? colabs : colabs.filter((c) => c.empresa_id === empresaEletronicos);
+    return scope
+      .map((c) => {
+        const cnt = countsByColab.get(c.id) ?? { celular: 0, notebook: 0, tablet: 0 };
+        const total = cnt.celular + cnt.notebook + cnt.tablet;
+        return {
+          id: c.id,
+          nome: c.nome,
+          setor: c.setor,
+          cargo: c.cargo,
+          empresa: empresaLabel(c.empresa_id),
+          celulares: cnt.celular,
+          notebooks: cnt.notebook,
+          tablets: cnt.tablet,
+          total,
+        };
+      })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
+  }, [eletronicos, colabs, empresaEletronicos, empresas]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase();
