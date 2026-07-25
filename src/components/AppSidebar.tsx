@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, Users, Search } from "lucide-react";
+import { LayoutDashboard, Building2, Users, Search, Smartphone } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
@@ -10,6 +10,7 @@ const items = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Colaboradores", url: "/colaboradores", icon: Users },
   { title: "Consulta", url: "/consulta", icon: Search },
+  { title: "Eletrônicos", url: "/eletronicos", icon: Smartphone },
 ];
 
 export function AppSidebar() {
