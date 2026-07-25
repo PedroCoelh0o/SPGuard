@@ -144,12 +144,12 @@ function EmpresasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {canWrite && (
-                        <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label={`Editar ${e.razao_social ?? e.nome_fantasia}`} title="Editar" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                       )}
                       {isAdmin && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            <Button size="icon" variant="ghost" aria-label={`Excluir ${e.razao_social ?? e.nome_fantasia}`} title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
