@@ -87,9 +87,6 @@ function Dashboard() {
   })).sort((a, b) => b.total - a.total).slice(0, 8);
 
 
-  const cidadeMap = new Map<string, number>();
-  colabs.forEach((c) => { if (c.cidade) cidadeMap.set(c.cidade, (cidadeMap.get(c.cidade) ?? 0) + 1); });
-  const porCidade = Array.from(cidadeMap.entries()).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total).slice(0, 8);
 
   const statusData = [
     { name: "Ativos", value: ativos },
