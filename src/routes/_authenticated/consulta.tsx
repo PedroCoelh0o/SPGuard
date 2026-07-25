@@ -213,7 +213,7 @@ function Consulta() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" title="Copiar" onClick={async () => {
+                      <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar" onClick={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
                         catch { toast.error("Falha ao copiar"); }
