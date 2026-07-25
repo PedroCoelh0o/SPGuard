@@ -51,10 +51,37 @@ function Consulta() {
     },
   });
 
+  const { data: eletronicos = [] } = useQuery({
+    queryKey: ["consulta-eletronicos"],
+    queryFn: async () => {
+      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
+      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
+    },
+  });
+
   const empresaLabel = (id: string) => {
     const e = empresas.find((x) => x.id === id);
     return e ? e.nome_fantasia || e.razao_social : "-";
   };
+
+  const [empresaEletronicos, setEmpresaEletronicos] = useState<string>("all");
+  const eletronicosStats = useMemo(() => {
+    const colabsById = new Map(colabs.map((c) => [c.id, c]));
+    const empresasSet = empresaEletronicos === "all" ? empresas.map((e) => e.id) : [empresaEletronicos];
+    return empresasSet.map((empId) => {
+      const eletsDaEmpresa = eletronicos.filter((e) => colabsById.get(e.colaborador_id)?.empresa_id === empId);
+      const colabsComElet = new Set(eletsDaEmpresa.map((e) => e.colaborador_id));
+      return {
+        empresa_id: empId,
+        empresa: empresaLabel(empId),
+        colaboradores_com_eletronicos: colabsComElet.size,
+        celulares: eletsDaEmpresa.filter((e) => e.tipo === "celular").length,
+        notebooks: eletsDaEmpresa.filter((e) => e.tipo === "notebook").length,
+        tablets: eletsDaEmpresa.filter((e) => e.tipo === "tablet").length,
+        total: eletsDaEmpresa.length,
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [eletronicos, colabs, empresas, empresaEletronicos]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase();
