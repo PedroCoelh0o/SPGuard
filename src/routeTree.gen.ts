@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedEmpresasRouteImport } from './routes/_authenticated/empresas'
+import { Route as AuthenticatedEletronicosRouteImport } from './routes/_authenticated/eletronicos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedConsultaRouteImport } from './routes/_authenticated/consulta'
 import { Route as AuthenticatedColaboradoresRouteImport } from './routes/_authenticated/colaboradores'
@@ -30,6 +31,12 @@ const AuthenticatedEmpresasRoute = AuthenticatedEmpresasRouteImport.update({
   path: '/empresas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEletronicosRoute =
+  AuthenticatedEletronicosRouteImport.update({
+    id: '/eletronicos',
+    path: '/eletronicos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/colaboradores': typeof AuthenticatedColaboradoresRoute
   '/consulta': typeof AuthenticatedConsultaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/eletronicos': typeof AuthenticatedEletronicosRoute
   '/empresas': typeof AuthenticatedEmpresasRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/colaboradores': typeof AuthenticatedColaboradoresRoute
   '/consulta': typeof AuthenticatedConsultaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/eletronicos': typeof AuthenticatedEletronicosRoute
   '/empresas': typeof AuthenticatedEmpresasRoute
 }
 export interface FileRoutesById {
@@ -68,13 +77,26 @@ export interface FileRoutesById {
   '/_authenticated/colaboradores': typeof AuthenticatedColaboradoresRoute
   '/_authenticated/consulta': typeof AuthenticatedConsultaRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/eletronicos': typeof AuthenticatedEletronicosRoute
   '/_authenticated/empresas': typeof AuthenticatedEmpresasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/colaboradores' | '/consulta' | '/dashboard' | '/empresas'
+  fullPaths:
+    | '/'
+    | '/colaboradores'
+    | '/consulta'
+    | '/dashboard'
+    | '/eletronicos'
+    | '/empresas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/colaboradores' | '/consulta' | '/dashboard' | '/empresas'
+  to:
+    | '/'
+    | '/colaboradores'
+    | '/consulta'
+    | '/dashboard'
+    | '/eletronicos'
+    | '/empresas'
   id:
     | '__root__'
     | '/'
@@ -82,6 +104,7 @@ export interface FileRouteTypes {
     | '/_authenticated/colaboradores'
     | '/_authenticated/consulta'
     | '/_authenticated/dashboard'
+    | '/_authenticated/eletronicos'
     | '/_authenticated/empresas'
   fileRoutesById: FileRoutesById
 }
@@ -113,6 +136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmpresasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/eletronicos': {
+      id: '/_authenticated/eletronicos'
+      path: '/eletronicos'
+      fullPath: '/eletronicos'
+      preLoaderRoute: typeof AuthenticatedEletronicosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -141,6 +171,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedColaboradoresRoute: typeof AuthenticatedColaboradoresRoute
   AuthenticatedConsultaRoute: typeof AuthenticatedConsultaRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEletronicosRoute: typeof AuthenticatedEletronicosRoute
   AuthenticatedEmpresasRoute: typeof AuthenticatedEmpresasRoute
 }
 
@@ -148,6 +179,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedColaboradoresRoute: AuthenticatedColaboradoresRoute,
   AuthenticatedConsultaRoute: AuthenticatedConsultaRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEletronicosRoute: AuthenticatedEletronicosRoute,
   AuthenticatedEmpresasRoute: AuthenticatedEmpresasRoute,
 }
 

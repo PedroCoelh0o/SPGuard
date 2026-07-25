@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, FileText, FileSpreadsheet, Copy, Smartphone } from "lucide-react";
+import { Search, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
@@ -60,47 +60,11 @@ function Consulta() {
     },
   });
 
-  const { data: eletronicos = [] } = useQuery({
-    queryKey: ["consulta-eletronicos"],
-    queryFn: async () => {
-      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
-      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
-    },
-  });
-
   const empresaLabel = (id: string) => {
     const e = empresas.find((x) => x.id === id);
     return e ? e.nome_fantasia || e.razao_social : "-";
   };
 
-  const [empresaEletronicos, setEmpresaEletronicos] = useState<string>("all");
-  const colabsEletronicosStats = useMemo(() => {
-    const countsByColab = new Map<string, { celular: number; notebook: number; tablet: number }>();
-    eletronicos.forEach((e) => {
-      const cur = countsByColab.get(e.colaborador_id) ?? { celular: 0, notebook: 0, tablet: 0 };
-      cur[e.tipo] += 1;
-      countsByColab.set(e.colaborador_id, cur);
-    });
-    const scope = empresaEletronicos === "all" ? colabs : colabs.filter((c) => c.empresa_id === empresaEletronicos);
-    return scope
-      .map((c) => {
-        const cnt = countsByColab.get(c.id) ?? { celular: 0, notebook: 0, tablet: 0 };
-        const total = cnt.celular + cnt.notebook + cnt.tablet;
-        return {
-          id: c.id,
-          nome: c.nome,
-          setor: c.setor,
-          cargo: c.cargo,
-          empresa: empresaLabel(c.empresa_id),
-          celulares: cnt.celular,
-          notebooks: cnt.notebook,
-          tablets: cnt.tablet,
-          total,
-        };
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
-  }, [eletronicos, colabs, empresaEletronicos, empresas]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase();
@@ -237,60 +201,6 @@ function Consulta() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Colaboradores com eletrônicos</h2>
-            </div>
-            <Select value={empresaEletronicos} onValueChange={setEmpresaEletronicos}>
-              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {empresaEletronicos === "all"
-              ? "Selecione uma empresa para filtrar. Exibindo colaboradores com pelo menos um eletrônico autorizado."
-              : `Colaboradores da empresa "${empresaLabel(empresaEletronicos)}" e seus eletrônicos autorizados.`}
-          </p>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Setor</TableHead>
-                  <TableHead>Função</TableHead>
-                  {empresaEletronicos === "all" && <TableHead>Empresa</TableHead>}
-                  <TableHead className="text-right">Celulares</TableHead>
-                  <TableHead className="text-right">Notebooks</TableHead>
-                  <TableHead className="text-right">Tablets</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {colabsEletronicosStats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaEletronicos === "all" ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
-                ) : colabsEletronicosStats.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.nome}</TableCell>
-                    <TableCell>{s.setor ?? "-"}</TableCell>
-                    <TableCell>{s.cargo ?? "-"}</TableCell>
-                    {empresaEletronicos === "all" && <TableCell>{s.empresa}</TableCell>}
-                    <TableCell className="text-right">{s.celulares}</TableCell>
-                    <TableCell className="text-right">{s.notebooks}</TableCell>
-                    <TableCell className="text-right">{s.tablets}</TableCell>
-                    <TableCell className="text-right font-semibold">{s.total}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

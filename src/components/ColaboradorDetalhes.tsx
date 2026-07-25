@@ -62,6 +62,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; doc: Doc } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
@@ -154,7 +155,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
   async function viewDoc(d: Doc) {
     const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 300);
     if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    setPreview({ url: data.signedUrl, doc: d });
   }
 
   async function deleteDoc(d: Doc) {
@@ -331,6 +332,32 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <Dialog open={!!preview} onOpenChange={(v) => !v && setPreview(null)}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">{preview?.doc.nome ?? "Documento"}</DialogTitle>
+            <DialogDescription>Pré-visualização do documento</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 rounded-md border overflow-hidden bg-muted">
+            {preview && (
+              (preview.doc.tipo?.startsWith("image/") ? (
+                <img src={preview.url} alt={preview.doc.nome} className="w-full h-full object-contain bg-black/5" />
+              ) : (
+                <iframe src={preview.url} title={preview.doc.nome} className="w-full h-full" />
+              ))
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            {preview && (
+              <Button variant="outline" onClick={() => downloadDoc(preview.doc)}>
+                <Download className="h-4 w-4" /> Baixar
+              </Button>
+            )}
+            <Button onClick={() => setPreview(null)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
