@@ -154,7 +154,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
   async function viewDoc(d: Doc) {
     const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 300);
     if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    setPreview({ url: data.signedUrl, doc: d });
   }
 
   async function deleteDoc(d: Doc) {
