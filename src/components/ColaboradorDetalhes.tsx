@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, Trash2, Camera, FileText, Loader2 } from "lucide-react";
+import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
