@@ -9,14 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, Trash2, Camera, FileText, Loader2 } from "lucide-react";
+import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
 
 type Colab = {
-  id: string; empresa_id: string; nome: string; cpf: string | null; matricula: string | null;
-  cargo: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
+  id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
+  cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
@@ -151,6 +151,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
     window.open(data.signedUrl, "_blank");
   }
 
+  async function viewDoc(d: Doc) {
+    const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 300);
+    if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   async function deleteDoc(d: Doc) {
     if (!confirm(`Excluir "${d.nome}"?`)) return;
     const { error: sErr } = await supabase.storage.from(BUCKET_DOCS).remove([d.storage_path]);
@@ -226,6 +232,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Nome" value={colab.nome} />
                 <Field label="CPF" value={colab.cpf} />
+                <Field label="RG" value={colab.rg} />
                 <Field label="Matrícula" value={colab.matricula} />
                 <Field label="Data de Nascimento" value={formatDate(colab.data_nascimento)} />
                 <Field label="Sexo" value={sexoLabel(colab.sexo)} />
@@ -239,6 +246,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Empresa" value={empresaLabel || "-"} />
                 <Field label="Cargo" value={colab.cargo} />
+                <Field label="Setor" value={colab.setor} />
                 <Field label="Data de Admissão" value={formatDate(colab.data_admissao)} />
                 <Field label="Data de Desligamento" value={formatDate(colab.data_desligamento)} />
                 <Field label="Status" value={colab.status === "ativo" ? "Ativo" : "Desligado"} />
@@ -308,6 +316,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
                         <TableCell>{formatSize(d.tamanho)}</TableCell>
                         <TableCell>{formatDate(d.created_at)}</TableCell>
                         <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" aria-label={`Visualizar ${d.nome}`} title="Visualizar" onClick={() => viewDoc(d)}><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" aria-label={`Baixar ${d.nome}`} title="Baixar" onClick={() => downloadDoc(d)}><Download className="h-4 w-4" /></Button>
                           {isAdmin && (
                             <Button size="icon" variant="ghost" aria-label={`Excluir ${d.nome}`} title="Excluir" onClick={() => deleteDoc(d)}><Trash2 className="h-4 w-4 text-destructive" /></Button>

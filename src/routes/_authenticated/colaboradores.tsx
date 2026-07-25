@@ -35,8 +35,8 @@ export const Route = createFileRoute("/_authenticated/colaboradores")({
 });
 
 type Colab = {
-  id: string; empresa_id: string; nome: string; cpf: string | null; matricula: string | null;
-  cargo: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
+  id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
+  cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
@@ -236,6 +236,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           <TabsContent value="pessoal" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div className="sm:col-span-2"><Label>Nome Completo *</Label><Input required value={v.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
             <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} /></div>
+            <div><Label>RG</Label><Input value={v.rg ?? ""} onChange={(e) => set("rg", e.target.value)} /></div>
             <div><Label>Matrícula</Label><Input value={v.matricula ?? ""} onChange={(e) => set("matricula", e.target.value)} /></div>
             <div className="sm:col-span-2"><Label>Empresa *</Label>
               <Select value={v.empresa_id ?? ""} onValueChange={(x) => set("empresa_id", x)}>
@@ -244,6 +245,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
               </Select>
             </div>
             <div><Label>Cargo</Label><Input value={v.cargo ?? ""} onChange={(e) => set("cargo", e.target.value)} /></div>
+            <div><Label>Setor</Label><Input value={v.setor ?? ""} onChange={(e) => set("setor", e.target.value)} /></div>
             <div><Label>Escolaridade</Label><Input value={v.escolaridade ?? ""} onChange={(e) => set("escolaridade", e.target.value)} /></div>
             <div><Label>Data de Nascimento</Label><Input type="date" value={v.data_nascimento ?? ""} onChange={(e) => set("data_nascimento", e.target.value)} /></div>
             <div><Label>Sexo</Label>

@@ -31,7 +31,7 @@ const tooltipStyle = {
   fontSize: "12px",
 } as const;
 const tooltipLabelStyle = { color: "hsl(var(--foreground))", fontWeight: 600 } as const;
-const axisTick = { fontSize: 11, fill: "hsl(var(--muted-foreground))" };
+const axisTick = { fontSize: 11, fill: "hsl(var(--foreground))" };
 const gridStroke = "hsl(var(--border))";
 
 function Dashboard() {
@@ -86,9 +86,6 @@ function Dashboard() {
     total: colabs.filter((c) => c.empresa_id === e.id).length,
   })).sort((a, b) => b.total - a.total).slice(0, 8);
 
-  const cargoMap = new Map<string, number>();
-  colabs.forEach((c) => { if (c.cargo) cargoMap.set(c.cargo, (cargoMap.get(c.cargo) ?? 0) + 1); });
-  const porCargo = Array.from(cargoMap.entries()).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total).slice(0, 8);
 
   const cidadeMap = new Map<string, number>();
   colabs.forEach((c) => { if (c.cidade) cidadeMap.set(c.cidade, (cidadeMap.get(c.cidade) ?? 0) + 1); });
@@ -176,17 +173,6 @@ function Dashboard() {
               <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
               <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
             </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-        <ChartCard title="Por Cargo (Top 8)">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={porCargo} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis type="number" allowDecimals={false} tick={axisTick} />
-              <YAxis type="category" dataKey="name" width={100} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
-              <Bar dataKey="total" fill="var(--color-chart-2)" radius={[0, 6, 6, 0]} />
-            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
         <ChartCard title="Por Cidade (Top 8)">

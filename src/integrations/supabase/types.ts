@@ -113,7 +113,9 @@ export type Database = {
           motivo_desligamento: string | null
           nome: string
           numero: string | null
+          rg: string | null
           rua: string | null
+          setor: string | null
           sexo: string | null
           status: string
           telefone: string | null
@@ -140,7 +142,9 @@ export type Database = {
           motivo_desligamento?: string | null
           nome: string
           numero?: string | null
+          rg?: string | null
           rua?: string | null
+          setor?: string | null
           sexo?: string | null
           status?: string
           telefone?: string | null
@@ -167,7 +171,9 @@ export type Database = {
           motivo_desligamento?: string | null
           nome?: string
           numero?: string | null
+          rg?: string | null
           rua?: string | null
+          setor?: string | null
           sexo?: string | null
           status?: string
           telefone?: string | null
