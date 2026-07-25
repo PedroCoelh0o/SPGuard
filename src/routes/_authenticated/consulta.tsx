@@ -60,47 +60,11 @@ function Consulta() {
     },
   });
 
-  const { data: eletronicos = [] } = useQuery({
-    queryKey: ["consulta-eletronicos"],
-    queryFn: async () => {
-      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
-      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
-    },
-  });
-
   const empresaLabel = (id: string) => {
     const e = empresas.find((x) => x.id === id);
     return e ? e.nome_fantasia || e.razao_social : "-";
   };
 
-  const [empresaEletronicos, setEmpresaEletronicos] = useState<string>("all");
-  const colabsEletronicosStats = useMemo(() => {
-    const countsByColab = new Map<string, { celular: number; notebook: number; tablet: number }>();
-    eletronicos.forEach((e) => {
-      const cur = countsByColab.get(e.colaborador_id) ?? { celular: 0, notebook: 0, tablet: 0 };
-      cur[e.tipo] += 1;
-      countsByColab.set(e.colaborador_id, cur);
-    });
-    const scope = empresaEletronicos === "all" ? colabs : colabs.filter((c) => c.empresa_id === empresaEletronicos);
-    return scope
-      .map((c) => {
-        const cnt = countsByColab.get(c.id) ?? { celular: 0, notebook: 0, tablet: 0 };
-        const total = cnt.celular + cnt.notebook + cnt.tablet;
-        return {
-          id: c.id,
-          nome: c.nome,
-          setor: c.setor,
-          cargo: c.cargo,
-          empresa: empresaLabel(c.empresa_id),
-          celulares: cnt.celular,
-          notebooks: cnt.notebook,
-          tablets: cnt.tablet,
-          total,
-        };
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
-  }, [eletronicos, colabs, empresaEletronicos, empresas]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase();
