@@ -181,16 +181,16 @@ function ColabPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" title="Copiar dados" onClick={async () => {
+                      <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar dados" onClick={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
                         catch { toast.error("Falha ao copiar"); }
                       }}><Copy className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
-                      {canWrite && <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                      <Button size="icon" variant="ghost" aria-label={`Ver detalhes de ${c.nome}`} title="Ver detalhes" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
+                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${c.nome}`} title="Editar" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
                         <AlertDialog>
-                          <AlertDialogTrigger asChild><Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
+                          <AlertDialogTrigger asChild><Button size="icon" variant="ghost" aria-label={`Excluir ${c.nome}`} title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Excluir colaborador?</AlertDialogTitle>
