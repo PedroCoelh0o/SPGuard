@@ -232,6 +232,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Nome" value={colab.nome} />
                 <Field label="CPF" value={colab.cpf} />
+                <Field label="RG" value={colab.rg} />
                 <Field label="Matrícula" value={colab.matricula} />
                 <Field label="Data de Nascimento" value={formatDate(colab.data_nascimento)} />
                 <Field label="Sexo" value={sexoLabel(colab.sexo)} />
