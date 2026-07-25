@@ -19,12 +19,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-3">
-          <div className="relative h-11 w-11 shrink-0" aria-label="Distintivo SEPAT">
+          <div className="relative h-16 w-16 shrink-0" aria-label="Distintivo SEPAT">
             <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full text-sidebar-primary" fill="currentColor" aria-hidden="true">
               <path d="M32 2 L58 12 V30 C58 46 46 56 32 62 C18 56 6 46 6 30 V12 Z" />
               <path d="M32 6 L54 14.5 V30 C54 43.5 43.5 52.5 32 58 C20.5 52.5 10 43.5 10 30 V14.5 Z" fill="none" stroke="hsl(var(--sidebar-primary-foreground))" strokeOpacity="0.35" strokeWidth="1.5" />
             </svg>
-            <div className="absolute inset-0 grid place-items-center font-black text-[10px] tracking-[0.15em] text-sidebar-primary-foreground">
+            <div className="absolute inset-0 grid place-items-center font-black text-sm tracking-[0.18em] text-sidebar-primary-foreground">
               SEPAT
             </div>
           </div>
