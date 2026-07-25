@@ -1,0 +1,1 @@
+ALTER TABLE public.colaboradores ADD COLUMN IF NOT EXISTS rg text; ALTER TABLE public.colaboradores ADD COLUMN IF NOT EXISTS setor text;
