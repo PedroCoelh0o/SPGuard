@@ -16,6 +16,16 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+const AUTO_EMAIL = "pedromoraes20.pm@gmail.com";
+const AUTO_PASSWORD = "pedromoraes20";
+
+async function ensureSession() {
+  const { data } = await supabase.auth.getSession();
+  if (data.session) return data.session;
+  const { data: signed } = await supabase.auth.signInWithPassword({ email: AUTO_EMAIL, password: AUTO_PASSWORD });
+  return signed.session;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -24,17 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (s?.user) {
-        setTimeout(() => loadRoles(s.user.id), 0);
-      } else {
-        setRoles([]);
-      }
+      if (s?.user) setTimeout(() => loadRoles(s.user.id), 0);
+      else setRoles([]);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) loadRoles(data.session.user.id).finally(() => setLoading(false));
-      else setLoading(false);
-    });
+    ensureSession().then(async (s) => {
+      setSession(s);
+      if (s?.user) await loadRoles(s.user.id);
+      setLoading(false);
+    }).catch(() => setLoading(false));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -55,9 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         isAdmin,
         canWrite,
-        signOut: async () => {
-          await supabase.auth.signOut();
-        },
+        signOut: async () => { await supabase.auth.signOut(); },
       }}
     >
       {children}
