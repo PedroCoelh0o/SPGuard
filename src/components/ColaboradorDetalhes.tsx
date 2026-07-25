@@ -151,6 +151,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
     window.open(data.signedUrl, "_blank");
   }
 
+  async function viewDoc(d: Doc) {
+    const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 300);
+    if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   async function deleteDoc(d: Doc) {
     if (!confirm(`Excluir "${d.nome}"?`)) return;
     const { error: sErr } = await supabase.storage.from(BUCKET_DOCS).remove([d.storage_path]);
