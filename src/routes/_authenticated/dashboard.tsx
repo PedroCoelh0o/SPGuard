@@ -172,17 +172,6 @@ function Dashboard() {
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
-        <ChartCard title="Por Cidade (Top 8)">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={porCidade}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis dataKey="name" tick={axisTick} />
-              <YAxis allowDecimals={false} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
-              <Bar dataKey="total" fill="var(--color-chart-3)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
         <ChartCard title="Admissões x Desligamentos (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={months}>
