@@ -31,7 +31,7 @@ const tooltipStyle = {
   fontSize: "12px",
 } as const;
 const tooltipLabelStyle = { color: "hsl(var(--foreground))", fontWeight: 600 } as const;
-const axisTick = { fontSize: 11, fill: "hsl(var(--muted-foreground))" };
+const axisTick = { fontSize: 11, fill: "hsl(var(--foreground))" };
 const gridStroke = "hsl(var(--border))";
 
 function Dashboard() {
