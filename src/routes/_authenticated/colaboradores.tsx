@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
@@ -172,6 +172,11 @@ function ColabPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" title="Copiar dados" onClick={async () => {
+                        const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
+                        try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
+                        catch { toast.error("Falha ao copiar"); }
+                      }}><Copy className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
                       {canWrite && <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
