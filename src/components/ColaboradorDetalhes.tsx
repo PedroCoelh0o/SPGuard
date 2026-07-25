@@ -246,6 +246,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Empresa" value={empresaLabel || "-"} />
                 <Field label="Cargo" value={colab.cargo} />
+                <Field label="Setor" value={colab.setor} />
                 <Field label="Data de Admissão" value={formatDate(colab.data_admissao)} />
                 <Field label="Data de Desligamento" value={formatDate(colab.data_desligamento)} />
                 <Field label="Status" value={colab.status === "ativo" ? "Ativo" : "Desligado"} />
