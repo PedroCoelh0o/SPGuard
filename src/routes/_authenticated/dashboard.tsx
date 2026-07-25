@@ -154,8 +154,8 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porEmpresa}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} tick={axisTick} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#ffffff" }} interval={0} angle={-20} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#ffffff" }} />
               <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
               <Bar dataKey="total" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
             </BarChart>
