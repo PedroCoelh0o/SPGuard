@@ -62,6 +62,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; doc: Doc } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
