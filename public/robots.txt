@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://spguardian.lovable.app/sitemap.xml
