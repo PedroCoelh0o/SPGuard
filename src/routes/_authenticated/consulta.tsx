@@ -237,60 +237,6 @@ function Consulta() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Colaboradores com eletrônicos</h2>
-            </div>
-            <Select value={empresaEletronicos} onValueChange={setEmpresaEletronicos}>
-              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {empresaEletronicos === "all"
-              ? "Selecione uma empresa para filtrar. Exibindo colaboradores com pelo menos um eletrônico autorizado."
-              : `Colaboradores da empresa "${empresaLabel(empresaEletronicos)}" e seus eletrônicos autorizados.`}
-          </p>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Setor</TableHead>
-                  <TableHead>Função</TableHead>
-                  {empresaEletronicos === "all" && <TableHead>Empresa</TableHead>}
-                  <TableHead className="text-right">Celulares</TableHead>
-                  <TableHead className="text-right">Notebooks</TableHead>
-                  <TableHead className="text-right">Tablets</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {colabsEletronicosStats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaEletronicos === "all" ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
-                ) : colabsEletronicosStats.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.nome}</TableCell>
-                    <TableCell>{s.setor ?? "-"}</TableCell>
-                    <TableCell>{s.cargo ?? "-"}</TableCell>
-                    {empresaEletronicos === "all" && <TableCell>{s.empresa}</TableCell>}
-                    <TableCell className="text-right">{s.celulares}</TableCell>
-                    <TableCell className="text-right">{s.notebooks}</TableCell>
-                    <TableCell className="text-right">{s.tablets}</TableCell>
-                    <TableCell className="text-right font-semibold">{s.total}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
