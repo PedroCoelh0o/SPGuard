@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, FileText, FileSpreadsheet } from "lucide-react";
+import { Search, FileDown, FileText, FileSpreadsheet, Copy, Smartphone } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
@@ -51,10 +51,37 @@ function Consulta() {
     },
   });
 
+  const { data: eletronicos = [] } = useQuery({
+    queryKey: ["consulta-eletronicos"],
+    queryFn: async () => {
+      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
+      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
+    },
+  });
+
   const empresaLabel = (id: string) => {
     const e = empresas.find((x) => x.id === id);
     return e ? e.nome_fantasia || e.razao_social : "-";
   };
+
+  const [empresaEletronicos, setEmpresaEletronicos] = useState<string>("all");
+  const eletronicosStats = useMemo(() => {
+    const colabsById = new Map(colabs.map((c) => [c.id, c]));
+    const empresasSet = empresaEletronicos === "all" ? empresas.map((e) => e.id) : [empresaEletronicos];
+    return empresasSet.map((empId) => {
+      const eletsDaEmpresa = eletronicos.filter((e) => colabsById.get(e.colaborador_id)?.empresa_id === empId);
+      const colabsComElet = new Set(eletsDaEmpresa.map((e) => e.colaborador_id));
+      return {
+        empresa_id: empId,
+        empresa: empresaLabel(empId),
+        colaboradores_com_eletronicos: colabsComElet.size,
+        celulares: eletsDaEmpresa.filter((e) => e.tipo === "celular").length,
+        notebooks: eletsDaEmpresa.filter((e) => e.tipo === "notebook").length,
+        tablets: eletsDaEmpresa.filter((e) => e.tipo === "tablet").length,
+        total: eletsDaEmpresa.length,
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [eletronicos, colabs, empresas, empresaEletronicos]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase();
@@ -158,6 +185,7 @@ function Consulta() {
                   <TableHead>Cidade</TableHead>
                   <TableHead>Admissão</TableHead>
                   <TableHead>Situação</TableHead>
+                  <TableHead className="text-right">Copiar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,6 +203,59 @@ function Consulta() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" title="Copiar" onClick={async () => {
+                        const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
+                        try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
+                        catch { toast.error("Falha ao copiar"); }
+                      }}><Copy className="h-4 w-4" /></Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Eletrônicos por empresa</h2>
+            </div>
+            <Select value={empresaEletronicos} onValueChange={setEmpresaEletronicos}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as empresas</SelectItem>
+                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead className="text-right">Colaboradores c/ eletrônicos</TableHead>
+                  <TableHead className="text-right">Celulares</TableHead>
+                  <TableHead className="text-right">Notebooks</TableHead>
+                  <TableHead className="text-right">Tablets</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {eletronicosStats.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Sem dados.</TableCell></TableRow>
+                ) : eletronicosStats.map((s) => (
+                  <TableRow key={s.empresa_id}>
+                    <TableCell className="font-medium">{s.empresa}</TableCell>
+                    <TableCell className="text-right">{s.colaboradores_com_eletronicos}</TableCell>
+                    <TableCell className="text-right">{s.celulares}</TableCell>
+                    <TableCell className="text-right">{s.notebooks}</TableCell>
+                    <TableCell className="text-right">{s.tablets}</TableCell>
+                    <TableCell className="text-right font-semibold">{s.total}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

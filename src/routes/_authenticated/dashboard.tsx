@@ -1,18 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, LineChart, Line, Legend } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Gestão de Colaboradores" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — SPGuard" }] }),
   component: Dashboard,
 });
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
+
+const tooltipStyle = {
+  backgroundColor: "hsl(var(--popover, var(--card)))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "8px",
+  color: "hsl(var(--foreground))",
+  fontSize: "12px",
+} as const;
+const tooltipLabelStyle = { color: "hsl(var(--foreground))", fontWeight: 600 } as const;
+const axisTick = { fontSize: 11, fill: "hsl(var(--muted-foreground))" };
+const gridStroke = "hsl(var(--border))";
 
 function Dashboard() {
+  const [eletEmpresa, setEletEmpresa] = useState<string>("all");
+
   const { data } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
@@ -27,8 +42,8 @@ function Dashboard() {
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["dashboard-eletronicos"],
     queryFn: async () => {
-      const { data } = await supabase.from("eletronicos" as never).select("tipo");
-      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet" }[];
+      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
+      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
     },
   });
 
@@ -39,6 +54,23 @@ function Dashboard() {
   const qtdCelulares = eletronicos.filter((e) => e.tipo === "celular").length;
   const qtdNotebooks = eletronicos.filter((e) => e.tipo === "notebook").length;
   const qtdTablets = eletronicos.filter((e) => e.tipo === "tablet").length;
+
+  const colabEmpresaMap = useMemo(() => {
+    const m = new Map<string, string>();
+    colabs.forEach((c) => m.set(c.id, c.empresa_id));
+    return m;
+  }, [colabs]);
+
+  const eletronicosData = useMemo(() => {
+    const filtered = eletEmpresa === "all"
+      ? eletronicos
+      : eletronicos.filter((e) => colabEmpresaMap.get(e.colaborador_id) === eletEmpresa);
+    return [
+      { tipo: "Celulares", total: filtered.filter((e) => e.tipo === "celular").length },
+      { tipo: "Notebooks", total: filtered.filter((e) => e.tipo === "notebook").length },
+      { tipo: "Tablets", total: filtered.filter((e) => e.tipo === "tablet").length },
+    ];
+  }, [eletronicos, colabEmpresaMap, eletEmpresa]);
 
   const porEmpresa = empresas.map((e) => ({
     name: e.nome_fantasia || e.razao_social,
@@ -58,7 +90,6 @@ function Dashboard() {
     { name: "Desligados", value: desligados },
   ];
 
-  // Admissões / Desligamentos últimos 6 meses
   const now = new Date();
   const months: { key: string; label: string; adm: number; des: number }[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -67,16 +98,8 @@ function Dashboard() {
     months.push({ key, label: d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }), adm: 0, des: 0 });
   }
   colabs.forEach((c) => {
-    if (c.data_admissao) {
-      const k = c.data_admissao.slice(0, 7);
-      const m = months.find((x) => x.key === k);
-      if (m) m.adm++;
-    }
-    if (c.data_desligamento) {
-      const k = c.data_desligamento.slice(0, 7);
-      const m = months.find((x) => x.key === k);
-      if (m) m.des++;
-    }
+    if (c.data_admissao) { const m = months.find((x) => x.key === c.data_admissao!.slice(0, 7)); if (m) m.adm++; }
+    if (c.data_desligamento) { const m = months.find((x) => x.key === c.data_desligamento!.slice(0, 7)); if (m) m.des++; }
   });
 
   return (
@@ -88,22 +111,49 @@ function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi title="Empresas" value={empresas.length} icon={<Building2 className="h-5 w-5" />} />
         <Kpi title="Colaboradores" value={colabs.length} icon={<Users className="h-5 w-5" />} />
-        <Kpi title="Ativos" value={ativos} icon={<UserCheck className="h-5 w-5" />} tone="text-emerald-600" />
-        <Kpi title="Desligados" value={desligados} icon={<UserX className="h-5 w-5" />} tone="text-red-600" />
+        <Kpi title="Ativos" value={ativos} icon={<UserCheck className="h-5 w-5" />} tone="text-emerald-500 dark:text-emerald-400" />
+        <Kpi title="Desligados" value={desligados} icon={<UserX className="h-5 w-5" />} tone="text-red-500 dark:text-red-400" />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Kpi title="Celulares" value={qtdCelulares} icon={<Smartphone className="h-5 w-5" />} />
         <Kpi title="Notebooks" value={qtdNotebooks} icon={<Laptop className="h-5 w-5" />} />
         <Kpi title="Tablets" value={qtdTablets} icon={<Tablet className="h-5 w-5" />} />
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <CardTitle className="text-base">Eletrônicos por tipo</CardTitle>
+          <Select value={eletEmpresa} onValueChange={setEletEmpresa}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as empresas</SelectItem>
+              {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={eletronicosData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+              <XAxis dataKey="tipo" tick={axisTick} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <Bar dataKey="total" radius={[8, 8, 0, 0]}>
+                {eletronicosData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Colaboradores por Empresa">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porEmpresa}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
               <Bar dataKey="total" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -114,17 +164,18 @@ function Dashboard() {
               <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label>
                 {statusData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
-              <Tooltip />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
         <ChartCard title="Por Cargo (Top 8)">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porCargo} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+              <XAxis type="number" allowDecimals={false} tick={axisTick} />
+              <YAxis type="category" dataKey="name" width={100} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
               <Bar dataKey="total" fill="var(--color-chart-2)" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -132,10 +183,10 @@ function Dashboard() {
         <ChartCard title="Por Cidade (Top 8)">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porCidade}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+              <XAxis dataKey="name" tick={axisTick} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
               <Bar dataKey="total" fill="var(--color-chart-3)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -143,10 +194,11 @@ function Dashboard() {
         <ChartCard title="Admissões x Desligamentos (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={months}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="label" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+              <XAxis dataKey="label" tick={axisTick} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
               <Line type="monotone" dataKey="adm" name="Admissões" stroke="var(--color-chart-1)" strokeWidth={2} />
               <Line type="monotone" dataKey="des" name="Desligamentos" stroke="var(--color-chart-5)" strokeWidth={2} />
             </LineChart>
