@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, FileText, FileSpreadsheet, Copy, Smartphone } from "lucide-react";
+import { Search, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
