@@ -17,7 +17,16 @@ import { toast } from "sonner";
 import { formatCNPJ, formatPhone, UFS } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/empresas")({
-  head: () => ({ meta: [{ title: "Empresas — Gestão de Colaboradores" }] }),
+  head: () => ({
+    meta: [
+      { title: "Empresas — SPGuard" },
+      { name: "description", content: "Cadastro e gestão de empresas contratadas no SPGuard: razão social, CNPJ, responsáveis, contato e status de atividade." },
+      { property: "og:title", content: "Empresas — SPGuard" },
+      { property: "og:description", content: "Gestão das empresas contratadas parceiras da segurança patrimonial." },
+      { property: "og:url", content: "https://spguardian.lovable.app/empresas" },
+    ],
+    links: [{ rel: "canonical", href: "https://spguardian.lovable.app/empresas" }],
+  }),
   component: EmpresasPage,
 });
 

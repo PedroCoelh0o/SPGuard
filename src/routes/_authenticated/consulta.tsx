@@ -16,7 +16,16 @@ import { toast } from "sonner";
 import { useState as useLocalState } from "react";
 
 export const Route = createFileRoute("/_authenticated/consulta")({
-  head: () => ({ meta: [{ title: "Consulta — Gestão de Colaboradores" }] }),
+  head: () => ({
+    meta: [
+      { title: "Consulta — SPGuard" },
+      { name: "description", content: "Pesquisa instantânea e filtros avançados de colaboradores no SPGuard, com estatísticas de eletrônicos por empresa e exportação em CSV, PDF e XLSX." },
+      { property: "og:title", content: "Consulta — SPGuard" },
+      { property: "og:description", content: "Pesquise colaboradores com filtros avançados e exporte relatórios." },
+      { property: "og:url", content: "https://spguardian.lovable.app/consulta" },
+    ],
+    links: [{ rel: "canonical", href: "https://spguardian.lovable.app/consulta" }],
+  }),
   component: Consulta,
 });
 

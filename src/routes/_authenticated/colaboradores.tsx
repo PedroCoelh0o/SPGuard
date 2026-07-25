@@ -21,7 +21,16 @@ import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
-  head: () => ({ meta: [{ title: "Colaboradores — Gestão" }] }),
+  head: () => ({
+    meta: [
+      { title: "Colaboradores — SPGuard" },
+      { name: "description", content: "Cadastro completo de colaboradores no SPGuard: dados pessoais, trabalhistas, documentos, eletrônicos vinculados e importação em massa via XLSX." },
+      { property: "og:title", content: "Colaboradores — SPGuard" },
+      { property: "og:description", content: "Cadastro e gestão de colaboradores das empresas contratadas." },
+      { property: "og:url", content: "https://spguardian.lovable.app/colaboradores" },
+    ],
+    links: [{ rel: "canonical", href: "https://spguardian.lovable.app/colaboradores" }],
+  }),
   component: ColabPage,
 });
 
