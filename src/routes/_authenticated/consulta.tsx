@@ -242,7 +242,7 @@ function Consulta() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Eletrônicos por empresa</h2>
+              <h2 className="text-lg font-semibold">Colaboradores com eletrônicos</h2>
             </div>
             <Select value={empresaEletronicos} onValueChange={setEmpresaEletronicos}>
               <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
@@ -252,12 +252,19 @@ function Consulta() {
               </SelectContent>
             </Select>
           </div>
+          <p className="text-sm text-muted-foreground">
+            {empresaEletronicos === "all"
+              ? "Selecione uma empresa para filtrar. Exibindo colaboradores com pelo menos um eletrônico autorizado."
+              : `Colaboradores da empresa "${empresaLabel(empresaEletronicos)}" e seus eletrônicos autorizados.`}
+          </p>
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead className="text-right">Colaboradores c/ eletrônicos</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Setor</TableHead>
+                  <TableHead>Função</TableHead>
+                  {empresaEletronicos === "all" && <TableHead>Empresa</TableHead>}
                   <TableHead className="text-right">Celulares</TableHead>
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
@@ -265,12 +272,14 @@ function Consulta() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {eletronicosStats.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Sem dados.</TableCell></TableRow>
-                ) : eletronicosStats.map((s) => (
-                  <TableRow key={s.empresa_id}>
-                    <TableCell className="font-medium">{s.empresa}</TableCell>
-                    <TableCell className="text-right">{s.colaboradores_com_eletronicos}</TableCell>
+                {colabsEletronicosStats.length === 0 ? (
+                  <TableRow><TableCell colSpan={empresaEletronicos === "all" ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
+                ) : colabsEletronicosStats.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.nome}</TableCell>
+                    <TableCell>{s.setor ?? "-"}</TableCell>
+                    <TableCell>{s.cargo ?? "-"}</TableCell>
+                    {empresaEletronicos === "all" && <TableCell>{s.empresa}</TableCell>}
                     <TableCell className="text-right">{s.celulares}</TableCell>
                     <TableCell className="text-right">{s.notebooks}</TableCell>
                     <TableCell className="text-right">{s.tablets}</TableCell>
