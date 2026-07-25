@@ -8,7 +8,16 @@ import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, LineChart, Line, Legend } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — SPGuard" }] }),
+  head: () => ({
+    meta: [
+      { title: "Dashboard — SPGuard" },
+      { name: "description", content: "Painel do SPGuard com indicadores em tempo real de empresas, colaboradores ativos e desligados, e totais de celulares, notebooks e tablets." },
+      { property: "og:title", content: "Dashboard — SPGuard" },
+      { property: "og:description", content: "Indicadores em tempo real de empresas, colaboradores e eletrônicos da segurança patrimonial." },
+      { property: "og:url", content: "https://spguardian.lovable.app/dashboard" },
+    ],
+    links: [{ rel: "canonical", href: "https://spguardian.lovable.app/dashboard" }],
+  }),
   component: Dashboard,
 });
 
