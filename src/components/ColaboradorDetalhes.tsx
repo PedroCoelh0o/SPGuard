@@ -308,9 +308,9 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
                         <TableCell>{formatSize(d.tamanho)}</TableCell>
                         <TableCell>{formatDate(d.created_at)}</TableCell>
                         <TableCell className="text-right">
-                          <Button size="icon" variant="ghost" onClick={() => downloadDoc(d)}><Download className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" aria-label={`Baixar ${d.nome}`} title="Baixar" onClick={() => downloadDoc(d)}><Download className="h-4 w-4" /></Button>
                           {isAdmin && (
-                            <Button size="icon" variant="ghost" onClick={() => deleteDoc(d)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            <Button size="icon" variant="ghost" aria-label={`Excluir ${d.nome}`} title="Excluir" onClick={() => deleteDoc(d)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           )}
                         </TableCell>
                       </TableRow>

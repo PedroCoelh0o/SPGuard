@@ -136,8 +136,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
-                      {canWrite && <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => { if (confirm("Excluir dispositivo?")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                      {isAdmin && <Button size="icon" variant="ghost" aria-label={`Excluir ${e.descricao}`} title="Excluir" onClick={() => { if (confirm("Excluir dispositivo?")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
                   </TableRow>
                 );
