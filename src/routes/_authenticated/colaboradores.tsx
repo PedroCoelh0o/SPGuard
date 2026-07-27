@@ -235,7 +235,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           </TabsList>
           <TabsContent value="pessoal" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div className="sm:col-span-2"><Label>Nome Completo *</Label><Input required value={v.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
-            <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} /></div>
+            <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} onBlur={(e) => set("cpf", formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" /></div>
             <div><Label>RG</Label><Input value={v.rg ?? ""} onChange={(e) => set("rg", e.target.value)} /></div>
             <div><Label>Matrícula</Label><Input value={v.matricula ?? ""} onChange={(e) => set("matricula", e.target.value)} /></div>
             <div className="sm:col-span-2"><Label>Empresa *</Label>
