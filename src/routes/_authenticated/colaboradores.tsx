@@ -64,7 +64,7 @@ function ColabPage() {
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("colaboradores").select("*").order("nome");
+      const { data, error } = await supabase.from("colaboradores").select("*").order("nome").limit(2000);
       if (error) throw error;
       return data as Colab[];
     },
