@@ -17,8 +17,10 @@ type Row = {
   linha: number;
   nome: string;
   cpf: string | null;
+  rg: string | null;
   matricula: string | null;
   empresa_id: string | null;
+  setor: string | null;
   empresaLabel: string;
   cargo: string | null;
   escolaridade: string | null;
