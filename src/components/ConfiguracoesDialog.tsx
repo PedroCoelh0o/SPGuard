@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, FolderOpen, Save } from "lucide-react";
+import { Settings, FolderOpen, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow } from "@/lib/local-backup";
+import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
