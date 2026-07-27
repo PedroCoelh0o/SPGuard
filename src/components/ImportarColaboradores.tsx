@@ -104,7 +104,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([HEADERS, [
-      "João da Silva","123.456.789-00","M001","Empresa Exemplo LTDA","Auxiliar","Ensino Médio",
+      "João da Silva","123.456.789-00","MG-12.345.678","M001","Empresa Exemplo LTDA","Operação","Auxiliar","Ensino Médio",
       "1990-05-10","M","2024-01-15","","","ativo","(11) 3333-4444","(11) 99999-0000",
       "joao@ex.com","01001-000","Rua A","100","Centro","São Paulo","SP",
     ]]);
