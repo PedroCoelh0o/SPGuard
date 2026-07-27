@@ -138,9 +138,11 @@ function EmpresasPage() {
                     <TableCell>{e.responsavel ?? "-"}</TableCell>
                     <TableCell>{[e.cidade, e.estado].filter(Boolean).join("/") || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={e.status === "ativa" ? "default" : "secondary"}>
-                        {e.status === "ativa" ? "Ativa" : "Inativa"}
-                      </Badge>
+                      {e.status === "ativa" ? (
+                        <Badge variant="default">Ativa</Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-destructive text-destructive font-semibold">INATIVO</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {canWrite && (
