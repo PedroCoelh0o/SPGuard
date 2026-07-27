@@ -76,6 +76,30 @@ export function ConfiguracoesDialog() {
               </p>
             </>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="text-sm font-medium">Restaurar dados do backup</div>
+            <p className="text-xs text-muted-foreground">
+              Lê o arquivo <strong>spguard-dados.xlsx</strong> e regrava Empresas, Colaboradores e Eletrônicos. Registros com o mesmo ID são sobrescritos.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {supported && (
+                <Button variant="outline" onClick={() => doRestore()} disabled={!dirName || restoring}>
+                  <RotateCcw className="h-4 w-4" /> {restoring ? "Restaurando..." : "Restaurar da pasta"}
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={restoring}>
+                Escolher arquivo...
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestore(f); }}
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
