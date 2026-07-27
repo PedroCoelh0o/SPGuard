@@ -178,6 +178,8 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
       const row: Row = {
         linha: idx + 2,
         nome, cpf, matricula, empresa_id, empresaLabel: empresaName,
+        rg: String(get("rg") ?? "").trim() || null,
+        setor: String(get("setor") ?? "").trim() || null,
         cargo: String(get("cargo") ?? "").trim() || null,
         escolaridade: String(get("escolaridade") ?? "").trim() || null,
         data_nascimento: parseDate(get("data_nascimento")),
