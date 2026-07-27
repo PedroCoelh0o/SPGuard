@@ -192,9 +192,17 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           <Label>IMEI</Label>
           <Input value={v.imei ?? ""} onChange={(e) => set("imei", e.target.value)} />
         </div>
-        <div className="sm:col-span-2">
+        <div>
+          <Label>Nº de Série</Label>
+          <Input value={v.numero_serie ?? ""} onChange={(e) => set("numero_serie", e.target.value)} placeholder="Ex.: SN-8H3K92LM" />
+        </div>
+        <div>
           <Label>Contato</Label>
-          <Input value={v.contato ?? ""} onChange={(e) => set("contato", e.target.value)} placeholder="Número do celular para contato" />
+          <Input value={v.contato ?? ""} onChange={(e) => set("contato", formatPhone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Acessórios</Label>
+          <Textarea rows={2} value={v.acessorios ?? ""} onChange={(e) => set("acessorios", e.target.value)} placeholder="Ex.: Carregador, fone de ouvido, capa, mouse" />
         </div>
         <DialogFooter className="sm:col-span-2 mt-2">
           <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
