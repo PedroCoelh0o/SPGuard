@@ -117,6 +117,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 <TableHead>Descrição</TableHead>
                 <TableHead>Modelo</TableHead>
                 <TableHead>IMEI</TableHead>
+                <TableHead>Nº Série</TableHead>
+                <TableHead>Acessórios</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Nº Selo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -124,9 +126,9 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
               ) : items.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
               ) : items.map((e) => {
                 const Icon = tipoIcon[e.tipo];
                 return (
@@ -135,6 +137,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell className="font-medium">{e.descricao ?? "-"}</TableCell>
                     <TableCell>{e.modelo ?? "-"}</TableCell>
                     <TableCell>{e.imei ?? "-"}</TableCell>
+                    <TableCell>{e.numero_serie ?? "-"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={e.acessorios ?? ""}>{e.acessorios ?? "-"}</TableCell>
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
