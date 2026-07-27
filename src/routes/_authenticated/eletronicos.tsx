@@ -35,7 +35,7 @@ function EletronicosPage() {
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
     queryFn: async () => {
-      const { data } = await supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome");
+      const { data } = await supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome").limit(2000);
       return (data ?? []) as { id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null }[];
     },
   });

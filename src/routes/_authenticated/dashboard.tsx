@@ -42,7 +42,7 @@ function Dashboard() {
     queryFn: async () => {
       const [emp, col] = await Promise.all([
         supabase.from("empresas").select("id, razao_social, nome_fantasia"),
-        supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento"),
+        supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento").limit(2000),
       ]);
       return { empresas: emp.data ?? [], colaboradores: col.data ?? [] };
     },

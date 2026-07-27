@@ -51,7 +51,7 @@ function Consulta() {
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: async () => {
-      const { data } = await supabase.from("colaboradores").select("*").order("nome");
+      const { data } = await supabase.from("colaboradores").select("*").order("nome").limit(2000);
       return (data ?? []) as Array<{
         id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; matricula: string | null;
         cpf: string | null; cidade: string | null; status: string;
