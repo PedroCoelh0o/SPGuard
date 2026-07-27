@@ -9,6 +9,8 @@ export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
   useEffect(() => { if (open) getSavedDirName().then(setDirName); }, [open]);
@@ -31,6 +33,17 @@ export function ConfiguracoesDialog() {
       toast.success(`Dados salvos em ${r.path} (${r.total} registros)`);
     } catch (e) { toast.error((e as Error).message); }
     finally { setSaving(false); }
+  }
+
+  async function doRestore(file?: File) {
+    if (!confirm("Restaurar dados do backup? Registros com o mesmo ID serão sobrescritos.")) return;
+    setRestoring(true);
+    try {
+      const r = await restoreBackup(file);
+      toast.success(`Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores, ${r.eletronicos} eletrônicos`);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRestoring(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   return (
