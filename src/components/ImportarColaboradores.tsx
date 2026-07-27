@@ -43,7 +43,7 @@ type Row = {
 };
 
 const HEADERS = [
-  "nome","cpf","matricula","empresa","cargo","escolaridade","data_nascimento","sexo",
+  "nome","cpf","rg","matricula","empresa","setor","cargo","escolaridade","data_nascimento","sexo",
   "data_admissao","data_desligamento","motivo_desligamento","status",
   "telefone","celular","email","cep","rua","numero","bairro","cidade","estado",
 ];
