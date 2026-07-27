@@ -17,8 +17,10 @@ type Row = {
   linha: number;
   nome: string;
   cpf: string | null;
+  rg: string | null;
   matricula: string | null;
   empresa_id: string | null;
+  setor: string | null;
   empresaLabel: string;
   cargo: string | null;
   escolaridade: string | null;
@@ -43,7 +45,7 @@ type Row = {
 };
 
 const HEADERS = [
-  "nome","cpf","matricula","empresa","cargo","escolaridade","data_nascimento","sexo",
+  "nome","cpf","rg","matricula","empresa","setor","cargo","escolaridade","data_nascimento","sexo",
   "data_admissao","data_desligamento","motivo_desligamento","status",
   "telefone","celular","email","cep","rua","numero","bairro","cidade","estado",
 ];
@@ -104,7 +106,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([HEADERS, [
-      "João da Silva","123.456.789-00","M001","Empresa Exemplo LTDA","Auxiliar","Ensino Médio",
+      "João da Silva","123.456.789-00","MG-12.345.678","M001","Empresa Exemplo LTDA","Operação","Auxiliar","Ensino Médio",
       "1990-05-10","M","2024-01-15","","","ativo","(11) 3333-4444","(11) 99999-0000",
       "joao@ex.com","01001-000","Rua A","100","Centro","São Paulo","SP",
     ]]);
@@ -176,6 +178,8 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
       const row: Row = {
         linha: idx + 2,
         nome, cpf, matricula, empresa_id, empresaLabel: empresaName,
+        rg: String(get("rg") ?? "").trim() || null,
+        setor: String(get("setor") ?? "").trim() || null,
         cargo: String(get("cargo") ?? "").trim() || null,
         escolaridade: String(get("escolaridade") ?? "").trim() || null,
         data_nascimento: parseDate(get("data_nascimento")),
@@ -211,7 +215,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
     for (let i = 0; i < toRun.length; i++) {
       const r = toRun[i];
       const payload = {
-        nome: r.nome, cpf: r.cpf, matricula: r.matricula, empresa_id: r.empresa_id!,
+        nome: r.nome, cpf: r.cpf, rg: r.rg, matricula: r.matricula, empresa_id: r.empresa_id!, setor: r.setor,
         cargo: r.cargo, escolaridade: r.escolaridade, data_nascimento: r.data_nascimento,
         sexo: r.sexo, data_admissao: r.data_admissao, data_desligamento: r.data_desligamento,
         motivo_desligamento: r.motivo_desligamento, status: r.status,

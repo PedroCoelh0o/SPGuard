@@ -96,3 +96,55 @@ export async function saveBackupNow(): Promise<{ path: string; total: number }> 
 
   return { path: `${handle.name}/SPGuard/spguard-dados.xlsx`, total: empresas.length + colaboradores.length + eletronicos.length };
 }
+
+type RestoreResult = { empresas: number; colaboradores: number; eletronicos: number };
+
+function sheetRows(wb: XLSX.WorkBook, name: string): Record<string, unknown>[] {
+  const ws = wb.Sheets[name];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null });
+}
+
+function clean(rows: Record<string, unknown>[]) {
+  return rows.map((r) => {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(r)) o[k] = v === "" ? null : v;
+    return o;
+  });
+}
+
+async function upsertAll(table: string, rows: Record<string, unknown>[]) {
+  if (rows.length === 0) return 0;
+  let done = 0;
+  for (let i = 0; i < rows.length; i += 200) {
+    const chunk = rows.slice(i, i + 200);
+    const { error } = await supabase.from(table as never).upsert(chunk as never, { onConflict: "id" });
+    if (error) throw new Error(`${table}: ${error.message}`);
+    done += chunk.length;
+  }
+  return done;
+}
+
+/** Lê o arquivo de backup (da pasta selecionada ou de um arquivo enviado) e restaura os dados. */
+export async function restoreBackup(fileOverride?: File): Promise<RestoreResult> {
+  let file: File | undefined = fileOverride;
+  if (!file) {
+    const handle = await idbGet<DirHandle>(KEY);
+    if (!handle) throw new Error("Selecione uma pasta primeiro");
+    await ensurePermission(handle);
+    const sp = await handle.getDirectoryHandle("SPGuard", { create: false });
+    const fh = await sp.getFileHandle("spguard-dados.xlsx", { create: false });
+    file = await (fh as unknown as { getFile: () => Promise<File> }).getFile();
+  }
+  const wb = XLSX.read(await file!.arrayBuffer(), { type: "array" });
+
+  const empresas = clean(sheetRows(wb, "Empresas"));
+  const colaboradores = clean(sheetRows(wb, "Colaboradores"));
+  const eletronicos = clean(sheetRows(wb, "Eletronicos"));
+
+  return {
+    empresas: await upsertAll("empresas", empresas),
+    colaboradores: await upsertAll("colaboradores", colaboradores),
+    eletronicos: await upsertAll("eletronicos", eletronicos),
+  };
+}

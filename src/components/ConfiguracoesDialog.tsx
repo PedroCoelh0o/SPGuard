@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, FolderOpen, Save } from "lucide-react";
+import { Settings, FolderOpen, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow } from "@/lib/local-backup";
+import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
   useEffect(() => { if (open) getSavedDirName().then(setDirName); }, [open]);
@@ -31,6 +33,17 @@ export function ConfiguracoesDialog() {
       toast.success(`Dados salvos em ${r.path} (${r.total} registros)`);
     } catch (e) { toast.error((e as Error).message); }
     finally { setSaving(false); }
+  }
+
+  async function doRestore(file?: File) {
+    if (!confirm("Restaurar dados do backup? Registros com o mesmo ID serão sobrescritos.")) return;
+    setRestoring(true);
+    try {
+      const r = await restoreBackup(file);
+      toast.success(`Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores, ${r.eletronicos} eletrônicos`);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRestoring(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   return (
@@ -63,6 +76,30 @@ export function ConfiguracoesDialog() {
               </p>
             </>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="text-sm font-medium">Restaurar dados do backup</div>
+            <p className="text-xs text-muted-foreground">
+              Lê o arquivo <strong>spguard-dados.xlsx</strong> e regrava Empresas, Colaboradores e Eletrônicos. Registros com o mesmo ID são sobrescritos.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {supported && (
+                <Button variant="outline" onClick={() => doRestore()} disabled={!dirName || restoring}>
+                  <RotateCcw className="h-4 w-4" /> {restoring ? "Restaurando..." : "Restaurar da pasta"}
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={restoring}>
+                Escolher arquivo...
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestore(f); }}
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>

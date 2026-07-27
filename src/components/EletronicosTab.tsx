@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { formatPhone } from "@/lib/format";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,13 +24,15 @@ export type Eletronico = {
   modelo: string | null;
   contato: string | null;
   numero_selo: string | null;
+  numero_serie: string | null;
+  acessorios: string | null;
   created_at: string;
 };
 
 const tipoLabel = { celular: "Celular", notebook: "Notebook", tablet: "Tablet" } as const;
 const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as const;
 
-const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "" };
+const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "" };
 
 export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
   const { canWrite, isAdmin } = useAuth();
@@ -115,6 +119,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 <TableHead>Descrição</TableHead>
                 <TableHead>Modelo</TableHead>
                 <TableHead>IMEI</TableHead>
+                <TableHead>Nº Série</TableHead>
+                <TableHead>Acessórios</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Nº Selo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -122,9 +128,9 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
               ) : items.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
               ) : items.map((e) => {
                 const Icon = tipoIcon[e.tipo];
                 return (
@@ -133,6 +139,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell className="font-medium">{e.descricao ?? "-"}</TableCell>
                     <TableCell>{e.modelo ?? "-"}</TableCell>
                     <TableCell>{e.imei ?? "-"}</TableCell>
+                    <TableCell>{e.numero_serie ?? "-"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={e.acessorios ?? ""}>{e.acessorios ?? "-"}</TableCell>
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
@@ -186,9 +194,17 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           <Label>IMEI</Label>
           <Input value={v.imei ?? ""} onChange={(e) => set("imei", e.target.value)} />
         </div>
-        <div className="sm:col-span-2">
+        <div>
+          <Label>Nº de Série</Label>
+          <Input value={v.numero_serie ?? ""} onChange={(e) => set("numero_serie", e.target.value)} placeholder="Ex.: SN-8H3K92LM" />
+        </div>
+        <div>
           <Label>Contato</Label>
-          <Input value={v.contato ?? ""} onChange={(e) => set("contato", e.target.value)} placeholder="Número do celular para contato" />
+          <Input value={v.contato ?? ""} onChange={(e) => set("contato", formatPhone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Acessórios</Label>
+          <Textarea rows={2} value={v.acessorios ?? ""} onChange={(e) => set("acessorios", e.target.value)} placeholder="Ex.: Carregador, fone de ouvido, capa, mouse" />
         </div>
         <DialogFooter className="sm:col-span-2 mt-2">
           <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>

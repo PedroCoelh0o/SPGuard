@@ -64,7 +64,7 @@ function ColabPage() {
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("colaboradores").select("*").order("nome");
+      const { data, error } = await supabase.from("colaboradores").select("*").order("nome").limit(2000);
       if (error) throw error;
       return data as Colab[];
     },
@@ -235,7 +235,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           </TabsList>
           <TabsContent value="pessoal" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div className="sm:col-span-2"><Label>Nome Completo *</Label><Input required value={v.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
-            <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} /></div>
+            <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} onBlur={(e) => set("cpf", formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" /></div>
             <div><Label>RG</Label><Input value={v.rg ?? ""} onChange={(e) => set("rg", e.target.value)} /></div>
             <div><Label>Matrícula</Label><Input value={v.matricula ?? ""} onChange={(e) => set("matricula", e.target.value)} /></div>
             <div className="sm:col-span-2"><Label>Empresa *</Label>
@@ -274,8 +274,8 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
             <div className="sm:col-span-2"><Label>Motivo do Desligamento</Label><Input value={v.motivo_desligamento ?? ""} onChange={(e) => set("motivo_desligamento", e.target.value)} /></div>
           </TabsContent>
           <TabsContent value="contato" className="grid gap-4 sm:grid-cols-2 mt-4">
-            <div><Label>Telefone</Label><Input value={v.telefone ?? ""} onChange={(e) => set("telefone", formatPhone(e.target.value))} /></div>
-            <div><Label>Celular</Label><Input value={v.celular ?? ""} onChange={(e) => set("celular", formatPhone(e.target.value))} /></div>
+            <div><Label>Telefone</Label><Input value={v.telefone ?? ""} onChange={(e) => set("telefone", formatPhone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" /></div>
+            <div><Label>Celular</Label><Input value={v.celular ?? ""} onChange={(e) => set("celular", formatPhone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" /></div>
             <div className="sm:col-span-2"><Label>E-mail</Label><Input type="email" value={v.email ?? ""} onChange={(e) => set("email", e.target.value)} /></div>
           </TabsContent>
           <TabsContent value="end" className="grid gap-4 sm:grid-cols-2 mt-4">
