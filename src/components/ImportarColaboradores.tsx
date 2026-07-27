@@ -215,7 +215,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
     for (let i = 0; i < toRun.length; i++) {
       const r = toRun[i];
       const payload = {
-        nome: r.nome, cpf: r.cpf, matricula: r.matricula, empresa_id: r.empresa_id!,
+        nome: r.nome, cpf: r.cpf, rg: r.rg, matricula: r.matricula, empresa_id: r.empresa_id!, setor: r.setor,
         cargo: r.cargo, escolaridade: r.escolaridade, data_nascimento: r.data_nascimento,
         sexo: r.sexo, data_admissao: r.data_admissao, data_desligamento: r.data_desligamento,
         motivo_desligamento: r.motivo_desligamento, status: r.status,
