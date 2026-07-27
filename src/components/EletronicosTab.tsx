@@ -22,13 +22,15 @@ export type Eletronico = {
   modelo: string | null;
   contato: string | null;
   numero_selo: string | null;
+  numero_serie: string | null;
+  acessorios: string | null;
   created_at: string;
 };
 
 const tipoLabel = { celular: "Celular", notebook: "Notebook", tablet: "Tablet" } as const;
 const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as const;
 
-const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "" };
+const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "" };
 
 export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
   const { canWrite, isAdmin } = useAuth();
