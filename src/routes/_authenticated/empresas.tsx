@@ -188,7 +188,7 @@ function EmpresaForm({ value, onCancel, onSave, saving }: { value: Partial<Empre
         <div><Label>Nome Fantasia</Label><Input value={v.nome_fantasia ?? ""} onChange={(e) => set("nome_fantasia", e.target.value)} /></div>
         <div><Label>CNPJ</Label><Input value={v.cnpj ?? ""} onChange={(e) => set("cnpj", formatCNPJ(e.target.value))} /></div>
         <div><Label>Responsável</Label><Input value={v.responsavel ?? ""} onChange={(e) => set("responsavel", e.target.value)} /></div>
-        <div><Label>Telefone</Label><Input value={v.telefone ?? ""} onChange={(e) => set("telefone", formatPhone(e.target.value))} /></div>
+        <div><Label>Telefone</Label><Input value={v.telefone ?? ""} onChange={(e) => set("telefone", formatPhone(e.target.value))} placeholder="(00) 00000-0000" /></div>
         <div className="sm:col-span-2"><Label>E-mail</Label><Input type="email" value={v.email ?? ""} onChange={(e) => set("email", e.target.value)} /></div>
         <div className="sm:col-span-2"><Label>Endereço</Label><Input value={v.endereco ?? ""} onChange={(e) => set("endereco", e.target.value)} /></div>
         <div><Label>Cidade</Label><Input value={v.cidade ?? ""} onChange={(e) => set("cidade", e.target.value)} /></div>
