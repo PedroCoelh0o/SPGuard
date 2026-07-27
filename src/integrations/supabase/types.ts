@@ -191,6 +191,7 @@ export type Database = {
       }
       eletronicos: {
         Row: {
+          acessorios: string | null
           colaborador_id: string
           contato: string | null
           created_at: string
@@ -199,10 +200,12 @@ export type Database = {
           imei: string | null
           modelo: string | null
           numero_selo: string | null
+          numero_serie: string | null
           tipo: Database["public"]["Enums"]["eletronico_tipo"]
           updated_at: string
         }
         Insert: {
+          acessorios?: string | null
           colaborador_id: string
           contato?: string | null
           created_at?: string
@@ -211,10 +214,12 @@ export type Database = {
           imei?: string | null
           modelo?: string | null
           numero_selo?: string | null
+          numero_serie?: string | null
           tipo: Database["public"]["Enums"]["eletronico_tipo"]
           updated_at?: string
         }
         Update: {
+          acessorios?: string | null
           colaborador_id?: string
           contato?: string | null
           created_at?: string
@@ -223,6 +228,7 @@ export type Database = {
           imei?: string | null
           modelo?: string | null
           numero_selo?: string | null
+          numero_serie?: string | null
           tipo?: Database["public"]["Enums"]["eletronico_tipo"]
           updated_at?: string
         }

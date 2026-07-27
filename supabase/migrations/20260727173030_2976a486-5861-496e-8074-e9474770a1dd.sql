@@ -1,0 +1,1 @@
+ALTER TABLE public.eletronicos ADD COLUMN IF NOT EXISTS numero_serie text, ADD COLUMN IF NOT EXISTS acessorios text;
