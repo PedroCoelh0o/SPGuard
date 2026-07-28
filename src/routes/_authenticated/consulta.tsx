@@ -201,6 +201,12 @@ function Consulta() {
               </TableBody>
             </Table>
           </div>
+          {hasMore && (
+            <div className="flex justify-center">
+              <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>
+            </div>
+          )}
+          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
 
