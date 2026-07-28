@@ -170,7 +170,7 @@ function ColabPage() {
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
-                ) : filtered.map((c) => (
+                ) : visible.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
