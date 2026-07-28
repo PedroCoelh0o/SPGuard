@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/eletronicos")({
 
 function EletronicosPage() {
   const [empresaSel, setEmpresaSel] = useState<string>("all");
+  const [q, setQ] = useState("");
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
