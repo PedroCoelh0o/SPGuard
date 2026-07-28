@@ -156,7 +156,7 @@ function Consulta() {
           </div>
 
           <div className="text-sm text-muted-foreground">
-            {isLoading ? "Carregando..." : `${filtered.length} colaborador(es) encontrado(s)`}
+            {isLoading ? "Carregando..." : `${total} colaborador(es) encontrado(s) — exibindo ${shown}`}
           </div>
 
           <div className="rounded-md border overflow-x-auto">
