@@ -51,10 +51,10 @@ function EletronicosPage() {
     },
   });
 
-  const empresaLabel = (id: string) => {
-    const e = empresas.find((x) => x.id === id);
-    return e ? e.nome_fantasia || e.razao_social : "-";
-  };
+  const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
+  const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
+
+  const qd = useDebounced(q, 250);
 
   const stats = useMemo(() => {
     const counts = new Map<string, { celular: number; notebook: number; tablet: number }>();
@@ -63,20 +63,27 @@ function EletronicosPage() {
       cur[e.tipo] += 1;
       counts.set(e.colaborador_id, cur);
     });
-    const scope = empresaSel === "all" ? colabs : colabs.filter((c) => c.empresa_id === empresaSel);
+    const s = qd.trim().toLowerCase();
+    const scope = colabs.filter((c) => {
+      if (empresaSel !== "all" && c.empresa_id !== empresaSel) return false;
+      if (s && !(c.nome.toLowerCase().includes(s) || (c.setor ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s))) return false;
+      return true;
+    });
     return scope
       .map((c) => {
         const cnt = counts.get(c.id) ?? { celular: 0, notebook: 0, tablet: 0 };
         const total = cnt.celular + cnt.notebook + cnt.tablet;
         return {
           id: c.id, nome: c.nome, setor: c.setor, cargo: c.cargo,
-          empresa: empresaLabel(c.empresa_id),
+          empresa: empresaMap.get(c.empresa_id) ?? "-",
           celulares: cnt.celular, notebooks: cnt.notebook, tablets: cnt.tablet, total,
         };
       })
       .filter((r) => r.total > 0)
       .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
-  }, [eletronicos, colabs, empresaSel, empresas]);
+  }, [eletronicos, colabs, empresaSel, empresaMap, qd]);
+
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
 
   return (
     <div className="space-y-6">
