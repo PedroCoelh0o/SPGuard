@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
 import { useState as useLocalState } from "react";
+import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 
 export const Route = createFileRoute("/_authenticated/consulta")({
   head: () => ({
