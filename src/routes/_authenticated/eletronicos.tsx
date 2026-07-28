@@ -149,6 +149,11 @@ function EletronicosPage() {
               </TableBody>
             </Table>
           </div>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>{`Exibindo ${shown} de ${total} colaborador(es)`}</span>
+            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+          </div>
+          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
     </div>
