@@ -134,7 +134,7 @@ function EletronicosPage() {
               <TableBody>
                 {stats.length === 0 ? (
                   <TableRow><TableCell colSpan={empresaSel === "all" ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
-                ) : stats.map((s) => (
+                ) : visible.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
                     <TableCell>{s.setor ?? "-"}</TableCell>
