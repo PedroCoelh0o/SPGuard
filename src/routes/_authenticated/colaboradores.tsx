@@ -212,6 +212,11 @@ function ColabPage() {
               </TableBody>
             </Table>
           </div>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
+            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+          </div>
+          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
       <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
