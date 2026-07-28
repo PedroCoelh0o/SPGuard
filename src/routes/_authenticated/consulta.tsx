@@ -61,16 +61,15 @@ function Consulta() {
     },
   });
 
-  const empresaLabel = (id: string) => {
-    const e = empresas.find((x) => x.id === id);
-    return e ? e.nome_fantasia || e.razao_social : "-";
-  };
+  const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
+  const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
 
+  const qd = useDebounced(q, 250);
 
   const filtered = useMemo(() => {
-    const s = q.toLowerCase();
+    const s = qd.trim().toLowerCase();
     return colabs.filter((c) => {
-      if (s && !(c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.cidade ?? "").toLowerCase().includes(s) || empresaLabel(c.empresa_id).toLowerCase().includes(s))) return false;
+      if (s && !(c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.cidade ?? "").toLowerCase().includes(s) || (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s))) return false;
       if (fEmpresa !== "all" && c.empresa_id !== fEmpresa) return false;
       if (fCargo && !(c.cargo ?? "").toLowerCase().includes(fCargo.toLowerCase())) return false;
       if (fCidade && !(c.cidade ?? "").toLowerCase().includes(fCidade.toLowerCase())) return false;
@@ -81,7 +80,10 @@ function Consulta() {
       if (desAte && (!c.data_desligamento || c.data_desligamento > desAte)) return false;
       return true;
     });
-  }, [colabs, empresas, q, fEmpresa, fCargo, fCidade, fStatus, admDe, admAte, desDe, desAte]);
+  }, [colabs, empresaMap, qd, fEmpresa, fCargo, fCidade, fStatus, admDe, admAte, desDe, desAte]);
+
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
+
 
   const [exporting, setExporting] = useLocalState<"csv" | "pdf" | "xlsx" | null>(null);
   const currentFilters = {
