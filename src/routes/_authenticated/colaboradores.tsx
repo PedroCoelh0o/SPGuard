@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,9 +66,7 @@ function ColabPage() {
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("colaboradores").select("*").order("nome").limit(2000);
-      if (error) throw error;
-      return data as Colab[];
+      return await fetchAllRows<Colab>(() => supabase.from("colaboradores").select("*").order("nome") as never);
     },
   });
 
