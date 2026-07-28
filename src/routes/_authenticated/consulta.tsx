@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,12 +53,11 @@ function Consulta() {
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: async () => {
-      const { data } = await supabase.from("colaboradores").select("*").order("nome").limit(2000);
-      return (data ?? []) as Array<{
+      return await fetchAllRows<{
         id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; matricula: string | null;
         cpf: string | null; cidade: string | null; status: string;
         data_admissao: string | null; data_desligamento: string | null;
-      }>;
+      }>(() => supabase.from("colaboradores").select("*").order("nome") as never);
     },
   });
 

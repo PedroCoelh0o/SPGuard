@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "lucide-react";
@@ -42,9 +43,11 @@ function Dashboard() {
     queryFn: async () => {
       const [emp, col] = await Promise.all([
         supabase.from("empresas").select("id, razao_social, nome_fantasia"),
-        supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento").limit(2000),
+        fetchAllRows<{ id: string; empresa_id: string; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null }>(
+          () => supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento").order("id") as never,
+        ),
       ]);
-      return { empresas: emp.data ?? [], colaboradores: col.data ?? [] };
+      return { empresas: emp.data ?? [], colaboradores: col };
     },
   });
 

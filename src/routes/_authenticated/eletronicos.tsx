@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,19 +39,20 @@ function EletronicosPage() {
 
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
-    queryFn: async () => {
-      const { data } = await supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome").limit(2000);
-      return (data ?? []) as { id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null }[];
-    },
+    queryFn: async () =>
+      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null }>(
+        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome") as never,
+      ),
   });
 
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["consulta-eletronicos"],
-    queryFn: async () => {
-      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
-      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
-    },
+    queryFn: async () =>
+      await fetchAllRows<{ tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }>(
+        () => supabase.from("eletronicos" as never).select("tipo, colaborador_id").order("created_at") as never,
+      ),
   });
+
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
   const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
