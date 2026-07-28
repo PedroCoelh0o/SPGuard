@@ -71,10 +71,8 @@ function ColabPage() {
     },
   });
 
-  const empresaLabel = (id: string) => {
-    const e = empresas.find((x) => x.id === id);
-    return e ? e.nome_fantasia || e.razao_social : "-";
-  };
+  const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
+  const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
 
   const save = useMutation({
     mutationFn: async (payload: Partial<Colab>) => {
