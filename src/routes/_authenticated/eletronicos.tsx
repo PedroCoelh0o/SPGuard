@@ -108,6 +108,10 @@ function EletronicosPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="relative max-w-md">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar por nome, setor ou função..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
           <p className="text-sm text-muted-foreground">
             {empresaSel === "all"
               ? "Exibindo colaboradores com pelo menos um eletrônico autorizado (todas as empresas)."
