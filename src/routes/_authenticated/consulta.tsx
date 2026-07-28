@@ -175,7 +175,7 @@ function Consulta() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
+                {visible.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
