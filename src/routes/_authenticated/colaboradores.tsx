@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,10 +71,8 @@ function ColabPage() {
     },
   });
 
-  const empresaLabel = (id: string) => {
-    const e = empresas.find((x) => x.id === id);
-    return e ? e.nome_fantasia || e.razao_social : "-";
-  };
+  const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
+  const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
 
   const save = useMutation({
     mutationFn: async (payload: Partial<Colab>) => {
@@ -97,10 +96,14 @@ function ColabPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const qd = useDebounced(q, 250);
   const filtered = useMemo(() => {
-    const s = q.toLowerCase();
-    return colabs.filter((c) => !s || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
-  }, [colabs, q]);
+    const s = qd.trim().toLowerCase();
+    if (!s) return colabs;
+    return colabs.filter((c) => c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
+  }, [colabs, qd]);
+
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
   return (
     <div className="space-y-6">
@@ -167,7 +170,7 @@ function ColabPage() {
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
-                ) : filtered.map((c) => (
+                ) : visible.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
@@ -209,6 +212,11 @@ function ColabPage() {
               </TableBody>
             </Table>
           </div>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
+            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+          </div>
+          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
       <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
