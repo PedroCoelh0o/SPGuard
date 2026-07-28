@@ -96,10 +96,14 @@ function ColabPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const qd = useDebounced(q, 250);
   const filtered = useMemo(() => {
-    const s = q.toLowerCase();
-    return colabs.filter((c) => !s || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
-  }, [colabs, q]);
+    const s = qd.trim().toLowerCase();
+    if (!s) return colabs;
+    return colabs.filter((c) => c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
+  }, [colabs, qd]);
+
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
   return (
     <div className="space-y-6">
