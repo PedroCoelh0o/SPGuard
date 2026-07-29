@@ -17,6 +17,7 @@ import { EletronicosTab } from "@/components/EletronicosTab";
 type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
   cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
+  turno?: string | null;
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
@@ -248,6 +249,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
                 <Field label="Empresa" value={empresaLabel || "-"} />
                 <Field label="Cargo" value={colab.cargo} />
                 <Field label="Setor" value={colab.setor} />
+                <Field label="Turno" value={colab.turno ?? null} />
                 <Field label="Data de Admissão" value={formatDate(colab.data_admissao)} />
                 <Field label="Data de Desligamento" value={formatDate(colab.data_desligamento)} />
                 <Field label="Status" value={colab.status === "ativo" ? "Ativo" : "Desligado"} />

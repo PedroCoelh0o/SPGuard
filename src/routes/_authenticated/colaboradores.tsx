@@ -39,6 +39,7 @@ export const Route = createFileRoute("/_authenticated/colaboradores")({
 type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
   cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
+  turno: string | null;
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
@@ -46,14 +47,17 @@ type Colab = {
 };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
+const TURNOS = ["Manhã", "Tarde", "Noite", "Administrativo", "12x36 Diurno", "12x36 Noturno"];
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
+
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -96,11 +100,19 @@ function ColabPage() {
   });
 
   const qd = useDebounced(q, 250);
+  const turnosDisponiveis = useMemo(
+    () => Array.from(new Set([...TURNOS, ...colabs.map((c) => c.turno).filter((t): t is string => !!t)])),
+    [colabs],
+  );
   const filtered = useMemo(() => {
     const s = qd.trim().toLowerCase();
-    if (!s) return colabs;
-    return colabs.filter((c) => c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
-  }, [colabs, qd]);
+    return colabs.filter((c) => {
+      if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
+      if (!s) return true;
+      return c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
+    });
+  }, [colabs, qd, turnoFiltro]);
+
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
@@ -146,9 +158,18 @@ function ColabPage() {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por nome, CPF, matrícula ou cargo..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <Select value={turnoFiltro} onValueChange={setTurnoFiltro}>
+              <SelectTrigger className="w-52" aria-label="Filtrar por turno"><SelectValue placeholder="Turno" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os turnos</SelectItem>
+                {turnosDisponiveis.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div className="rounded-md border overflow-x-auto">
             <Table>
@@ -157,6 +178,7 @@ function ColabPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Cargo</TableHead>
+                  <TableHead>Turno</TableHead>
                   <TableHead>Matrícula</TableHead>
                   <TableHead>CPF</TableHead>
                   <TableHead>Admissão</TableHead>
@@ -166,17 +188,19 @@ function ColabPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
                 ) : visible.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
+                    <TableCell>{c.turno ?? "-"}</TableCell>
                     <TableCell>{c.matricula ?? "-"}</TableCell>
                     <TableCell>{c.cpf ?? "-"}</TableCell>
                     <TableCell>{formatDate(c.data_admissao)}</TableCell>
+
                     <TableCell>
                       <Badge variant={c.status === "ativo" ? "default" : "destructive"}>
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
@@ -269,6 +293,13 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           <TabsContent value="trab" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div><Label>Data de Admissão</Label><Input type="date" value={v.data_admissao ?? ""} onChange={(e) => set("data_admissao", e.target.value)} /></div>
             <div><Label>Data de Desligamento</Label><Input type="date" value={v.data_desligamento ?? ""} onChange={(e) => set("data_desligamento", e.target.value)} /></div>
+            <div><Label>Turno</Label>
+              <Select value={v.turno ?? ""} onValueChange={(x) => set("turno", x)}>
+                <SelectTrigger><SelectValue placeholder="Selecione o turno..." /></SelectTrigger>
+                <SelectContent>{TURNOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
             <div><Label>Status</Label>
               <Select value={v.status ?? "ativo"} onValueChange={(x) => set("status", x)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

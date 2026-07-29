@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { useTheme } from "@/hooks/useTheme";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "lucide-react";
@@ -24,19 +26,32 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
 
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--popover, var(--card)))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "8px",
-  color: "hsl(var(--foreground))",
-  fontSize: "12px",
-} as const;
-const tooltipLabelStyle = { color: "hsl(var(--foreground))", fontWeight: 600 } as const;
-const axisTick = { fontSize: 11, fill: "hsl(var(--foreground))" };
-const gridStroke = "hsl(var(--border))";
+const gridStroke = "hsl(0 0% 50% / 0.4)";
+
+/** Texto dos gráficos: branco no modo noturno, preto no modo claro. */
+function useChartStyles() {
+  const { theme } = useTheme();
+  const text = theme === "dark" ? "#ffffff" : "#000000";
+  return {
+    text,
+    axisTick: { fontSize: 11, fill: text },
+    tooltipStyle: {
+      backgroundColor: theme === "dark" ? "#111827" : "#ffffff",
+      border: "1px solid hsl(0 0% 50% / 0.4)",
+      borderRadius: "8px",
+      color: text,
+      fontSize: "12px",
+    } as const,
+    tooltipLabelStyle: { color: text, fontWeight: 600 } as const,
+    tooltipItemStyle: { color: text } as const,
+    legendStyle: { color: text } as const,
+  };
+}
 
 function Dashboard() {
+  const { text: chartText, axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = useChartStyles();
   const [eletEmpresa, setEletEmpresa] = useState<string>("all");
+
 
   const { data } = useQuery({
     queryKey: ["dashboard"],
@@ -143,7 +158,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
               <XAxis dataKey="tipo" tick={axisTick} />
               <YAxis allowDecimals={false} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
               <Bar dataKey="total" radius={[8, 8, 0, 0]}>
                 {eletronicosData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Bar>
@@ -157,9 +172,9 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porEmpresa}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#ffffff" }} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#ffffff" }} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
               <Bar dataKey="total" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -167,11 +182,11 @@ function Dashboard() {
         <ChartCard title="Situação">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label>
+              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label={{ fill: chartText, fontSize: 12 }}>
                 {statusData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Legend wrapperStyle={legendStyle} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -181,9 +196,10 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
               <XAxis dataKey="label" tick={axisTick} />
               <YAxis allowDecimals={false} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Legend wrapperStyle={legendStyle} />
               <Line type="monotone" dataKey="adm" name="Admissões" stroke="var(--color-chart-1)" strokeWidth={2} />
+
               <Line type="monotone" dataKey="des" name="Desligamentos" stroke="var(--color-chart-5)" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
