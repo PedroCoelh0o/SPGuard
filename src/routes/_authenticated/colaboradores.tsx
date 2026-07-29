@@ -158,9 +158,18 @@ function ColabPage() {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por nome, CPF, matrícula ou cargo..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <Select value={turnoFiltro} onValueChange={setTurnoFiltro}>
+              <SelectTrigger className="w-52" aria-label="Filtrar por turno"><SelectValue placeholder="Turno" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os turnos</SelectItem>
+                {turnosDisponiveis.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div className="rounded-md border overflow-x-auto">
             <Table>
@@ -169,6 +178,7 @@ function ColabPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Cargo</TableHead>
+                  <TableHead>Turno</TableHead>
                   <TableHead>Matrícula</TableHead>
                   <TableHead>CPF</TableHead>
                   <TableHead>Admissão</TableHead>
@@ -178,17 +188,19 @@ function ColabPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
                 ) : visible.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
+                    <TableCell>{c.turno ?? "-"}</TableCell>
                     <TableCell>{c.matricula ?? "-"}</TableCell>
                     <TableCell>{c.cpf ?? "-"}</TableCell>
                     <TableCell>{formatDate(c.data_admissao)}</TableCell>
+
                     <TableCell>
                       <Badge variant={c.status === "ativo" ? "default" : "destructive"}>
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
