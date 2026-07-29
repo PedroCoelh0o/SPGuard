@@ -24,19 +24,32 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
 
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--popover, var(--card)))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "8px",
-  color: "hsl(var(--foreground))",
-  fontSize: "12px",
-} as const;
-const tooltipLabelStyle = { color: "hsl(var(--foreground))", fontWeight: 600 } as const;
-const axisTick = { fontSize: 11, fill: "hsl(var(--foreground))" };
-const gridStroke = "hsl(var(--border))";
+const gridStroke = "hsl(0 0% 50% / 0.4)";
+
+/** Texto dos gráficos: branco no modo noturno, preto no modo claro. */
+function useChartStyles() {
+  const { theme } = useTheme();
+  const text = theme === "dark" ? "#ffffff" : "#000000";
+  return {
+    text,
+    axisTick: { fontSize: 11, fill: text },
+    tooltipStyle: {
+      backgroundColor: theme === "dark" ? "#111827" : "#ffffff",
+      border: "1px solid hsl(0 0% 50% / 0.4)",
+      borderRadius: "8px",
+      color: text,
+      fontSize: "12px",
+    } as const,
+    tooltipLabelStyle: { color: text, fontWeight: 600 } as const,
+    tooltipItemStyle: { color: text } as const,
+    legendStyle: { color: text } as const,
+  };
+}
 
 function Dashboard() {
+  const { text: chartText, axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = useChartStyles();
   const [eletEmpresa, setEletEmpresa] = useState<string>("all");
+
 
   const { data } = useQuery({
     queryKey: ["dashboard"],
