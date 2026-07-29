@@ -39,6 +39,7 @@ export const Route = createFileRoute("/_authenticated/colaboradores")({
 type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
   cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
+  turno: string | null;
   data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
