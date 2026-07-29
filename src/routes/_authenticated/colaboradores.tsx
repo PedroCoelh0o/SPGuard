@@ -293,6 +293,13 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           <TabsContent value="trab" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div><Label>Data de Admissão</Label><Input type="date" value={v.data_admissao ?? ""} onChange={(e) => set("data_admissao", e.target.value)} /></div>
             <div><Label>Data de Desligamento</Label><Input type="date" value={v.data_desligamento ?? ""} onChange={(e) => set("data_desligamento", e.target.value)} /></div>
+            <div><Label>Turno</Label>
+              <Select value={v.turno ?? ""} onValueChange={(x) => set("turno", x)}>
+                <SelectTrigger><SelectValue placeholder="Selecione o turno..." /></SelectTrigger>
+                <SelectContent>{TURNOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
             <div><Label>Status</Label>
               <Select value={v.status ?? "ativo"} onValueChange={(x) => set("status", x)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
