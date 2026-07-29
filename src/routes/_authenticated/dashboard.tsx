@@ -158,7 +158,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
               <XAxis dataKey="tipo" tick={axisTick} />
               <YAxis allowDecimals={false} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
               <Bar dataKey="total" radius={[8, 8, 0, 0]}>
                 {eletronicosData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Bar>
@@ -172,9 +172,9 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={porEmpresa}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#ffffff" }} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#ffffff" }} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} tick={axisTick} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
               <Bar dataKey="total" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -182,11 +182,11 @@ function Dashboard() {
         <ChartCard title="Situação">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label>
+              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label={{ fill: chartText, fontSize: 12 }}>
                 {statusData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Legend wrapperStyle={legendStyle} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -196,9 +196,10 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
               <XAxis dataKey="label" tick={axisTick} />
               <YAxis allowDecimals={false} tick={axisTick} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-              <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+              <Legend wrapperStyle={legendStyle} />
               <Line type="monotone" dataKey="adm" name="Admissões" stroke="var(--color-chart-1)" strokeWidth={2} />
+
               <Line type="monotone" dataKey="des" name="Desligamentos" stroke="var(--color-chart-5)" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
