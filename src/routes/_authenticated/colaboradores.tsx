@@ -47,7 +47,7 @@ type Colab = {
 };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
-const TURNOS = ["Manhã", "Tarde", "Noite", "Administrativo", "12x36 Diurno", "12x36 Noturno"];
+const TURNOS = ["Letra A", "Letra B", "Letra C", "Letra D", "Administrativo", "FIFO", "Híbrido"];
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
