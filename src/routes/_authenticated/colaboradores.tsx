@@ -100,11 +100,19 @@ function ColabPage() {
   });
 
   const qd = useDebounced(q, 250);
+  const turnosDisponiveis = useMemo(
+    () => Array.from(new Set([...TURNOS, ...colabs.map((c) => c.turno).filter((t): t is string => !!t)])),
+    [colabs],
+  );
   const filtered = useMemo(() => {
     const s = qd.trim().toLowerCase();
-    if (!s) return colabs;
-    return colabs.filter((c) => c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s));
-  }, [colabs, qd]);
+    return colabs.filter((c) => {
+      if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
+      if (!s) return true;
+      return c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
+    });
+  }, [colabs, qd, turnoFiltro]);
+
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
