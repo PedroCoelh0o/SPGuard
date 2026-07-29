@@ -1,0 +1,1 @@
+ALTER TABLE public.colaboradores ADD COLUMN IF NOT EXISTS turno text;

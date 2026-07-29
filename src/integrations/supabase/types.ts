@@ -119,6 +119,7 @@ export type Database = {
           sexo: string | null
           status: string
           telefone: string | null
+          turno: string | null
           updated_at: string
         }
         Insert: {
@@ -148,6 +149,7 @@ export type Database = {
           sexo?: string | null
           status?: string
           telefone?: string | null
+          turno?: string | null
           updated_at?: string
         }
         Update: {
@@ -177,6 +179,7 @@ export type Database = {
           sexo?: string | null
           status?: string
           telefone?: string | null
+          turno?: string | null
           updated_at?: string
         }
         Relationships: [
