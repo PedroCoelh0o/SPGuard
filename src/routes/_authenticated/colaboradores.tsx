@@ -47,14 +47,17 @@ type Colab = {
 };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
+const TURNOS = ["Manhã", "Tarde", "Noite", "Administrativo", "12x36 Diurno", "12x36 Noturno"];
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
+
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
