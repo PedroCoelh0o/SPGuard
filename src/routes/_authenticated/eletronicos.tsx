@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Smartphone, Search } from "lucide-react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
+import { ImportarEletronicos } from "@/components/ImportarEletronicos";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
@@ -26,6 +28,8 @@ export const Route = createFileRoute("/_authenticated/eletronicos")({
 });
 
 function EletronicosPage() {
+  const { canWrite } = useAuth();
+  const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>("all");
   const [q, setQ] = useState("");
 
@@ -90,9 +94,14 @@ function EletronicosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Consulta de Eletrônicos</h1>
-        <p className="text-sm text-muted-foreground">Colaboradores autorizados a portar celulares, notebooks e tablets</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Consulta de Eletrônicos</h1>
+          <p className="text-sm text-muted-foreground">Colaboradores autorizados a portar celulares, notebooks e tablets</p>
+        </div>
+        {canWrite && (
+          <ImportarEletronicos onDone={() => qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] })} />
+        )}
       </div>
 
       <Card>
