@@ -23,11 +23,22 @@ function AuthenticatedLayout() {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const r = await maybeAutoSync();
-      if (cancelled || !r) return;
+      const o = await maybeAutoSync();
+      if (cancelled || !o.ran) return;
+      if (!o.ok) {
+        toast.error("Falha na leitura automática da planilha", { description: o.mensagem, duration: 10000 });
+        return;
+      }
+      const r = o.result;
       qc.invalidateQueries();
       if (r.colaboradores || r.eletronicos) {
         toast.success(`Planilha sincronizada: ${r.colaboradores} colaborador(es), ${r.eletronicos} eletrônico(s)`);
+      }
+      if (r.erros.length) {
+        toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
+          description: r.erros.slice(0, 3).join(" | "),
+          duration: 12000,
+        });
       }
     };
     run();

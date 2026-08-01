@@ -2,10 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw } from "lucide-react";
+import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
-import { createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE } from "@/lib/entrada-sync";
+import {
+  createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE,
+  getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog,
+} from "@/lib/entrada-sync";
+
+const STATUS_LABEL: Record<SyncLog["status"], string> = { ok: "Sucesso", parcial: "Com inconsistências", erro: "Falha" };
+const STATUS_CLASS: Record<SyncLog["status"], string> = {
+  ok: "text-primary",
+  parcial: "text-amber-600 dark:text-amber-400",
+  erro: "text-destructive",
+};
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
@@ -16,6 +26,7 @@ export function ConfiguracoesDialog() {
   const [syncing, setSyncing] = useState(false);
   const [auto, setAuto] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
+  const [history, setHistory] = useState<SyncLog[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
@@ -24,6 +35,7 @@ export function ConfiguracoesDialog() {
     getSavedDirName().then(setDirName);
     setAuto(isAutoSyncEnabled());
     setLastSync(getLastSync());
+    setHistory(getSyncHistory());
   }, [open]);
 
   async function doCreateEntrada() {
@@ -39,12 +51,23 @@ export function ConfiguracoesDialog() {
     setSyncing(true);
     try {
       const r = await syncFromEntrada();
+      logSyncResult("manual", r);
       setLastSync(getLastSync());
       toast.success(`Atualizado: ${r.colaboradores} colaborador(es) e ${r.eletronicos} eletrônico(s)`);
-      if (r.erros.length) toast.error(`${r.erros.length} linha(s) com erro: ${r.erros.slice(0, 3).join(" | ")}`);
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setSyncing(false); }
+      if (r.erros.length) {
+        toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
+          description: r.erros.slice(0, 3).join(" | "),
+          duration: 12000,
+        });
+      }
+    } catch (e) {
+      const msg = (e as Error).message || "Falha ao ler a planilha de entrada";
+      logSyncError("manual", msg);
+      toast.error("Falha na leitura da planilha", { description: msg, duration: 10000 });
+    }
+    finally { setSyncing(false); setHistory(getSyncHistory()); }
   }
+
 
 
   async function pick() {
@@ -162,7 +185,56 @@ export function ConfiguracoesDialog() {
               </div>
             </div>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-medium">Histórico de execuções</div>
+              {history.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Limpar histórico"
+                  title="Limpar histórico"
+                  onClick={() => { clearSyncHistory(); setHistory([]); }}
+                >
+                  <Trash2 className="h-4 w-4" /> Limpar
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Registro das últimas leituras da planilha (manuais e automáticas), com falhas e inconsistências.
+            </p>
+            {history.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Nenhuma execução registrada ainda.</div>
+            ) : (
+              <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {history.map((h, i) => (
+                  <li key={`${h.at}-${i}`} className="rounded border bg-muted/30 p-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`font-medium ${STATUS_CLASS[h.status]}`}>{STATUS_LABEL[h.status]}</span>
+                      <span className="text-muted-foreground">
+                        {new Date(h.at).toLocaleString("pt-BR")} · {h.origem === "manual" ? "Manual" : "Automático"}
+                      </span>
+                    </div>
+                    {h.status !== "erro" && (
+                      <div className="text-muted-foreground">
+                        {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
+                      </div>
+                    )}
+                    {h.mensagem && <div className="text-destructive">{h.mensagem}</div>}
+                    {h.erros.length > 0 && (
+                      <ul className="mt-1 list-disc pl-4 text-muted-foreground">
+                        {h.erros.slice(0, 5).map((e, j) => <li key={j}>{e}</li>)}
+                        {h.erros.length > 5 && <li>+{h.erros.length - 5} outra(s)</li>}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
         </DialogFooter>

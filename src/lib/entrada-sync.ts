@@ -241,16 +241,83 @@ export function setAutoSyncEnabled(on: boolean) {
   localStorage.setItem("spguard-entrada-auto", on ? "1" : "0");
 }
 
-/** Sincroniza se já passaram 5h desde a última sincronização. */
-export async function maybeAutoSync(): Promise<SyncResult | null> {
-  if (!isAutoSyncEnabled()) return null;
-  const last = getLastSync();
-  if (last && Date.now() - last < SYNC_INTERVAL_MS) return null;
-  const dir = await getDirHandle();
-  if (!dir) return null;
+// ===== Histórico de execuções =====
+const HISTORY_KEY = "spguard-entrada-historico";
+const HISTORY_MAX = 30;
+
+export type SyncStatus = "ok" | "parcial" | "erro";
+export type SyncLog = {
+  at: number;
+  origem: "manual" | "automatico";
+  status: SyncStatus;
+  colaboradores: number;
+  eletronicos: number;
+  erros: string[];
+  mensagem?: string;
+};
+
+export function getSyncHistory(): SyncLog[] {
+  if (typeof localStorage === "undefined") return [];
   try {
-    return await syncFromEntrada();
-  } catch {
-    return null;
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const arr = raw ? (JSON.parse(raw) as SyncLog[]) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+export function clearSyncHistory() {
+  if (typeof localStorage !== "undefined") localStorage.removeItem(HISTORY_KEY);
+}
+
+export function addSyncLog(log: SyncLog) {
+  if (typeof localStorage === "undefined") return;
+  const list = [log, ...getSyncHistory()].slice(0, HISTORY_MAX);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch { /* quota */ }
+}
+
+/** Registra o resultado de uma sincronização no histórico e devolve o log criado. */
+export function logSyncResult(origem: SyncLog["origem"], r: SyncResult): SyncLog {
+  const log: SyncLog = {
+    at: Date.now(), origem,
+    status: r.erros.length ? "parcial" : "ok",
+    colaboradores: r.colaboradores, eletronicos: r.eletronicos,
+    erros: r.erros.slice(0, 20),
+  };
+  addSyncLog(log);
+  return log;
+}
+
+/** Registra uma falha de leitura/execução no histórico. */
+export function logSyncError(origem: SyncLog["origem"], mensagem: string): SyncLog {
+  const log: SyncLog = {
+    at: Date.now(), origem, status: "erro",
+    colaboradores: 0, eletronicos: 0, erros: [], mensagem,
+  };
+  addSyncLog(log);
+  return log;
+}
+
+export type AutoSyncOutcome =
+  | { ran: false }
+  | { ran: true; ok: true; result: SyncResult }
+  | { ran: true; ok: false; mensagem: string };
+
+/** Sincroniza se já passaram 5h desde a última sincronização. */
+export async function maybeAutoSync(): Promise<AutoSyncOutcome> {
+  if (!isAutoSyncEnabled()) return { ran: false };
+  const last = getLastSync();
+  if (last && Date.now() - last < SYNC_INTERVAL_MS) return { ran: false };
+  const dir = await getDirHandle();
+  if (!dir) return { ran: false };
+  try {
+    const result = await syncFromEntrada();
+    logSyncResult("automatico", result);
+    return { ran: true, ok: true, result };
+  } catch (e) {
+    const mensagem = (e as Error)?.message || "Falha ao ler a planilha de entrada";
+    logSyncError("automatico", mensagem);
+    // evita repetir a tentativa em loop a cada 15 minutos
+    localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
+    return { ran: true, ok: false, mensagem };
   }
 }
