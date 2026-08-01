@@ -55,7 +55,11 @@ export async function pickAndSaveDir(): Promise<string> {
   return handle.name;
 }
 
-async function ensurePermission(handle: DirHandle) {
+export async function getDirHandle(): Promise<DirHandle | undefined> {
+  try { return await idbGet<DirHandle>(KEY); } catch { return undefined; }
+}
+
+export async function ensurePermission(handle: DirHandle) {
   if (!handle.queryPermission) return;
   const q = await handle.queryPermission({ mode: "readwrite" });
   if (q === "granted") return;
