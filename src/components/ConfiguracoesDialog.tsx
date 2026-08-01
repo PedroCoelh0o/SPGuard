@@ -2,10 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw } from "lucide-react";
+import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
-import { createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE } from "@/lib/entrada-sync";
+import {
+  createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE,
+  getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog,
+} from "@/lib/entrada-sync";
+
+const STATUS_LABEL: Record<SyncLog["status"], string> = { ok: "Sucesso", parcial: "Com inconsistências", erro: "Falha" };
+const STATUS_CLASS: Record<SyncLog["status"], string> = {
+  ok: "text-primary",
+  parcial: "text-amber-600 dark:text-amber-400",
+  erro: "text-destructive",
+};
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
@@ -16,6 +26,7 @@ export function ConfiguracoesDialog() {
   const [syncing, setSyncing] = useState(false);
   const [auto, setAuto] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
+  const [history, setHistory] = useState<SyncLog[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
@@ -24,6 +35,7 @@ export function ConfiguracoesDialog() {
     getSavedDirName().then(setDirName);
     setAuto(isAutoSyncEnabled());
     setLastSync(getLastSync());
+    setHistory(getSyncHistory());
   }, [open]);
 
   async function doCreateEntrada() {
@@ -39,12 +51,23 @@ export function ConfiguracoesDialog() {
     setSyncing(true);
     try {
       const r = await syncFromEntrada();
+      logSyncResult("manual", r);
       setLastSync(getLastSync());
       toast.success(`Atualizado: ${r.colaboradores} colaborador(es) e ${r.eletronicos} eletrônico(s)`);
-      if (r.erros.length) toast.error(`${r.erros.length} linha(s) com erro: ${r.erros.slice(0, 3).join(" | ")}`);
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setSyncing(false); }
+      if (r.erros.length) {
+        toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
+          description: r.erros.slice(0, 3).join(" | "),
+          duration: 12000,
+        });
+      }
+    } catch (e) {
+      const msg = (e as Error).message || "Falha ao ler a planilha de entrada";
+      logSyncError("manual", msg);
+      toast.error("Falha na leitura da planilha", { description: msg, duration: 10000 });
+    }
+    finally { setSyncing(false); setHistory(getSyncHistory()); }
   }
+
 
 
   async function pick() {
