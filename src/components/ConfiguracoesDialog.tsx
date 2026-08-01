@@ -1,19 +1,51 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, FolderOpen, Save, RotateCcw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
+import { createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE } from "@/lib/entrada-sync";
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const [lastSync, setLastSync] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
-  useEffect(() => { if (open) getSavedDirName().then(setDirName); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    getSavedDirName().then(setDirName);
+    setAuto(isAutoSyncEnabled());
+    setLastSync(getLastSync());
+  }, [open]);
+
+  async function doCreateEntrada() {
+    setCreating(true);
+    try {
+      const r = await createEntradaFile();
+      toast.success(r.created ? `Planilha criada em ${r.path}` : `A planilha já existe em ${r.path}`);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setCreating(false); }
+  }
+
+  async function doSync() {
+    setSyncing(true);
+    try {
+      const r = await syncFromEntrada();
+      setLastSync(getLastSync());
+      toast.success(`Atualizado: ${r.colaboradores} colaborador(es) e ${r.eletronicos} eletrônico(s)`);
+      if (r.erros.length) toast.error(`${r.erros.length} linha(s) com erro: ${r.erros.slice(0, 3).join(" | ")}`);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSyncing(false); }
+  }
+
 
   async function pick() {
     try {
