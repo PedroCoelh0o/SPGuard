@@ -132,6 +132,36 @@ export function ConfiguracoesDialog() {
               />
             </div>
           </div>
+
+          {supported && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="text-sm font-medium">Planilha de entrada manual</div>
+              <p className="text-xs text-muted-foreground">
+                Cria <strong>{ENTRADA_FILE}</strong> na pasta <strong>SPGuard</strong> com as abas <strong>Colaboradores</strong> e <strong>Eletronicos</strong> para você preencher manualmente. O app lê esse arquivo e atualiza o sistema automaticamente a cada 5 horas.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={doCreateEntrada} disabled={!dirName || creating}>
+                  <FileSpreadsheet className="h-4 w-4" /> {creating ? "Criando..." : "Criar planilha de entrada"}
+                </Button>
+                <Button onClick={doSync} disabled={!dirName || syncing}>
+                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : "Atualizar agora"}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="text-sm">
+                  Atualização automática a cada 5 horas
+                  <div className="text-xs text-muted-foreground">
+                    {lastSync ? `Última: ${new Date(lastSync).toLocaleString("pt-BR")}` : "Ainda não sincronizado"}
+                  </div>
+                </div>
+                <Switch
+                  checked={auto}
+                  onCheckedChange={(v) => { setAuto(v); setAutoSyncEnabled(v); }}
+                  aria-label="Ativar atualização automática"
+                />
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
