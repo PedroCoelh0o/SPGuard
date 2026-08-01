@@ -185,7 +185,56 @@ export function ConfiguracoesDialog() {
               </div>
             </div>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-medium">Histórico de execuções</div>
+              {history.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Limpar histórico"
+                  title="Limpar histórico"
+                  onClick={() => { clearSyncHistory(); setHistory([]); }}
+                >
+                  <Trash2 className="h-4 w-4" /> Limpar
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Registro das últimas leituras da planilha (manuais e automáticas), com falhas e inconsistências.
+            </p>
+            {history.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Nenhuma execução registrada ainda.</div>
+            ) : (
+              <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {history.map((h, i) => (
+                  <li key={`${h.at}-${i}`} className="rounded border bg-muted/30 p-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`font-medium ${STATUS_CLASS[h.status]}`}>{STATUS_LABEL[h.status]}</span>
+                      <span className="text-muted-foreground">
+                        {new Date(h.at).toLocaleString("pt-BR")} · {h.origem === "manual" ? "Manual" : "Automático"}
+                      </span>
+                    </div>
+                    {h.status !== "erro" && (
+                      <div className="text-muted-foreground">
+                        {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
+                      </div>
+                    )}
+                    {h.mensagem && <div className="text-destructive">{h.mensagem}</div>}
+                    {h.erros.length > 0 && (
+                      <ul className="mt-1 list-disc pl-4 text-muted-foreground">
+                        {h.erros.slice(0, 5).map((e, j) => <li key={j}>{e}</li>)}
+                        {h.erros.length > 5 && <li>+{h.erros.length - 5} outra(s)</li>}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
         </DialogFooter>
