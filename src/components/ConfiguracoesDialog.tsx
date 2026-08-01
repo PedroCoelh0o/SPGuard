@@ -1,19 +1,51 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, FolderOpen, Save, RotateCcw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
+import { createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE } from "@/lib/entrada-sync";
 
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const [lastSync, setLastSync] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
-  useEffect(() => { if (open) getSavedDirName().then(setDirName); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    getSavedDirName().then(setDirName);
+    setAuto(isAutoSyncEnabled());
+    setLastSync(getLastSync());
+  }, [open]);
+
+  async function doCreateEntrada() {
+    setCreating(true);
+    try {
+      const r = await createEntradaFile();
+      toast.success(r.created ? `Planilha criada em ${r.path}` : `A planilha já existe em ${r.path}`);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setCreating(false); }
+  }
+
+  async function doSync() {
+    setSyncing(true);
+    try {
+      const r = await syncFromEntrada();
+      setLastSync(getLastSync());
+      toast.success(`Atualizado: ${r.colaboradores} colaborador(es) e ${r.eletronicos} eletrônico(s)`);
+      if (r.erros.length) toast.error(`${r.erros.length} linha(s) com erro: ${r.erros.slice(0, 3).join(" | ")}`);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSyncing(false); }
+  }
+
 
   async function pick() {
     try {
@@ -100,6 +132,36 @@ export function ConfiguracoesDialog() {
               />
             </div>
           </div>
+
+          {supported && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="text-sm font-medium">Planilha de entrada manual</div>
+              <p className="text-xs text-muted-foreground">
+                Cria <strong>{ENTRADA_FILE}</strong> na pasta <strong>SPGuard</strong> com as abas <strong>Colaboradores</strong> e <strong>Eletronicos</strong> para você preencher manualmente. O app lê esse arquivo e atualiza o sistema automaticamente a cada 5 horas.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={doCreateEntrada} disabled={!dirName || creating}>
+                  <FileSpreadsheet className="h-4 w-4" /> {creating ? "Criando..." : "Criar planilha de entrada"}
+                </Button>
+                <Button onClick={doSync} disabled={!dirName || syncing}>
+                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : "Atualizar agora"}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="text-sm">
+                  Atualização automática a cada 5 horas
+                  <div className="text-xs text-muted-foreground">
+                    {lastSync ? `Última: ${new Date(lastSync).toLocaleString("pt-BR")}` : "Ainda não sincronizado"}
+                  </div>
+                </div>
+                <Switch
+                  checked={auto}
+                  onCheckedChange={(v) => { setAuto(v); setAutoSyncEnabled(v); }}
+                  aria-label="Ativar atualização automática"
+                />
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>

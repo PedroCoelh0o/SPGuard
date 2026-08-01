@@ -1,4 +1,8 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { maybeAutoSync } from "@/lib/entrada-sync";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +18,23 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   const { loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const r = await maybeAutoSync();
+      if (cancelled || !r) return;
+      qc.invalidateQueries();
+      if (r.colaboradores || r.eletronicos) {
+        toast.success(`Planilha sincronizada: ${r.colaboradores} colaborador(es), ${r.eletronicos} eletrônico(s)`);
+      }
+    };
+    run();
+    const id = setInterval(run, 15 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [qc]);
+
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Carregando...</div>;
   return (
     <SidebarProvider>
