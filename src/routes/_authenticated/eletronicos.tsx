@@ -12,6 +12,8 @@ import { Smartphone, Search, Eye } from "lucide-react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EletronicosTab } from "@/components/EletronicosTab";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
