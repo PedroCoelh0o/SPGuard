@@ -91,7 +91,14 @@ function ColabPage() {
         if (error) throw error;
       }
     },
-    onSuccess: () => { toast.success("Colaborador salvo"); qc.invalidateQueries({ queryKey: ["colaboradores"] }); setOpen(false); setEditing(null); },
+    onSuccess: () => {
+      toast.success("Colaborador salvo");
+      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
+      setOpen(false);
+      setEditing(null);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 

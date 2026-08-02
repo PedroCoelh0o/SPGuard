@@ -69,8 +69,9 @@ function Dashboard() {
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["dashboard-eletronicos"],
     queryFn: async () => {
-      const { data } = await supabase.from("eletronicos" as never).select("tipo, colaborador_id");
-      return (data ?? []) as { tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }[];
+      return await fetchAllRows<{ tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }>(
+        () => supabase.from("eletronicos" as never).select("tipo, colaborador_id").order("colaborador_id") as never,
+      );
     },
   });
 
@@ -78,9 +79,11 @@ function Dashboard() {
   const colabs = data?.colaboradores ?? [];
   const ativos = colabs.filter((c) => c.status === "ativo").length;
   const desligados = colabs.filter((c) => c.status === "desligado").length;
-  const qtdCelulares = eletronicos.filter((e) => e.tipo === "celular").length;
-  const qtdNotebooks = eletronicos.filter((e) => e.tipo === "notebook").length;
-  const qtdTablets = eletronicos.filter((e) => e.tipo === "tablet").length;
+  const ativosIds = useMemo(() => new Set(colabs.filter((c) => c.status === "ativo").map((c) => c.id)), [colabs]);
+  const eletronicosAtivos = useMemo(() => eletronicos.filter((e) => ativosIds.has(e.colaborador_id)), [eletronicos, ativosIds]);
+  const qtdCelulares = eletronicosAtivos.filter((e) => e.tipo === "celular").length;
+  const qtdNotebooks = eletronicosAtivos.filter((e) => e.tipo === "notebook").length;
+  const qtdTablets = eletronicosAtivos.filter((e) => e.tipo === "tablet").length;
 
   const colabEmpresaMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -90,19 +93,25 @@ function Dashboard() {
 
   const eletronicosData = useMemo(() => {
     const filtered = eletEmpresa === "all"
-      ? eletronicos
-      : eletronicos.filter((e) => colabEmpresaMap.get(e.colaborador_id) === eletEmpresa);
+      ? eletronicosAtivos
+      : eletronicosAtivos.filter((e) => colabEmpresaMap.get(e.colaborador_id) === eletEmpresa);
     return [
       { tipo: "Celulares", total: filtered.filter((e) => e.tipo === "celular").length },
       { tipo: "Notebooks", total: filtered.filter((e) => e.tipo === "notebook").length },
       { tipo: "Tablets", total: filtered.filter((e) => e.tipo === "tablet").length },
     ];
-  }, [eletronicos, colabEmpresaMap, eletEmpresa]);
+  }, [eletronicosAtivos, colabEmpresaMap, eletEmpresa]);
 
   const porEmpresa = empresas.map((e) => ({
     name: e.nome_fantasia || e.razao_social,
     total: colabs.filter((c) => c.empresa_id === e.id).length,
-  })).sort((a, b) => b.total - a.total).slice(0, 8);
+  })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "pt-BR"));
+
+  const empresasOrdenadas = useMemo(
+    () => [...empresas].sort((a, b) => (a.nome_fantasia || a.razao_social).localeCompare(b.nome_fantasia || b.razao_social, "pt-BR")),
+    [empresas],
+  );
+  const empresasChartHeight = Math.max(320, porEmpresa.length * 38);
 
 
 
@@ -148,7 +157,7 @@ function Dashboard() {
             <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as empresas</SelectItem>
-              {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+              {empresasOrdenadas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
             </SelectContent>
           </Select>
         </CardHeader>
@@ -168,18 +177,20 @@ function Dashboard() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Colaboradores por Empresa">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={porEmpresa}>
+        <ChartCard title="Colaboradores por Empresa" className="lg:col-span-2">
+          <div className="max-h-[620px] overflow-y-auto pr-2">
+          <ResponsiveContainer width="100%" height={empresasChartHeight}>
+            <BarChart data={porEmpresa} layout="vertical" margin={{ left: 16, right: 24 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
-              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} tick={axisTick} />
+              <XAxis type="number" allowDecimals={false} tick={axisTick} />
+              <YAxis type="category" dataKey="name" tick={axisTick} width={150} interval={0} />
               <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
-              <Bar dataKey="total" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="total" fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </ChartCard>
-        <ChartCard title="Situação">
+        <ChartCard title="Empresas">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label={{ fill: chartText, fontSize: 12 }}>
