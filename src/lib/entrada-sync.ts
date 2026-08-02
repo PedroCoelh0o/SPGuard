@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { getDirHandle, ensurePermission } from "@/lib/local-backup";
 
-export const ENTRADA_FILE = "spguard-entrada.xlsx";
+export const ENTRADA_FILE = "spguard-eletronicos.xlsx";
 const LAST_SYNC_KEY = "spguard-entrada-last-sync";
-export const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 horas
+export const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
 
 const COLAB_HEADERS = [
   "nome", "cpf", "rg", "matricula", "empresa", "setor", "cargo", "turno", "escolaridade",
@@ -302,7 +302,7 @@ export type AutoSyncOutcome =
   | { ran: true; ok: true; result: SyncResult }
   | { ran: true; ok: false; mensagem: string };
 
-/** Sincroniza se já passaram 5h desde a última sincronização. */
+/** Sincroniza se já passou 1h desde a última sincronização. */
 export async function maybeAutoSync(): Promise<AutoSyncOutcome> {
   if (!isAutoSyncEnabled()) return { ran: false };
   const last = getLastSync();

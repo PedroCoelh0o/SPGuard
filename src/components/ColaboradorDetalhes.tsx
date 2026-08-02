@@ -56,7 +56,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }: {
-  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void;
+  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; defaultTab?: "pessoal" | "eletr";
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();

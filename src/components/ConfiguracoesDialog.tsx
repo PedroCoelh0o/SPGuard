@@ -106,7 +106,7 @@ export function ConfiguracoesDialog() {
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Configurações"><Settings className="h-5 w-5" /></Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configurações</DialogTitle>
           <DialogDescription>Armazenamento local dos dados em planilha .xlsx</DialogDescription>
@@ -160,7 +160,7 @@ export function ConfiguracoesDialog() {
             <div className="rounded-md border p-3 space-y-2">
               <div className="text-sm font-medium">Planilha de entrada manual</div>
               <p className="text-xs text-muted-foreground">
-                Cria <strong>{ENTRADA_FILE}</strong> na pasta <strong>SPGuard</strong> com as abas <strong>Colaboradores</strong> e <strong>Eletronicos</strong> para você preencher manualmente. O app lê esse arquivo e atualiza o sistema automaticamente a cada 5 horas.
+                 Cria <strong>{ENTRADA_FILE}</strong> na pasta <strong>SPGuard</strong> com as abas <strong>Colaboradores</strong> e <strong>Eletronicos</strong> para você preencher manualmente. O app lê esse arquivo e atualiza o sistema automaticamente a cada 1 hora.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" onClick={doCreateEntrada} disabled={!dirName || creating}>
@@ -172,7 +172,7 @@ export function ConfiguracoesDialog() {
               </div>
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="text-sm">
-                  Atualização automática a cada 5 horas
+                   Atualização automática a cada 1 hora
                   <div className="text-xs text-muted-foreground">
                     {lastSync ? `Última: ${new Date(lastSync).toLocaleString("pt-BR")}` : "Ainda não sincronizado"}
                   </div>
