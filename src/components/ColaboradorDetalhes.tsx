@@ -55,8 +55,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }: {
-  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void;
+export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, defaultTab = "pessoal" }: {
+  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; defaultTab?: "pessoal" | "eletr";
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();
@@ -215,7 +215,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange }:
           </div>
         </div>
 
-        <Tabs defaultValue="pessoal" className="mt-4">
+        <Tabs key={`${colab.id}-${defaultTab}`} defaultValue={defaultTab} className="mt-4">
           <TabsList>
             <TabsTrigger value="pessoal">Pessoais</TabsTrigger>
             <TabsTrigger value="trab">Trabalhistas</TabsTrigger>

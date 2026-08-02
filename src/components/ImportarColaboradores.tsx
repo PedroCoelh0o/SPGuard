@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -125,7 +126,9 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
     const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 
     // Fetch existing colaboradores for duplicate detection (cpf + matricula+empresa)
-    const { data: existing } = await supabase.from("colaboradores").select("id, cpf, matricula, empresa_id");
+    const existing = await fetchAllRows<{ id: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
+      () => supabase.from("colaboradores").select("id, cpf, matricula, empresa_id").order("id") as never,
+    );
     const byCpf = new Map<string, { id: string; empresa_id: string }>();
     const byMatEmp = new Map<string, string>();
     for (const c of (existing ?? []) as { id: string; cpf: string | null; matricula: string | null; empresa_id: string }[]) {

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 const DB_NAME = "spguard-config";
 const STORE = "handles";
@@ -69,14 +70,20 @@ export async function ensurePermission(handle: DirHandle) {
 
 async function fetchAllData() {
   const [emp, col, ele] = await Promise.all([
-    supabase.from("empresas").select("*"),
-    supabase.from("colaboradores").select("*"),
-    supabase.from("eletronicos" as never).select("*"),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("empresas").select("*").order("id") as never,
+    ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("colaboradores").select("*").order("id") as never,
+    ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("eletronicos" as never).select("*").order("id") as never,
+    ),
   ]);
   return {
-    empresas: (emp.data ?? []) as Record<string, unknown>[],
-    colaboradores: (col.data ?? []) as Record<string, unknown>[],
-    eletronicos: (ele.data ?? []) as Record<string, unknown>[],
+    empresas: emp,
+    colaboradores: col,
+    eletronicos: ele,
   };
 }
 

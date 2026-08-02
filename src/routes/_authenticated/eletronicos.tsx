@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Search } from "lucide-react";
+import { Smartphone, Search, Eye } from "lucide-react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EletronicosTab } from "@/components/EletronicosTab";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
@@ -32,6 +34,7 @@ function EletronicosPage() {
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [detalhes, setDetalhes] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -87,7 +90,7 @@ function EletronicosPage() {
         };
       })
       .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [eletronicos, colabs, empresaSel, empresaMap, qd]);
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
@@ -115,7 +118,7 @@ function EletronicosPage() {
               <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+                 {[...empresas].sort((a, b) => (a.nome_fantasia || a.razao_social).localeCompare(b.nome_fantasia || b.razao_social, "pt-BR")).map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -140,11 +143,12 @@ function EletronicosPage() {
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaSel === "all" ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={empresaSel === "all" ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
                 ) : visible.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
@@ -155,6 +159,11 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.notebooks}</TableCell>
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -167,6 +176,14 @@ function EletronicosPage() {
           <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
+      <Dialog open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Eletrônicos de {detalhes?.nome}</DialogTitle>
+          </DialogHeader>
+          {detalhes && <EletronicosTab colaboradorId={detalhes.id} colaboradorNome={detalhes.nome} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
