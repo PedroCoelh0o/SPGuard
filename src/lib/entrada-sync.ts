@@ -336,7 +336,9 @@ export type SyncLog = {
   eletronicos: number;
   erros: string[];
   mensagem?: string;
+  detalhe?: SyncDetalhe;
 };
+
 
 export function getSyncHistory(): SyncLog[] {
   if (typeof localStorage === "undefined") return [];
