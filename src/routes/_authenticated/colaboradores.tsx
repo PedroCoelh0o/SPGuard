@@ -244,6 +244,18 @@ function ColabPage() {
                         catch { toast.error("Falha ao copiar"); }
                       }}><Copy className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" aria-label={`Ver detalhes de ${c.nome}`} title="Ver detalhes" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
+                      {canWrite && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={c.status === "ativo" ? `Desligar ${c.nome}` : `Reativar ${c.nome}`}
+                          title={c.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
+                          disabled={toggleStatus.isPending}
+                          onClick={() => toggleStatus.mutate(c)}
+                        >
+                          {c.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                        </Button>
+                      )}
                       {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${c.nome}`} title="Editar" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
                         <AlertDialog>
