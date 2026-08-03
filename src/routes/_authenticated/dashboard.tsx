@@ -111,11 +111,6 @@ function Dashboard() {
 
 
 
-  const statusData = [
-    { name: "Ativos", value: ativos },
-    { name: "Desligados", value: desligados },
-  ];
-
   const now = new Date();
   const months: { key: string; label: string; adm: number; des: number }[] = [];
   for (let i = 5; i >= 0; i--) {
