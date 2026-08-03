@@ -93,15 +93,31 @@ function rows(wb: XLSX.WorkBook, name: string) {
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 }
 
+export type SyncOptions = {
+  file?: File;
+  /** Só valida: nada é gravado no banco. */
+  dryRun?: boolean;
+  onProgress?: (p: SyncProgress) => void;
+};
+
 /** Lê o arquivo de entrada e sincroniza colaboradores e eletrônicos no banco. */
-export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> {
-  let file = fileOverride;
+export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<SyncResult> {
+  const o: SyncOptions = opts instanceof File ? { file: opts } : opts;
+  const dryRun = !!o.dryRun;
+  const report = (p: SyncProgress) => o.onProgress?.(p);
+
+  report({ fase: "lendo", atual: 0, total: 0, label: "Lendo a planilha..." });
+  let file = o.file;
   if (!file) {
     const { fh } = await entradaHandle(false);
     file = await fh.getFile();
   }
   const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
   const erros: string[] = [];
+  const detalhe: SyncDetalhe = {
+    colaboradores: novoStat(),
+    eletronicos: novoStat(),
+  };
 
   const empresas = await fetchAllRows<{ id: string; razao_social: string; nome_fantasia: string | null }>(
     () => supabase.from("empresas").select("id, razao_social, nome_fantasia") as never,
@@ -120,12 +136,18 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
   let colabCount = 0;
   const colabRows = rows(wb, "Colaboradores");
   for (const [i, r] of colabRows.entries()) {
+    report({ fase: dryRun ? "validando" : "colaboradores", atual: i + 1, total: colabRows.length, label: `Colaboradores ${i + 1}/${colabRows.length}` });
     const get = rowGetter(r);
     const nome = str(get("nome"));
-    if (!nome) continue;
+    if (!nome) { addIgnorado(detalhe.colaboradores, `linha ${i + 2}: sem nome`); continue; }
     const empresaNome = str(get("empresa"));
     const empresa_id = empresaNome ? empresaMap.get(norm(empresaNome)) : undefined;
-    if (!empresa_id) { erros.push(`Colaboradores linha ${i + 2}: empresa não encontrada ("${empresaNome ?? ""}")`); continue; }
+    if (!empresa_id) {
+      erros.push(`Colaboradores linha ${i + 2}: empresa não encontrada ("${empresaNome ?? ""}")`);
+      addIgnorado(detalhe.colaboradores, `linha ${i + 2}: ${nome} — empresa não encontrada`);
+      continue;
+    }
+
 
     const cpfDigits = onlyDigits(get("cpf"));
     const matricula = str(get("matricula"));
