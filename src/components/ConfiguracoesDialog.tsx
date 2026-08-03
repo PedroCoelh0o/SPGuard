@@ -224,10 +224,44 @@ export function ConfiguracoesDialog() {
                 <Button variant="outline" onClick={doCreateEntrada} disabled={!dirName || creating}>
                   <FileSpreadsheet className="h-4 w-4" /> {creating ? "Criando..." : "Criar planilha de entrada"}
                 </Button>
-                <Button onClick={doSync} disabled={!dirName || syncing}>
-                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : "Atualizar agora"}
+                <Button variant="secondary" onClick={doValidate} disabled={!dirName || validating || syncing}>
+                  <CheckCircle2 className="h-4 w-4" /> {validating ? "Validando..." : "Validar planilha"}
+                </Button>
+                <Button onClick={doSync} disabled={!dirName || syncing || validating}>
+                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : preview ? "Confirmar atualização" : "Atualizar agora"}
                 </Button>
               </div>
+
+              {progress && (
+                <div className="space-y-1">
+                  <Progress value={progress.total ? Math.round((progress.atual / progress.total) * 100) : 5} />
+                  <p className="text-xs text-muted-foreground">{progress.label}</p>
+                </div>
+              )}
+
+              {preview && (
+                <div className="rounded-md border bg-muted/40 p-2 text-xs space-y-1">
+                  <div className="flex items-center gap-1 font-medium">
+                    {preview.erros.length ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
+                    Prévia da atualização (nada foi gravado ainda)
+                  </div>
+                  <StatLinha titulo="Colaboradores" s={preview.detalhe.colaboradores} />
+                  <StatLinha titulo="Eletrônicos" s={preview.detalhe.eletronicos} />
+                  {preview.erros.length > 0 && (
+                    <div>
+                      <div className="mt-1 font-medium text-destructive">Inconsistências ({preview.erros.length})</div>
+                      <ul className="list-disc pl-4 text-muted-foreground">
+                        {preview.erros.slice(0, 8).map((e, i) => <li key={i}>{e}</li>)}
+                        {preview.erros.length > 8 && <li>+{preview.erros.length - 8} outra(s)</li>}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="pt-1 text-muted-foreground">
+                    Revise acima e clique em <strong>Confirmar atualização</strong> para aplicar no sistema. Linhas com inconsistência são ignoradas.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="text-sm">
                    Atualização automática a cada 1 hora
