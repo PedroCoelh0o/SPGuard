@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
 import {
   createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE,
-  getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog,
+  getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog, type SyncProgress, type SyncResult, type EntidadeStat,
 } from "@/lib/entrada-sync";
 
 const STATUS_LABEL: Record<SyncLog["status"], string> = { ok: "Sucesso", parcial: "Com inconsistências", erro: "Falha" };
@@ -17,6 +19,30 @@ const STATUS_CLASS: Record<SyncLog["status"], string> = {
   erro: "text-destructive",
 };
 
+function StatLinha({ titulo, s }: { titulo: string; s?: EntidadeStat }) {
+  if (!s) return null;
+  const exemplos = [
+    ...s.exemplosInseridos.map((e) => `+ ${e}`),
+    ...s.exemplosAtualizados.map((e) => `~ ${e}`),
+    ...s.exemplosIgnorados.map((e) => `! ${e}`),
+  ].slice(0, 5);
+  return (
+    <div className="mt-1">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="font-medium">{titulo}:</span>
+        <Badge className="bg-emerald-600">Inseridos {s.inseridos}</Badge>
+        <Badge className="bg-blue-600">Atualizados {s.atualizados}</Badge>
+        {s.ignorados > 0 && <Badge variant="destructive">Ignorados {s.ignorados}</Badge>}
+      </div>
+      {exemplos.length > 0 && (
+        <ul className="mt-1 list-disc pl-4 text-muted-foreground">
+          {exemplos.map((e, i) => <li key={i}>{e}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
@@ -24,6 +50,9 @@ export function ConfiguracoesDialog() {
   const [restoring, setRestoring] = useState(false);
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
+  const [preview, setPreview] = useState<SyncResult | null>(null);
   const [auto, setAuto] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [history, setHistory] = useState<SyncLog[]>([]);
@@ -47,13 +76,41 @@ export function ConfiguracoesDialog() {
     finally { setCreating(false); }
   }
 
+  async function doValidate() {
+    setValidating(true);
+    setPreview(null);
+    setProgress({ fase: "lendo", atual: 0, total: 0, label: "Lendo a planilha..." });
+    try {
+      const r = await syncFromEntrada({ dryRun: true, onProgress: setProgress });
+      setPreview(r);
+      if (r.erros.length) {
+        toast.warning(`${r.erros.length} inconsistência(s) encontrada(s) na validação`, {
+          description: r.erros.slice(0, 3).join(" | "),
+          duration: 12000,
+        });
+      } else {
+        toast.success("Validação concluída sem inconsistências");
+      }
+    } catch (e) {
+      const msg = (e as Error).message || "Falha ao ler a planilha de entrada";
+      toast.error("Falha na validação da planilha", { description: msg, duration: 10000 });
+    } finally { setValidating(false); setProgress(null); }
+  }
+
   async function doSync() {
     setSyncing(true);
+    setProgress({ fase: "lendo", atual: 0, total: 0, label: "Lendo a planilha..." });
     try {
-      const r = await syncFromEntrada();
+      const r = await syncFromEntrada({ onProgress: setProgress });
       logSyncResult("manual", r);
       setLastSync(getLastSync());
-      toast.success(`Atualizado: ${r.colaboradores} colaborador(es) e ${r.eletronicos} eletrônico(s)`);
+      setPreview(null);
+      toast.success(
+        `Atualização concluída: ${r.detalhe.colaboradores.inseridos + r.detalhe.eletronicos.inseridos} inserido(s), ` +
+        `${r.detalhe.colaboradores.atualizados + r.detalhe.eletronicos.atualizados} atualizado(s), ` +
+        `${r.detalhe.colaboradores.ignorados + r.detalhe.eletronicos.ignorados} ignorado(s)`,
+        { duration: 8000 },
+      );
       if (r.erros.length) {
         toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
           description: r.erros.slice(0, 3).join(" | "),
@@ -65,8 +122,9 @@ export function ConfiguracoesDialog() {
       logSyncError("manual", msg);
       toast.error("Falha na leitura da planilha", { description: msg, duration: 10000 });
     }
-    finally { setSyncing(false); setHistory(getSyncHistory()); }
+    finally { setSyncing(false); setProgress(null); setHistory(getSyncHistory()); }
   }
+
 
 
 
@@ -166,10 +224,44 @@ export function ConfiguracoesDialog() {
                 <Button variant="outline" onClick={doCreateEntrada} disabled={!dirName || creating}>
                   <FileSpreadsheet className="h-4 w-4" /> {creating ? "Criando..." : "Criar planilha de entrada"}
                 </Button>
-                <Button onClick={doSync} disabled={!dirName || syncing}>
-                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : "Atualizar agora"}
+                <Button variant="secondary" onClick={doValidate} disabled={!dirName || validating || syncing}>
+                  <CheckCircle2 className="h-4 w-4" /> {validating ? "Validando..." : "Validar planilha"}
+                </Button>
+                <Button onClick={doSync} disabled={!dirName || syncing || validating}>
+                  <RefreshCw className="h-4 w-4" /> {syncing ? "Atualizando..." : preview ? "Confirmar atualização" : "Atualizar agora"}
                 </Button>
               </div>
+
+              {progress && (
+                <div className="space-y-1">
+                  <Progress value={progress.total ? Math.round((progress.atual / progress.total) * 100) : 5} />
+                  <p className="text-xs text-muted-foreground">{progress.label}</p>
+                </div>
+              )}
+
+              {preview && (
+                <div className="rounded-md border bg-muted/40 p-2 text-xs space-y-1">
+                  <div className="flex items-center gap-1 font-medium">
+                    {preview.erros.length ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
+                    Prévia da atualização (nada foi gravado ainda)
+                  </div>
+                  <StatLinha titulo="Colaboradores" s={preview.detalhe.colaboradores} />
+                  <StatLinha titulo="Eletrônicos" s={preview.detalhe.eletronicos} />
+                  {preview.erros.length > 0 && (
+                    <div>
+                      <div className="mt-1 font-medium text-destructive">Inconsistências ({preview.erros.length})</div>
+                      <ul className="list-disc pl-4 text-muted-foreground">
+                        {preview.erros.slice(0, 8).map((e, i) => <li key={i}>{e}</li>)}
+                        {preview.erros.length > 8 && <li>+{preview.erros.length - 8} outra(s)</li>}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="pt-1 text-muted-foreground">
+                    Revise acima e clique em <strong>Confirmar atualização</strong> para aplicar no sistema. Linhas com inconsistência são ignoradas.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="text-sm">
                    Atualização automática a cada 1 hora
@@ -217,10 +309,15 @@ export function ConfiguracoesDialog() {
                       </span>
                     </div>
                     {h.status !== "erro" && (
-                      <div className="text-muted-foreground">
-                        {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
-                      </div>
+                      <>
+                        <div className="text-muted-foreground">
+                          {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
+                        </div>
+                        <StatLinha titulo="Colaboradores" s={h.detalhe?.colaboradores} />
+                        <StatLinha titulo="Eletrônicos" s={h.detalhe?.eletronicos} />
+                      </>
                     )}
+
                     {h.mensagem && <div className="text-destructive">{h.mensagem}</div>}
                     {h.erros.length > 0 && (
                       <ul className="mt-1 list-disc pl-4 text-muted-foreground">

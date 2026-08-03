@@ -3,12 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
-import { useTheme } from "@/hooks/useTheme";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Users, UserCheck, UserX, Smartphone, Laptop, Tablet } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, LineChart, Line, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, LineChart, Line, Legend } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -28,28 +27,24 @@ const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-cha
 
 const gridStroke = "hsl(0 0% 50% / 0.4)";
 
-/** Texto dos gráficos: branco no modo noturno, preto no modo claro. */
-function useChartStyles() {
-  const { theme } = useTheme();
-  const text = theme === "dark" ? "#ffffff" : "#000000";
-  return {
-    text,
-    axisTick: { fontSize: 11, fill: text },
-    tooltipStyle: {
-      backgroundColor: theme === "dark" ? "#111827" : "#ffffff",
-      border: "1px solid hsl(0 0% 50% / 0.4)",
-      borderRadius: "8px",
-      color: text,
-      fontSize: "12px",
-    } as const,
-    tooltipLabelStyle: { color: text, fontWeight: 600 } as const,
-    tooltipItemStyle: { color: text } as const,
-    legendStyle: { color: text } as const,
-  };
-}
+/** Cor do texto dos gráficos vem do token do tema, então acompanha claro/escuro automaticamente. */
+const chartText = "var(--color-foreground)";
+const chartStyles = {
+  axisTick: { fontSize: 11, fill: chartText },
+  tooltipStyle: {
+    backgroundColor: "var(--color-popover)",
+    border: "1px solid hsl(0 0% 50% / 0.4)",
+    borderRadius: "8px",
+    color: "var(--color-popover-foreground)",
+    fontSize: "12px",
+  } as const,
+  tooltipLabelStyle: { color: "var(--color-popover-foreground)", fontWeight: 600 } as const,
+  tooltipItemStyle: { color: "var(--color-popover-foreground)" } as const,
+  legendStyle: { color: chartText } as const,
+};
 
 function Dashboard() {
-  const { text: chartText, axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = useChartStyles();
+  const { axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = chartStyles;
   const [eletEmpresa, setEletEmpresa] = useState<string>("all");
 
 
@@ -114,11 +109,6 @@ function Dashboard() {
   const empresasChartHeight = Math.max(320, porEmpresa.length * 38);
 
 
-
-  const statusData = [
-    { name: "Ativos", value: ativos },
-    { name: "Desligados", value: desligados },
-  ];
 
   const now = new Date();
   const months: { key: string; label: string; adm: number; des: number }[] = [];
@@ -190,18 +180,8 @@ function Dashboard() {
           </ResponsiveContainer>
           </div>
         </ChartCard>
-        <ChartCard title="Empresas">
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label={{ fill: chartText, fontSize: 12 }}>
-                {statusData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-              <Legend wrapperStyle={legendStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
         <ChartCard title="Admissões x Desligamentos (últimos 6 meses)" className="lg:col-span-2">
+
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={months}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />

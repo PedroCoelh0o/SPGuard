@@ -77,7 +77,41 @@ export async function createEntradaFile(): Promise<{ path: string; created: bool
   return { path, created: true };
 }
 
-export type SyncResult = { colaboradores: number; eletronicos: number; erros: string[] };
+export type EntidadeStat = {
+  inseridos: number;
+  atualizados: number;
+  ignorados: number;
+  exemplosInseridos: string[];
+  exemplosAtualizados: string[];
+  exemplosIgnorados: string[];
+};
+export type SyncDetalhe = { colaboradores: EntidadeStat; eletronicos: EntidadeStat };
+export type SyncResult = { colaboradores: number; eletronicos: number; erros: string[]; detalhe: SyncDetalhe; dryRun?: boolean };
+
+export type SyncProgress = {
+  fase: "lendo" | "validando" | "colaboradores" | "eletronicos" | "concluido";
+  atual: number;
+  total: number;
+  label: string;
+};
+
+const EXEMPLOS_MAX = 5;
+function novoStat(): EntidadeStat {
+  return { inseridos: 0, atualizados: 0, ignorados: 0, exemplosInseridos: [], exemplosAtualizados: [], exemplosIgnorados: [] };
+}
+function addInserido(s: EntidadeStat, ref: string) {
+  s.inseridos++;
+  if (s.exemplosInseridos.length < EXEMPLOS_MAX) s.exemplosInseridos.push(ref);
+}
+function addAtualizado(s: EntidadeStat, ref: string) {
+  s.atualizados++;
+  if (s.exemplosAtualizados.length < EXEMPLOS_MAX) s.exemplosAtualizados.push(ref);
+}
+function addIgnorado(s: EntidadeStat, ref: string) {
+  s.ignorados++;
+  if (s.exemplosIgnorados.length < EXEMPLOS_MAX) s.exemplosIgnorados.push(ref);
+}
+
 
 function rowGetter(r: Record<string, unknown>) {
   const keys = Object.keys(r);
@@ -93,15 +127,31 @@ function rows(wb: XLSX.WorkBook, name: string) {
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 }
 
+export type SyncOptions = {
+  file?: File;
+  /** Só valida: nada é gravado no banco. */
+  dryRun?: boolean;
+  onProgress?: (p: SyncProgress) => void;
+};
+
 /** Lê o arquivo de entrada e sincroniza colaboradores e eletrônicos no banco. */
-export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> {
-  let file = fileOverride;
+export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<SyncResult> {
+  const o: SyncOptions = opts instanceof File ? { file: opts } : opts;
+  const dryRun = !!o.dryRun;
+  const report = (p: SyncProgress) => o.onProgress?.(p);
+
+  report({ fase: "lendo", atual: 0, total: 0, label: "Lendo a planilha..." });
+  let file = o.file;
   if (!file) {
     const { fh } = await entradaHandle(false);
     file = await fh.getFile();
   }
   const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
   const erros: string[] = [];
+  const detalhe: SyncDetalhe = {
+    colaboradores: novoStat(),
+    eletronicos: novoStat(),
+  };
 
   const empresas = await fetchAllRows<{ id: string; razao_social: string; nome_fantasia: string | null }>(
     () => supabase.from("empresas").select("id, razao_social, nome_fantasia") as never,
@@ -120,12 +170,18 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
   let colabCount = 0;
   const colabRows = rows(wb, "Colaboradores");
   for (const [i, r] of colabRows.entries()) {
+    report({ fase: dryRun ? "validando" : "colaboradores", atual: i + 1, total: colabRows.length, label: `Colaboradores ${i + 1}/${colabRows.length}` });
     const get = rowGetter(r);
     const nome = str(get("nome"));
-    if (!nome) continue;
+    if (!nome) { addIgnorado(detalhe.colaboradores, `linha ${i + 2}: sem nome`); continue; }
     const empresaNome = str(get("empresa"));
     const empresa_id = empresaNome ? empresaMap.get(norm(empresaNome)) : undefined;
-    if (!empresa_id) { erros.push(`Colaboradores linha ${i + 2}: empresa não encontrada ("${empresaNome ?? ""}")`); continue; }
+    if (!empresa_id) {
+      erros.push(`Colaboradores linha ${i + 2}: empresa não encontrada ("${empresaNome ?? ""}")`);
+      addIgnorado(detalhe.colaboradores, `linha ${i + 2}: ${nome} — empresa não encontrada`);
+      continue;
+    }
+
 
     const cpfDigits = onlyDigits(get("cpf"));
     const matricula = str(get("matricula"));
@@ -151,21 +207,29 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
       bairro: str(get("bairro")), cidade: str(get("cidade")), estado: str(get("estado")),
     };
 
+    const ref = `linha ${i + 2}: ${nome}`;
     if (existing) {
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", existing.id);
-      if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", existing.id);
+        if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
+      }
+      addAtualizado(detalhe.colaboradores, ref);
     } else {
-      const { error } = await supabase.from("colaboradores").insert(payload as never);
-      if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("colaboradores").insert(payload as never);
+        if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
+      }
+      addInserido(detalhe.colaboradores, ref);
     }
     colabCount++;
   }
 
-  if (colabCount > 0) {
+  if (colabCount > 0 && !dryRun) {
     colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
       () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id") as never,
     );
   }
+
 
   // --- Eletrônicos ---
   const byCpf = new Map<string, string>();
@@ -190,10 +254,15 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
   let eletrCount = 0;
   const eletrRows = rows(wb, "Eletronicos");
   for (const [i, r] of eletrRows.entries()) {
+    report({ fase: dryRun ? "validando" : "eletronicos", atual: i + 1, total: eletrRows.length, label: `Eletrônicos ${i + 1}/${eletrRows.length}` });
     const get = rowGetter(r);
     const tipo = norm(get("tipo"));
-    if (!tipo && !str(get("imei")) && !str(get("numero_serie"))) continue;
-    if (!TIPOS.includes(tipo)) { erros.push(`Eletronicos linha ${i + 2}: tipo inválido ("${tipo}")`); continue; }
+    if (!tipo && !str(get("imei")) && !str(get("numero_serie"))) { addIgnorado(detalhe.eletronicos, `linha ${i + 2}: linha vazia`); continue; }
+    if (!TIPOS.includes(tipo)) {
+      erros.push(`Eletronicos linha ${i + 2}: tipo inválido ("${tipo}")`);
+      addIgnorado(detalhe.eletronicos, `linha ${i + 2}: tipo inválido ("${tipo}")`);
+      continue;
+    }
 
     const cpfDigits = onlyDigits(get("cpf"));
     const matricula = str(get("matricula"));
@@ -202,7 +271,11 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
     if (cpfDigits) colaborador_id = byCpf.get(cpfDigits);
     if (!colaborador_id && matricula) colaborador_id = byMat.get(norm(matricula));
     if (!colaborador_id && nome) colaborador_id = byNome.get(norm(nome));
-    if (!colaborador_id) { erros.push(`Eletronicos linha ${i + 2}: colaborador não encontrado`); continue; }
+    if (!colaborador_id) {
+      erros.push(`Eletronicos linha ${i + 2}: colaborador não encontrado`);
+      addIgnorado(detalhe.eletronicos, `linha ${i + 2}: colaborador não encontrado (${nome ?? matricula ?? cpfDigits})`);
+      continue;
+    }
 
     const imei = str(get("imei"));
     const numero_serie = str(get("numero_serie"));
@@ -213,20 +286,29 @@ export async function syncFromEntrada(fileOverride?: File): Promise<SyncResult> 
       contato: str(get("contato")), acessorios: str(get("acessorios")),
     };
 
+    const ref = `linha ${i + 2}: ${tipo}${nome ? ` — ${nome}` : ""}`;
     const existingId = (imei ? byImei.get(onlyDigits(imei)) : undefined) ?? (numero_serie ? bySerie.get(norm(numero_serie)) : undefined);
     if (existingId) {
-      const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", existingId);
-      if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", existingId);
+        if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.eletronicos, `${ref} — ${error.message}`); continue; }
+      }
+      addAtualizado(detalhe.eletronicos, ref);
     } else {
-      const { error } = await supabase.from("eletronicos" as never).insert(payload as never);
-      if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("eletronicos" as never).insert(payload as never);
+        if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.eletronicos, `${ref} — ${error.message}`); continue; }
+      }
+      addInserido(detalhe.eletronicos, ref);
     }
     eletrCount++;
   }
 
-  localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
-  return { colaboradores: colabCount, eletronicos: eletrCount, erros };
+  if (!dryRun) localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
+  report({ fase: "concluido", atual: 1, total: 1, label: dryRun ? "Validação concluída" : "Sincronização concluída" });
+  return { colaboradores: colabCount, eletronicos: eletrCount, erros, detalhe, dryRun };
 }
+
 
 export function getLastSync(): number | null {
   const v = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_SYNC_KEY) : null;
@@ -254,7 +336,9 @@ export type SyncLog = {
   eletronicos: number;
   erros: string[];
   mensagem?: string;
+  detalhe?: SyncDetalhe;
 };
+
 
 export function getSyncHistory(): SyncLog[] {
   if (typeof localStorage === "undefined") return [];
@@ -282,9 +366,11 @@ export function logSyncResult(origem: SyncLog["origem"], r: SyncResult): SyncLog
     status: r.erros.length ? "parcial" : "ok",
     colaboradores: r.colaboradores, eletronicos: r.eletronicos,
     erros: r.erros.slice(0, 20),
+    detalhe: r.detalhe,
   };
   addSyncLog(log);
   return log;
+
 }
 
 /** Registra uma falha de leitura/execução no histórico. */
