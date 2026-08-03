@@ -207,21 +207,29 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
       bairro: str(get("bairro")), cidade: str(get("cidade")), estado: str(get("estado")),
     };
 
+    const ref = `linha ${i + 2}: ${nome}`;
     if (existing) {
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", existing.id);
-      if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", existing.id);
+        if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
+      }
+      addAtualizado(detalhe.colaboradores, ref);
     } else {
-      const { error } = await supabase.from("colaboradores").insert(payload as never);
-      if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("colaboradores").insert(payload as never);
+        if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
+      }
+      addInserido(detalhe.colaboradores, ref);
     }
     colabCount++;
   }
 
-  if (colabCount > 0) {
+  if (colabCount > 0 && !dryRun) {
     colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
       () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id") as never,
     );
   }
+
 
   // --- Eletrônicos ---
   const byCpf = new Map<string, string>();
