@@ -309,10 +309,15 @@ export function ConfiguracoesDialog() {
                       </span>
                     </div>
                     {h.status !== "erro" && (
-                      <div className="text-muted-foreground">
-                        {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
-                      </div>
+                      <>
+                        <div className="text-muted-foreground">
+                          {h.colaboradores} colaborador(es) · {h.eletronicos} eletrônico(s)
+                        </div>
+                        <StatLinha titulo="Colaboradores" s={h.detalhe?.colaboradores} />
+                        <StatLinha titulo="Eletrônicos" s={h.detalhe?.eletronicos} />
+                      </>
                     )}
+
                     {h.mensagem && <div className="text-destructive">{h.mensagem}</div>}
                     {h.erros.length > 0 && (
                       <ul className="mt-1 list-disc pl-4 text-muted-foreground">
