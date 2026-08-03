@@ -28,28 +28,24 @@ const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-cha
 
 const gridStroke = "hsl(0 0% 50% / 0.4)";
 
-/** Texto dos gráficos: branco no modo noturno, preto no modo claro. */
-function useChartStyles() {
-  const { theme } = useTheme();
-  const text = theme === "dark" ? "#ffffff" : "#000000";
-  return {
-    text,
-    axisTick: { fontSize: 11, fill: text },
-    tooltipStyle: {
-      backgroundColor: theme === "dark" ? "#111827" : "#ffffff",
-      border: "1px solid hsl(0 0% 50% / 0.4)",
-      borderRadius: "8px",
-      color: text,
-      fontSize: "12px",
-    } as const,
-    tooltipLabelStyle: { color: text, fontWeight: 600 } as const,
-    tooltipItemStyle: { color: text } as const,
-    legendStyle: { color: text } as const,
-  };
-}
+/** Cor do texto dos gráficos vem do token do tema, então acompanha claro/escuro automaticamente. */
+const chartText = "var(--color-foreground)";
+const chartStyles = {
+  axisTick: { fontSize: 11, fill: chartText },
+  tooltipStyle: {
+    backgroundColor: "var(--color-popover)",
+    border: "1px solid hsl(0 0% 50% / 0.4)",
+    borderRadius: "8px",
+    color: "var(--color-popover-foreground)",
+    fontSize: "12px",
+  } as const,
+  tooltipLabelStyle: { color: "var(--color-popover-foreground)", fontWeight: 600 } as const,
+  tooltipItemStyle: { color: "var(--color-popover-foreground)" } as const,
+  legendStyle: { color: chartText } as const,
+};
 
 function Dashboard() {
-  const { text: chartText, axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = useChartStyles();
+  const { axisTick, tooltipStyle, tooltipLabelStyle, tooltipItemStyle, legendStyle } = chartStyles;
   const [eletEmpresa, setEletEmpresa] = useState<string>("all");
 
 
