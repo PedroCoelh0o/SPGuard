@@ -186,18 +186,8 @@ function Dashboard() {
           </ResponsiveContainer>
           </div>
         </ChartCard>
-        <ChartCard title="Empresas">
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label={{ fill: chartText, fontSize: 12 }}>
-                {statusData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-              <Legend wrapperStyle={legendStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
         <ChartCard title="Admissões x Desligamentos (últimos 6 meses)" className="lg:col-span-2">
+
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={months}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
