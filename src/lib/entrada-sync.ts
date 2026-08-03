@@ -254,10 +254,15 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
   let eletrCount = 0;
   const eletrRows = rows(wb, "Eletronicos");
   for (const [i, r] of eletrRows.entries()) {
+    report({ fase: dryRun ? "validando" : "eletronicos", atual: i + 1, total: eletrRows.length, label: `Eletrônicos ${i + 1}/${eletrRows.length}` });
     const get = rowGetter(r);
     const tipo = norm(get("tipo"));
-    if (!tipo && !str(get("imei")) && !str(get("numero_serie"))) continue;
-    if (!TIPOS.includes(tipo)) { erros.push(`Eletronicos linha ${i + 2}: tipo inválido ("${tipo}")`); continue; }
+    if (!tipo && !str(get("imei")) && !str(get("numero_serie"))) { addIgnorado(detalhe.eletronicos, `linha ${i + 2}: linha vazia`); continue; }
+    if (!TIPOS.includes(tipo)) {
+      erros.push(`Eletronicos linha ${i + 2}: tipo inválido ("${tipo}")`);
+      addIgnorado(detalhe.eletronicos, `linha ${i + 2}: tipo inválido ("${tipo}")`);
+      continue;
+    }
 
     const cpfDigits = onlyDigits(get("cpf"));
     const matricula = str(get("matricula"));
@@ -266,7 +271,11 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
     if (cpfDigits) colaborador_id = byCpf.get(cpfDigits);
     if (!colaborador_id && matricula) colaborador_id = byMat.get(norm(matricula));
     if (!colaborador_id && nome) colaborador_id = byNome.get(norm(nome));
-    if (!colaborador_id) { erros.push(`Eletronicos linha ${i + 2}: colaborador não encontrado`); continue; }
+    if (!colaborador_id) {
+      erros.push(`Eletronicos linha ${i + 2}: colaborador não encontrado`);
+      addIgnorado(detalhe.eletronicos, `linha ${i + 2}: colaborador não encontrado (${nome ?? matricula ?? cpfDigits})`);
+      continue;
+    }
 
     const imei = str(get("imei"));
     const numero_serie = str(get("numero_serie"));
@@ -277,20 +286,29 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
       contato: str(get("contato")), acessorios: str(get("acessorios")),
     };
 
+    const ref = `linha ${i + 2}: ${tipo}${nome ? ` — ${nome}` : ""}`;
     const existingId = (imei ? byImei.get(onlyDigits(imei)) : undefined) ?? (numero_serie ? bySerie.get(norm(numero_serie)) : undefined);
     if (existingId) {
-      const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", existingId);
-      if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", existingId);
+        if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.eletronicos, `${ref} — ${error.message}`); continue; }
+      }
+      addAtualizado(detalhe.eletronicos, ref);
     } else {
-      const { error } = await supabase.from("eletronicos" as never).insert(payload as never);
-      if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); continue; }
+      if (!dryRun) {
+        const { error } = await supabase.from("eletronicos" as never).insert(payload as never);
+        if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.eletronicos, `${ref} — ${error.message}`); continue; }
+      }
+      addInserido(detalhe.eletronicos, ref);
     }
     eletrCount++;
   }
 
-  localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
-  return { colaboradores: colabCount, eletronicos: eletrCount, erros };
+  if (!dryRun) localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
+  report({ fase: "concluido", atual: 1, total: 1, label: dryRun ? "Validação concluída" : "Sincronização concluída" });
+  return { colaboradores: colabCount, eletronicos: eletrCount, erros, detalhe, dryRun };
 }
+
 
 export function getLastSync(): number | null {
   const v = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_SYNC_KEY) : null;
