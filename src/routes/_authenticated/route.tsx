@@ -31,9 +31,14 @@ function AuthenticatedLayout() {
       }
       const r = o.result;
       qc.invalidateQueries();
-      if (r.colaboradores || r.eletronicos) {
-        toast.success(`Planilha sincronizada: ${r.colaboradores} colaborador(es), ${r.eletronicos} eletrônico(s)`);
-      }
+      const d = r.detalhe;
+      toast.success(
+        `Atualização automática concluída: ${d.colaboradores.inseridos + d.eletronicos.inseridos} inserido(s), ` +
+        `${d.colaboradores.atualizados + d.eletronicos.atualizados} atualizado(s), ` +
+        `${d.colaboradores.ignorados + d.eletronicos.ignorados} ignorado(s)`,
+        { duration: 8000 },
+      );
+
       if (r.erros.length) {
         toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
           description: r.erros.slice(0, 3).join(" | "),
