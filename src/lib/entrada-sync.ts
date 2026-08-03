@@ -366,9 +366,11 @@ export function logSyncResult(origem: SyncLog["origem"], r: SyncResult): SyncLog
     status: r.erros.length ? "parcial" : "ok",
     colaboradores: r.colaboradores, eletronicos: r.eletronicos,
     erros: r.erros.slice(0, 20),
+    detalhe: r.detalhe,
   };
   addSyncLog(log);
   return log;
+
 }
 
 /** Registra uma falha de leitura/execução no histórico. */
