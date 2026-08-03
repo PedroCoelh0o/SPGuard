@@ -77,7 +77,41 @@ export async function createEntradaFile(): Promise<{ path: string; created: bool
   return { path, created: true };
 }
 
-export type SyncResult = { colaboradores: number; eletronicos: number; erros: string[] };
+export type EntidadeStat = {
+  inseridos: number;
+  atualizados: number;
+  ignorados: number;
+  exemplosInseridos: string[];
+  exemplosAtualizados: string[];
+  exemplosIgnorados: string[];
+};
+export type SyncDetalhe = { colaboradores: EntidadeStat; eletronicos: EntidadeStat };
+export type SyncResult = { colaboradores: number; eletronicos: number; erros: string[]; detalhe: SyncDetalhe; dryRun?: boolean };
+
+export type SyncProgress = {
+  fase: "lendo" | "validando" | "colaboradores" | "eletronicos" | "concluido";
+  atual: number;
+  total: number;
+  label: string;
+};
+
+const EXEMPLOS_MAX = 5;
+function novoStat(): EntidadeStat {
+  return { inseridos: 0, atualizados: 0, ignorados: 0, exemplosInseridos: [], exemplosAtualizados: [], exemplosIgnorados: [] };
+}
+function addInserido(s: EntidadeStat, ref: string) {
+  s.inseridos++;
+  if (s.exemplosInseridos.length < EXEMPLOS_MAX) s.exemplosInseridos.push(ref);
+}
+function addAtualizado(s: EntidadeStat, ref: string) {
+  s.atualizados++;
+  if (s.exemplosAtualizados.length < EXEMPLOS_MAX) s.exemplosAtualizados.push(ref);
+}
+function addIgnorado(s: EntidadeStat, ref: string) {
+  s.ignorados++;
+  if (s.exemplosIgnorados.length < EXEMPLOS_MAX) s.exemplosIgnorados.push(ref);
+}
+
 
 function rowGetter(r: Record<string, unknown>) {
   const keys = Object.keys(r);
