@@ -186,8 +186,15 @@ function ColabPage() {
           <div className="flex flex-wrap gap-3">
             <div className="relative flex-1 min-w-[240px] max-w-md">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+              <Input placeholder="Buscar por empresa, nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
+            <Select value={empresaFiltro} onValueChange={setEmpresaFiltro}>
+              <SelectTrigger className="w-64" aria-label="Filtrar por empresa"><SelectValue placeholder="Empresa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as empresas</SelectItem>
+                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={turnoFiltro} onValueChange={setTurnoFiltro}>
               <SelectTrigger className="w-52" aria-label="Filtrar por turno"><SelectValue placeholder="Turno" /></SelectTrigger>
               <SelectContent>
