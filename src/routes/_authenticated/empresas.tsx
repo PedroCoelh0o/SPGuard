@@ -69,6 +69,8 @@ function EmpresasPage() {
     onSuccess: () => {
       toast.success("Empresa salva");
       qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["empresas-lite"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false); setEditing(null);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -79,7 +81,12 @@ function EmpresasPage() {
       const { error } = await supabase.from("empresas").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Empresa excluída"); qc.invalidateQueries({ queryKey: ["empresas"] }); },
+    onSuccess: () => {
+      toast.success("Empresa excluída");
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["empresas-lite"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
