@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -8,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Search, Eye } from "lucide-react";
+import { Smartphone, Search, Eye, UserX, UserCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,9 +49,29 @@ function EletronicosPage() {
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
     queryFn: async () =>
-      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null }>(
-        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome") as never,
+      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; status: string; data_desligamento: string | null }>(
+        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, status, data_desligamento").order("nome") as never,
       ),
+  });
+
+  const toggleStatus = useMutation({
+    mutationFn: async (c: { id: string; status: string; data_desligamento: string | null }) => {
+      const novo = c.status === "ativo" ? "desligado" : "ativo";
+      const payload: Record<string, unknown> = { status: novo };
+      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
+      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
+      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
+      if (error) throw error;
+      return novo;
+    },
+    onSuccess: (novo) => {
+      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
+      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const { data: eletronicos = [] } = useQuery({
@@ -85,6 +107,7 @@ function EletronicosPage() {
         const total = cnt.celular + cnt.notebook + cnt.tablet;
         return {
           id: c.id, nome: c.nome, setor: c.setor, cargo: c.cargo,
+          status: c.status, data_desligamento: c.data_desligamento,
           empresa: empresaMap.get(c.empresa_id) ?? "-",
           celulares: cnt.celular, notebooks: cnt.notebook, tablets: cnt.tablet, total,
         };
@@ -143,12 +166,13 @@ function EletronicosPage() {
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                   <TableHead>Status</TableHead>
                    <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaSel === "all" ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
                 ) : visible.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
@@ -159,10 +183,25 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.notebooks}</TableCell>
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.status === "ativo" ? "default" : "destructive"}>{s.status === "ativo" ? "Ativo" : "Desligado"}</Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {canWrite && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={s.status === "ativo" ? `Desligar ${s.nome}` : `Reativar ${s.nome}`}
+                          title={s.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
+                          disabled={toggleStatus.isPending}
+                          onClick={() => toggleStatus.mutate({ id: s.id, status: s.status, data_desligamento: s.data_desligamento })}
+                        >
+                          {s.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy, UserX, UserCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
@@ -102,25 +102,6 @@ function ColabPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const toggleStatus = useMutation({
-    mutationFn: async (c: Colab) => {
-      const novo = c.status === "ativo" ? "desligado" : "ativo";
-      const payload: Record<string, unknown> = { status: novo };
-      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
-      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
-      if (error) throw error;
-      return novo;
-    },
-    onSuccess: (novo) => {
-      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
-      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
@@ -265,18 +246,6 @@ function ColabPage() {
                         catch { toast.error("Falha ao copiar"); }
                       }}><Copy className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" aria-label={`Ver detalhes de ${c.nome}`} title="Ver detalhes" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
-                      {canWrite && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={c.status === "ativo" ? `Desligar ${c.nome}` : `Reativar ${c.nome}`}
-                          title={c.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
-                          disabled={toggleStatus.isPending}
-                          onClick={() => toggleStatus.mutate(c)}
-                        >
-                          {c.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
-                        </Button>
-                      )}
                       {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${c.nome}`} title="Editar" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && (
                         <AlertDialog>
