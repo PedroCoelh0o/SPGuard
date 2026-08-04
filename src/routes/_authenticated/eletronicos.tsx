@@ -165,12 +165,13 @@ function EletronicosPage() {
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                   <TableHead>Status</TableHead>
                    <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaSel === "all" ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
                 ) : visible.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
@@ -181,10 +182,25 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.notebooks}</TableCell>
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.status === "ativo" ? "default" : "destructive"}>{s.status === "ativo" ? "Ativo" : "Desligado"}</Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {canWrite && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={s.status === "ativo" ? `Desligar ${s.nome}` : `Reativar ${s.nome}`}
+                          title={s.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
+                          disabled={toggleStatus.isPending}
+                          onClick={() => toggleStatus.mutate({ id: s.id, status: s.status, data_desligamento: s.data_desligamento })}
+                        >
+                          {s.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
