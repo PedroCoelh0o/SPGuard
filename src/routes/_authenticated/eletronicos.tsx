@@ -64,13 +64,25 @@ function EletronicosPage() {
       if (error) throw error;
       return novo;
     },
-    onSuccess: (novo) => {
+    onSuccess: (novo, vars) => {
       toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
-      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+      // Atualiza o cache do Dashboard na hora, para KPIs e gráficos refletirem sem esperar o refetch.
+      qc.setQueryData(["dashboard"], (old: { empresas: unknown[]; colaboradores: { id: string; status: string; data_desligamento: string | null }[] } | undefined) =>
+        old
+          ? {
+              ...old,
+              colaboradores: old.colaboradores.map((c) =>
+                c.id === vars.id
+                  ? { ...c, status: novo, data_desligamento: novo === "ativo" ? null : (c.data_desligamento ?? new Date().toISOString().slice(0, 10)) }
+                  : c,
+              ),
+            }
+          : old,
+      );
+      const keys = [["colaboradores-eletr"], ["colaboradores"], ["dashboard"], ["dashboard-eletronicos"]];
+      keys.forEach((queryKey) => qc.invalidateQueries({ queryKey, refetchType: "all" }));
     },
+
     onError: (e: Error) => toast.error(e.message),
   });
 
