@@ -55,6 +55,7 @@ function ColabPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [turnoFiltro, setTurnoFiltro] = useState("all");
+  const [empresaFiltro, setEmpresaFiltro] = useState("all");
   const [ordem, setOrdem] = useState<SortKey>("nome_asc");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
