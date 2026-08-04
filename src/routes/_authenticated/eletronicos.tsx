@@ -47,9 +47,29 @@ function EletronicosPage() {
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
     queryFn: async () =>
-      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null }>(
-        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor").order("nome") as never,
+      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; status: string; data_desligamento: string | null }>(
+        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, status, data_desligamento").order("nome") as never,
       ),
+  });
+
+  const toggleStatus = useMutation({
+    mutationFn: async (c: { id: string; status: string; data_desligamento: string | null }) => {
+      const novo = c.status === "ativo" ? "desligado" : "ativo";
+      const payload: Record<string, unknown> = { status: novo };
+      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
+      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
+      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
+      if (error) throw error;
+      return novo;
+    },
+    onSuccess: (novo) => {
+      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
+      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const { data: eletronicos = [] } = useQuery({
