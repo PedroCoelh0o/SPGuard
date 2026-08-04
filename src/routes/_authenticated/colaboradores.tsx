@@ -102,25 +102,6 @@ function ColabPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const toggleStatus = useMutation({
-    mutationFn: async (c: Colab) => {
-      const novo = c.status === "ativo" ? "desligado" : "ativo";
-      const payload: Record<string, unknown> = { status: novo };
-      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
-      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
-      if (error) throw error;
-      return novo;
-    },
-    onSuccess: (novo) => {
-      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
-      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
