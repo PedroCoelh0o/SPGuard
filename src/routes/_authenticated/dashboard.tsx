@@ -52,12 +52,12 @@ function Dashboard() {
     queryKey: ["dashboard"],
     queryFn: async () => {
       const [emp, col] = await Promise.all([
-        supabase.from("empresas").select("id, razao_social, nome_fantasia"),
+        supabase.from("empresas").select("id, razao_social, nome_fantasia, status"),
         fetchAllRows<{ id: string; empresa_id: string; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null }>(
           () => supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento").order("id") as never,
         ),
       ]);
-      return { empresas: emp.data ?? [], colaboradores: col };
+      return { empresas: (emp.data ?? []).filter((e) => e.status === "ativa"), colaboradores: col };
     },
   });
 
