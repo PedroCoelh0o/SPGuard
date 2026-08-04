@@ -55,6 +55,7 @@ function ColabPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [turnoFiltro, setTurnoFiltro] = useState("all");
+  const [empresaFiltro, setEmpresaFiltro] = useState("all");
   const [ordem, setOrdem] = useState<SortKey>("nome_asc");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
@@ -119,8 +120,9 @@ function ColabPage() {
     const s = qd.trim().toLowerCase();
     const list = colabs.filter((c) => {
       if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
+      if (empresaFiltro !== "all" && c.empresa_id !== empresaFiltro) return false;
       if (!s) return true;
-      return c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
+      return (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s) || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
     });
     const byNome = (a: Colab, b: Colab) => a.nome.localeCompare(b.nome, "pt-BR");
     const sorted = [...list];
@@ -134,7 +136,7 @@ function ColabPage() {
       }
     });
     return sorted;
-  }, [colabs, qd, turnoFiltro, ordem]);
+  }, [colabs, qd, turnoFiltro, empresaFiltro, ordem, empresaMap]);
 
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
@@ -184,8 +186,15 @@ function ColabPage() {
           <div className="flex flex-wrap gap-3">
             <div className="relative flex-1 min-w-[240px] max-w-md">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+              <Input placeholder="Buscar por empresa, nome, CPF, matrícula, cargo ou turno..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
+            <Select value={empresaFiltro} onValueChange={setEmpresaFiltro}>
+              <SelectTrigger className="w-64" aria-label="Filtrar por empresa"><SelectValue placeholder="Empresa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as empresas</SelectItem>
+                {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={turnoFiltro} onValueChange={setTurnoFiltro}>
               <SelectTrigger className="w-52" aria-label="Filtrar por turno"><SelectValue placeholder="Turno" /></SelectTrigger>
               <SelectContent>
