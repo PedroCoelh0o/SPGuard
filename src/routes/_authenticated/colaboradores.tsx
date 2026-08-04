@@ -136,7 +136,7 @@ function ColabPage() {
       }
     });
     return sorted;
-  }, [colabs, qd, turnoFiltro, ordem]);
+  }, [colabs, qd, turnoFiltro, empresaFiltro, ordem, empresaMap]);
 
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
