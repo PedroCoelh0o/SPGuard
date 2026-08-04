@@ -120,8 +120,9 @@ function ColabPage() {
     const s = qd.trim().toLowerCase();
     const list = colabs.filter((c) => {
       if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
+      if (empresaFiltro !== "all" && c.empresa_id !== empresaFiltro) return false;
       if (!s) return true;
-      return c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
+      return (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s) || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
     });
     const byNome = (a: Colab, b: Colab) => a.nome.localeCompare(b.nome, "pt-BR");
     const sorted = [...list];
