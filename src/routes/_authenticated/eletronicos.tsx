@@ -181,7 +181,7 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
                     <TableCell>
-                      <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Não autorizado"}</Badge>
+                      <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Revogado"}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
@@ -191,8 +191,8 @@ function EletronicosPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          aria-label={s.autorizado ? `Marcar ${s.nome} como não autorizado` : `Autorizar ${s.nome}`}
-                          title={s.autorizado ? "Mudar para Não autorizado" : "Mudar para Autorizado"}
+                          aria-label={s.autorizado ? `Marcar ${s.nome} como revogado` : `Autorizar ${s.nome}`}
+                          title={s.autorizado ? "Mudar para Revogado" : "Mudar para Autorizado"}
                           disabled={toggleStatus.isPending}
                           onClick={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}
                         >
