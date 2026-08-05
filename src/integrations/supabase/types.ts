@@ -103,6 +103,7 @@ export type Database = {
           data_admissao: string | null
           data_desligamento: string | null
           data_nascimento: string | null
+          eletronicos_autorizado: boolean
           email: string | null
           empresa_id: string
           escolaridade: string | null
@@ -133,6 +134,7 @@ export type Database = {
           data_admissao?: string | null
           data_desligamento?: string | null
           data_nascimento?: string | null
+          eletronicos_autorizado?: boolean
           email?: string | null
           empresa_id: string
           escolaridade?: string | null
@@ -163,6 +165,7 @@ export type Database = {
           data_admissao?: string | null
           data_desligamento?: string | null
           data_nascimento?: string | null
+          eletronicos_autorizado?: boolean
           email?: string | null
           empresa_id?: string
           escolaridade?: string | null
