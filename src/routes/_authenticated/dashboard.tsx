@@ -74,8 +74,8 @@ function Dashboard() {
   const colabs = data?.colaboradores ?? [];
   const ativos = colabs.filter((c) => c.status === "ativo").length;
   const desligados = colabs.filter((c) => c.status === "desligado").length;
-  const ativosIds = useMemo(() => new Set(colabs.filter((c) => c.status === "ativo").map((c) => c.id)), [colabs]);
-  const eletronicosAtivos = useMemo(() => eletronicos.filter((e) => ativosIds.has(e.colaborador_id)), [eletronicos, ativosIds]);
+  const autorizadosIds = useMemo(() => new Set(colabs.filter((c) => c.eletronicos_autorizado !== false).map((c) => c.id)), [colabs]);
+  const eletronicosAtivos = useMemo(() => eletronicos.filter((e) => autorizadosIds.has(e.colaborador_id)), [eletronicos, autorizadosIds]);
   const qtdCelulares = eletronicosAtivos.filter((e) => e.tipo === "celular").length;
   const qtdNotebooks = eletronicosAtivos.filter((e) => e.tipo === "notebook").length;
   const qtdTablets = eletronicosAtivos.filter((e) => e.tipo === "tablet").length;
