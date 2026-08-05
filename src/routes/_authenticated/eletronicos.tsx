@@ -181,7 +181,7 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
                     <TableCell>
-                      <Badge variant={s.status === "ativo" ? "default" : "destructive"}>{s.status === "ativo" ? "Ativo" : "Desligado"}</Badge>
+                      <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Não autorizado"}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
@@ -191,15 +191,16 @@ function EletronicosPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          aria-label={s.status === "ativo" ? `Desligar ${s.nome}` : `Reativar ${s.nome}`}
-                          title={s.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
+                          aria-label={s.autorizado ? `Marcar ${s.nome} como não autorizado` : `Autorizar ${s.nome}`}
+                          title={s.autorizado ? "Mudar para Não autorizado" : "Mudar para Autorizado"}
                           disabled={toggleStatus.isPending}
-                          onClick={() => toggleStatus.mutate({ id: s.id, status: s.status, data_desligamento: s.data_desligamento })}
+                          onClick={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}
                         >
-                          {s.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                          {s.autorizado ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
                         </Button>
                       )}
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
