@@ -205,7 +205,7 @@ function ColabPage() {
             <Select value={ordem} onValueChange={(v) => setOrdem(v as SortKey)}>
               <SelectTrigger className="w-56" aria-label="Ordenar lista"><SelectValue placeholder="Ordenar" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="nome_asc">Nome (A–Z)</SelectItem>
+                
                 <SelectItem value="nome_desc">Nome (Z–A)</SelectItem>
                 <SelectItem value="turno_asc">Turno (A–Z)</SelectItem>
                 <SelectItem value="admissao_desc">Admissão (mais recente)</SelectItem>

@@ -49,42 +49,27 @@ function EletronicosPage() {
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
     queryFn: async () =>
-      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; status: string; data_desligamento: string | null }>(
-        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, status, data_desligamento").order("nome") as never,
+      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; eletronicos_autorizado: boolean }>(
+        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, eletronicos_autorizado").order("nome") as never,
       ),
   });
 
   const toggleStatus = useMutation({
-    mutationFn: async (c: { id: string; status: string; data_desligamento: string | null }) => {
-      const novo = c.status === "ativo" ? "desligado" : "ativo";
-      const payload: Record<string, unknown> = { status: novo };
-      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
-      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
+    mutationFn: async (c: { id: string; autorizado: boolean }) => {
+      const novo = !c.autorizado;
+      const { error } = await supabase.from("colaboradores").update({ eletronicos_autorizado: novo } as never).eq("id", c.id);
       if (error) throw error;
       return novo;
     },
-    onSuccess: (novo, vars) => {
-      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
-      // Atualiza o cache do Dashboard na hora, para KPIs e gráficos refletirem sem esperar o refetch.
-      qc.setQueryData(["dashboard"], (old: { empresas: unknown[]; colaboradores: { id: string; status: string; data_desligamento: string | null }[] } | undefined) =>
-        old
-          ? {
-              ...old,
-              colaboradores: old.colaboradores.map((c) =>
-                c.id === vars.id
-                  ? { ...c, status: novo, data_desligamento: novo === "ativo" ? null : (c.data_desligamento ?? new Date().toISOString().slice(0, 10)) }
-                  : c,
-              ),
-            }
-          : old,
-      );
+    onSuccess: (novo) => {
+      toast.success(novo ? "Colaborador autorizado a portar eletrônicos" : "Autorização de eletrônicos removida");
       const keys = [["colaboradores-eletr"], ["colaboradores"], ["dashboard"], ["dashboard-eletronicos"]];
       keys.forEach((queryKey) => qc.invalidateQueries({ queryKey, refetchType: "all" }));
     },
 
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["consulta-eletronicos"],
@@ -119,7 +104,7 @@ function EletronicosPage() {
         const total = cnt.celular + cnt.notebook + cnt.tablet;
         return {
           id: c.id, nome: c.nome, setor: c.setor, cargo: c.cargo,
-          status: c.status, data_desligamento: c.data_desligamento,
+          autorizado: c.eletronicos_autorizado !== false,
           empresa: empresaMap.get(c.empresa_id) ?? "-",
           celulares: cnt.celular, notebooks: cnt.notebook, tablets: cnt.tablet, total,
         };
@@ -178,7 +163,7 @@ function EletronicosPage() {
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                   <TableHead>Status</TableHead>
+                   <TableHead>Autorização</TableHead>
                    <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -196,7 +181,7 @@ function EletronicosPage() {
                     <TableCell className="text-right">{s.tablets}</TableCell>
                     <TableCell className="text-right font-semibold">{s.total}</TableCell>
                     <TableCell>
-                      <Badge variant={s.status === "ativo" ? "default" : "destructive"}>{s.status === "ativo" ? "Ativo" : "Desligado"}</Badge>
+                      <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Não autorizado"}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
@@ -206,15 +191,16 @@ function EletronicosPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          aria-label={s.status === "ativo" ? `Desligar ${s.nome}` : `Reativar ${s.nome}`}
-                          title={s.status === "ativo" ? "Mudar status para Desligado" : "Mudar status para Ativo"}
+                          aria-label={s.autorizado ? `Marcar ${s.nome} como não autorizado` : `Autorizar ${s.nome}`}
+                          title={s.autorizado ? "Mudar para Não autorizado" : "Mudar para Autorizado"}
                           disabled={toggleStatus.isPending}
-                          onClick={() => toggleStatus.mutate({ id: s.id, status: s.status, data_desligamento: s.data_desligamento })}
+                          onClick={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}
                         >
-                          {s.status === "ativo" ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                          {s.autorizado ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
                         </Button>
                       )}
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>

@@ -53,8 +53,8 @@ function Dashboard() {
     queryFn: async () => {
       const [emp, col] = await Promise.all([
         supabase.from("empresas").select("id, razao_social, nome_fantasia, status"),
-        fetchAllRows<{ id: string; empresa_id: string; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null }>(
-          () => supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento").order("id") as never,
+        fetchAllRows<{ id: string; empresa_id: string; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null; eletronicos_autorizado: boolean }>(
+          () => supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento, eletronicos_autorizado").order("id") as never,
         ),
       ]);
       return { empresas: (emp.data ?? []).filter((e) => e.status === "ativa"), colaboradores: col };
@@ -74,8 +74,8 @@ function Dashboard() {
   const colabs = data?.colaboradores ?? [];
   const ativos = colabs.filter((c) => c.status === "ativo").length;
   const desligados = colabs.filter((c) => c.status === "desligado").length;
-  const ativosIds = useMemo(() => new Set(colabs.filter((c) => c.status === "ativo").map((c) => c.id)), [colabs]);
-  const eletronicosAtivos = useMemo(() => eletronicos.filter((e) => ativosIds.has(e.colaborador_id)), [eletronicos, ativosIds]);
+  const autorizadosIds = useMemo(() => new Set(colabs.filter((c) => c.eletronicos_autorizado !== false).map((c) => c.id)), [colabs]);
+  const eletronicosAtivos = useMemo(() => eletronicos.filter((e) => autorizadosIds.has(e.colaborador_id)), [eletronicos, autorizadosIds]);
   const qtdCelulares = eletronicosAtivos.filter((e) => e.tipo === "celular").length;
   const qtdNotebooks = eletronicosAtivos.filter((e) => e.tipo === "notebook").length;
   const qtdTablets = eletronicosAtivos.filter((e) => e.tipo === "tablet").length;
