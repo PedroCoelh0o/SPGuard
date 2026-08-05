@@ -163,7 +163,7 @@ function EletronicosPage() {
                   <TableHead className="text-right">Notebooks</TableHead>
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                   <TableHead>Status</TableHead>
+                   <TableHead>Autorização</TableHead>
                    <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
