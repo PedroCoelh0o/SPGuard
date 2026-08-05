@@ -104,7 +104,7 @@ function EletronicosPage() {
         const total = cnt.celular + cnt.notebook + cnt.tablet;
         return {
           id: c.id, nome: c.nome, setor: c.setor, cargo: c.cargo,
-          status: c.status, data_desligamento: c.data_desligamento,
+          autorizado: c.eletronicos_autorizado !== false,
           empresa: empresaMap.get(c.empresa_id) ?? "-",
           celulares: cnt.celular, notebooks: cnt.notebook, tablets: cnt.tablet, total,
         };
