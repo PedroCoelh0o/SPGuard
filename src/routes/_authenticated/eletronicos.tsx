@@ -49,42 +49,27 @@ function EletronicosPage() {
   const { data: colabs = [] } = useQuery({
     queryKey: ["colaboradores-eletr"],
     queryFn: async () =>
-      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; status: string; data_desligamento: string | null }>(
-        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, status, data_desligamento").order("nome") as never,
+      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; eletronicos_autorizado: boolean }>(
+        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, eletronicos_autorizado").order("nome") as never,
       ),
   });
 
   const toggleStatus = useMutation({
-    mutationFn: async (c: { id: string; status: string; data_desligamento: string | null }) => {
-      const novo = c.status === "ativo" ? "desligado" : "ativo";
-      const payload: Record<string, unknown> = { status: novo };
-      if (novo === "desligado" && !c.data_desligamento) payload.data_desligamento = new Date().toISOString().slice(0, 10);
-      if (novo === "ativo") { payload.data_desligamento = null; payload.motivo_desligamento = null; }
-      const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", c.id);
+    mutationFn: async (c: { id: string; autorizado: boolean }) => {
+      const novo = !c.autorizado;
+      const { error } = await supabase.from("colaboradores").update({ eletronicos_autorizado: novo } as never).eq("id", c.id);
       if (error) throw error;
       return novo;
     },
-    onSuccess: (novo, vars) => {
-      toast.success(novo === "ativo" ? "Colaborador reativado" : "Colaborador desligado");
-      // Atualiza o cache do Dashboard na hora, para KPIs e gráficos refletirem sem esperar o refetch.
-      qc.setQueryData(["dashboard"], (old: { empresas: unknown[]; colaboradores: { id: string; status: string; data_desligamento: string | null }[] } | undefined) =>
-        old
-          ? {
-              ...old,
-              colaboradores: old.colaboradores.map((c) =>
-                c.id === vars.id
-                  ? { ...c, status: novo, data_desligamento: novo === "ativo" ? null : (c.data_desligamento ?? new Date().toISOString().slice(0, 10)) }
-                  : c,
-              ),
-            }
-          : old,
-      );
-      const keys = [["colaboradores-eletr"], ["colaboradores"], ["dashboard"], ["dashboard-eletronicos"]];
+    onSuccess: (novo) => {
+      toast.success(novo ? "Colaborador autorizado a portar eletrônicos" : "Autorização de eletrônicos removida");
+      const keys = [["colaboradores-eletr"], ["colaboradores"], ["dashboard-eletronicos"], ["dashboard-eletr-autorizacao"]];
       keys.forEach((queryKey) => qc.invalidateQueries({ queryKey, refetchType: "all" }));
     },
 
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["consulta-eletronicos"],
