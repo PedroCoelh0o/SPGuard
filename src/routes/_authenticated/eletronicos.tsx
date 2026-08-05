@@ -191,8 +191,8 @@ function EletronicosPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          aria-label={s.autorizado ? `Marcar ${s.nome} como não autorizado` : `Autorizar ${s.nome}`}
-                          title={s.autorizado ? "Mudar para Não autorizado" : "Mudar para Autorizado"}
+                          aria-label={s.autorizado ? `Marcar ${s.nome} como revogado` : `Autorizar ${s.nome}`}
+                          title={s.autorizado ? "Mudar para Revogado" : "Mudar para Autorizado"}
                           disabled={toggleStatus.isPending}
                           onClick={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}
                         >
