@@ -48,7 +48,6 @@ type Colab = {
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
 const TURNOS = ["Letra A", "Letra B", "Letra C", "Letra D", "Administrativo", "FIFO", "Híbrido", "Noturno", "Diurno"];
-type SortKey = "nome_asc" | "nome_desc" | "turno_asc" | "admissao_desc" | "admissao_asc";
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
@@ -56,7 +55,7 @@ function ColabPage() {
   const [q, setQ] = useState("");
   const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [empresaFiltro, setEmpresaFiltro] = useState("all");
-  const [ordem, setOrdem] = useState<SortKey>("nome_asc");
+  
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
@@ -124,19 +123,10 @@ function ColabPage() {
       if (!s) return true;
       return (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s) || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
     });
-    const byNome = (a: Colab, b: Colab) => a.nome.localeCompare(b.nome, "pt-BR");
     const sorted = [...list];
-    sorted.sort((a, b) => {
-      switch (ordem) {
-        case "nome_desc": return byNome(b, a);
-        case "turno_asc": return (a.turno ?? "zzz").localeCompare(b.turno ?? "zzz", "pt-BR") || byNome(a, b);
-        case "admissao_desc": return (b.data_admissao ?? "").localeCompare(a.data_admissao ?? "") || byNome(a, b);
-        case "admissao_asc": return (a.data_admissao ?? "9999").localeCompare(b.data_admissao ?? "9999") || byNome(a, b);
-        default: return byNome(a, b);
-      }
-    });
+    sorted.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     return sorted;
-  }, [colabs, qd, turnoFiltro, empresaFiltro, ordem, empresaMap]);
+  }, [colabs, qd, turnoFiltro, empresaFiltro, empresaMap]);
 
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
@@ -200,13 +190,6 @@ function ColabPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os turnos</SelectItem>
                 {turnosDisponiveis.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={ordem} onValueChange={(v) => setOrdem(v as SortKey)}>
-              <SelectTrigger className="w-56" aria-label="Ordenar lista"><SelectValue placeholder="Ordenar" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="turno_asc">Turno (A–Z)</SelectItem>
-
               </SelectContent>
             </Select>
           </div>
