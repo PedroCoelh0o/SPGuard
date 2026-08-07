@@ -1,0 +1,53 @@
+name: Build Windows Installer
+
+# Gera o instalador (.exe) do Biz People Nexus para Windows usando um
+# runner windows-latest de verdade (evita os problemas de cross-compile
+# ao tentar gerar um .exe a partir do Linux/macOS).
+#
+# Como usar:
+#   1. Vá em Actions -> "Build Windows Installer" -> "Run workflow".
+#   2. Quando terminar, baixe o artifact "biz-people-nexus-windows-installer".
+#   3. Dentro do zip está o instalador .exe pronto para rodar no Windows.
+#
+# Também roda automaticamente a cada push na branch main.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Build do app web (gera .output com o servidor Node)
+        run: npm run build
+        env:
+          # Credenciais públicas do Supabase (chave "publishable"/anon,
+          # protegida por RLS - não é segredo). Vêm do .env do repositório
+          # ou podem ser sobrescritas aqui via GitHub Secrets se preferir.
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ vars.VITE_SUPABASE_PROJECT_ID }}
+
+      - name: Empacotar instalador Windows (NSIS)
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Publicar instalador como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: biz-people-nexus-windows-installer
+          path: dist_electron/*.exe

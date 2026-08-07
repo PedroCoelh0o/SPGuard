@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Build a plain standalone Node server instead of the Cloudflare Worker
+  // preset, so the app can be run locally / embedded in Electron.
+  nitro: {
+    preset: "node-server",
+  },
 });
