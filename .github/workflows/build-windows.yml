@@ -134,14 +134,14 @@ jobs:
             exit 1
           }
 
-      - name: Validar o SQLite nativo
+      - name: Validar o SQLite no Electron
         shell: pwsh
         run: |
-          # A biblioteca usa N-API. Com o Node 20 (a mesma geração interna
-          # do Electron 33), abrir um banco em memória confirma que o addon
-          # existe e pode ser carregado, sem iniciar o crashpad do Electron
-          # em um runner sem interface gráfica.
-          node -e "const Database = require('better-sqlite3'); const db = new Database(':memory:'); db.exec('CREATE TABLE healthcheck (id INTEGER)'); db.close(); console.log('SQLite: OK');"
+          # O addon foi compilado para o ABI do Electron. O health check usa
+          # um processo principal sem janela, evitando o crashpad causado por
+          # ELECTRON_RUN_AS_NODE e validando o runtime que o .exe realmente
+          # utilizará.
+          & .\node_modules\.bin\electron.cmd .\electron\verify-sqlite.cjs --disable-gpu
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build do app web (gera .output com o servidor Node)
