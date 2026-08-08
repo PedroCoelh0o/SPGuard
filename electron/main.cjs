@@ -9,7 +9,7 @@
 const { app, BrowserWindow, shell, Menu } = require("electron");
 const path = require("node:path");
 const http = require("node:http");
-const { fork } = require("node:child_process");
+const { pathToFileURL } = require("node:url");
 
 const PORT = process.env.PORT || 3777;
 // Usa 127.0.0.1 explicitamente (não "localhost") para a janela carregar a
@@ -43,39 +43,27 @@ const PUBLIC_DIR = app.isPackaged
   ? path.join(process.resourcesPath, "app-server", "public")
   : path.join(__dirname, "..", ".output", "public");
 
-let serverProcess = null;
 let mainWindow = null;
 
+// O servidor roda DENTRO do próprio processo principal do Electron (não
+// como um processo filho separado via child_process.fork). É um padrão
+// comum para esse tipo de app e evita a complexidade de gerenciar um
+// processo filho separado (pipes, IPC, sinais de encerramento).
 function startServer() {
-  return new Promise((resolve, reject) => {
-    serverProcess = fork(SERVER_ENTRY, [], {
-      env: {
-        ...process.env,
-        PORT: String(PORT),
-        NITRO_PORT: String(PORT),
-        HOST: "127.0.0.1",
-        NITRO_PUBLIC_DIR: PUBLIC_DIR,
-        LOCAL_DATA_DIR,
-      },
-      stdio: ["ignore", "pipe", "pipe", "ipc"],
-    });
+  process.env.PORT = String(PORT);
+  process.env.NITRO_PORT = String(PORT);
+  process.env.HOST = "127.0.0.1";
+  process.env.NITRO_PUBLIC_DIR = PUBLIC_DIR;
+  process.env.LOCAL_DATA_DIR = LOCAL_DATA_DIR;
 
-    serverProcess.stdout?.on("data", (data) => process.stdout.write(`[server] ${data}`));
-    serverProcess.stderr?.on("data", (data) => process.stderr.write(`[server] ${data}`));
-
-    serverProcess.on("error", reject);
-    serverProcess.on("exit", (code) => {
-      if (code !== 0 && code !== null) {
-        console.error(`Servidor encerrou com código ${code}`);
-      }
-    });
-
-    waitForServer(resolve, reject);
-  });
+  // O bundle do Nitro é um módulo ESM (.mjs) que, ao ser importado, já
+  // sobe o servidor HTTP como efeito colateral (é o mesmo arquivo que
+  // `node .output/server/index.mjs` roda diretamente).
+  return import(pathToFileURL(SERVER_ENTRY).href);
 }
 
-// Faz polling em / até o servidor responder, em vez de confiar apenas no
-// texto impresso no stdout (mais robusto entre versões do Nitro).
+// Faz polling em / até o servidor responder, em vez de assumir que já
+// está pronto logo após o import (a inicialização do Nitro é assíncrona).
 function waitForServer(resolve, reject, attempt = 0) {
   const MAX_ATTEMPTS = 100; // ~20s
   const req = http.get(SERVER_URL, () => {
@@ -128,6 +116,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   try {
     await startServer();
+    await new Promise((resolve, reject) => waitForServer(resolve, reject));
     createWindow();
   } catch (err) {
     console.error("Falha ao iniciar o servidor embutido:", err);
@@ -142,14 +131,3 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
-
-function stopServer() {
-  if (serverProcess && !serverProcess.killed) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
-}
-
-app.on("before-quit", stopServer);
-app.on("will-quit", stopServer);
-process.on("exit", stopServer);

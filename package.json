@@ -15,8 +15,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "electron": "electron .",
-    "electron:build": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win nsis"
+    "electron:build": "npm run rebuild:native && npm run build && electron-builder",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3 && node -e \"require('fs').rmSync('node_modules/better-sqlite3/prebuilds', { recursive: true, force: true })\"",
+    "dist:win": "npm run rebuild:native && npm run build && electron-builder --win nsis"
   },
   "build": {
     "appId": "com.bizpeoplenexus.app",
@@ -117,6 +118,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.8.5",
     "@types/node": "^22.16.5",
