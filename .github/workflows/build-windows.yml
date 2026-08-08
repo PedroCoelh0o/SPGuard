@@ -77,6 +77,11 @@ jobs:
         run: npm run rebuild:native
         env:
           DEBUG: "electron-rebuild"
+          # O node-gyp não usa npm_config_msbuild_path para escolher a
+          # instalação do Visual Studio. Estas duas variáveis são a forma
+          # suportada de fixar a versão do compilador no Windows.
+          npm_config_msvs_version: "2022"
+          GYP_MSVS_VERSION: "2022"
 
       - name: "[Diagnóstico] Verificar onde está o binário compilado"
         shell: pwsh
@@ -103,6 +108,31 @@ jobs:
 
           Write-Host "=== Conteúdo de build/Release (só a raiz, sem entrar em obj/) ==="
           Get-ChildItem node_modules/better-sqlite3/build/Release | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+
+          # A versão atual do pacote também fornece o binário N-API em
+          # prebuilds/. O carregador do better-sqlite3, porém, procura-o em
+          # build/Release/. Quando o electron-rebuild não materializa a
+          # cópia nesse destino, o .exe abre mas os cadastros falham com
+          # "Cannot find module ... better_sqlite3.node".
+          if (-not (Test-Path $nodeFile)) {
+            if (-not (Test-Path $prebuildFile)) {
+              Write-Error "O binário nativo better_sqlite3.node não foi gerado."
+              exit 1
+            }
+            New-Item -ItemType Directory -Force -Path (Split-Path $nodeFile) | Out-Null
+            Copy-Item $prebuildFile $nodeFile -Force
+            Write-Host "Binário N-API copiado para build/Release."
+          }
+
+      - name: Validar o SQLite dentro do runtime do Electron
+        shell: pwsh
+        run: |
+          # ELECTRON_RUN_AS_NODE preserva o ABI do Electron, diferente de
+          # testar com node.exe, que rejeitaria um módulo compilado para o
+          # Electron. A criação de uma tabela confirma que o addon carregou.
+          $env:ELECTRON_RUN_AS_NODE = "1"
+          & .\node_modules\.bin\electron.cmd -e "const Database = require('better-sqlite3'); const db = new Database(':memory:'); db.exec('CREATE TABLE healthcheck (id INTEGER)'); db.close(); console.log('SQLite no Electron: OK');"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build do app web (gera .output com o servidor Node)
         run: npm run build
