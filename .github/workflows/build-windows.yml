@@ -44,14 +44,23 @@ jobs:
       - name: Localizar o MSBuild e configurar o node-gyp
         shell: pwsh
         run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+          $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $vswhere = Join-Path $programFilesX86 "Microsoft Visual Studio\Installer\vswhere.exe"
+          Write-Host "Procurando vswhere em: $vswhere"
+          if (-not (Test-Path $vswhere)) {
+            Write-Error "vswhere.exe não encontrado em $vswhere"
+            exit 1
+          }
+          $msbuild = & $vswhere -products * -version "[17.0,18.0)" -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+          if (-not $msbuild) {
+            Write-Host "Visual Studio 2022 não encontrado, tentando a versão mais recente disponível..."
+            $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+          }
           if (-not $msbuild) {
             Write-Error "MSBuild não encontrado pelo vswhere."
             exit 1
           }
           Write-Host "MSBuild encontrado em: $msbuild"
-          npm config set msbuild_path "$msbuild"
           echo "npm_config_msbuild_path=$msbuild" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       # IMPORTANTE: este passo tem que rodar ANTES do build do app. O
