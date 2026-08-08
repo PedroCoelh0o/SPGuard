@@ -35,11 +35,24 @@ jobs:
       # que vem pronto no pacote não é compatível com o runtime do
       # Electron (só com Node.js puro) — precisa ser recompilado
       # especificamente para o Electron. Isso exige um compilador C++
-      # (Visual Studio Build Tools), que o runner windows-latest já tem
-      # instalado, mas o node-gyp às vezes não acha sozinho; esta ação
-      # garante que as variáveis de ambiente do MSVC fiquem configuradas.
-      - name: Configurar Visual Studio (MSVC) para compilar módulos nativos
-        uses: ilammy/msvc-dev-cmd@v1
+      # (MSBuild, parte do Visual Studio). O node-gyp às vezes falha em
+      # localizar o Visual Studio sozinho mesmo quando ele está instalado
+      # no runner — por isso aqui achamos o caminho do MSBuild
+      # explicitamente com o vswhere.exe (que já vem instalado nos
+      # runners do GitHub) e apontamos o node-gyp direto pra ele, em vez
+      # de depender da detecção automática.
+      - name: Localizar o MSBuild e configurar o node-gyp
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+          if (-not $msbuild) {
+            Write-Error "MSBuild não encontrado pelo vswhere."
+            exit 1
+          }
+          Write-Host "MSBuild encontrado em: $msbuild"
+          npm config set msbuild_path "$msbuild"
+          echo "npm_config_msbuild_path=$msbuild" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       # IMPORTANTE: este passo tem que rodar ANTES do build do app. O
       # build (Nitro) copia o better-sqlite3 que estiver em node_modules
