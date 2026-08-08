@@ -36,6 +36,13 @@ jobs:
           # geração do Node evita incompatibilidades da toolchain nativa.
           node-version: 20
 
+      - name: Configurar Python compatível com node-gyp
+        id: setup_python
+        uses: actions/setup-python@v5
+        with:
+          # node-gyp 9 depende de distutils, removido no Python 3.12.
+          python-version: "3.11"
+
       - name: Instalar dependências
         run: npm install
 
@@ -86,6 +93,7 @@ jobs:
           # suportada de fixar a versão do compilador no Windows.
           npm_config_msvs_version: "2022"
           GYP_MSVS_VERSION: "2022"
+          npm_config_python: ${{ steps.setup_python.outputs.python-path }}
 
       - name: Publicar diagnóstico da compilação nativa
         if: always()
