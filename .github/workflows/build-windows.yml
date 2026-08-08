@@ -73,7 +73,12 @@ jobs:
       # nesse momento para dentro do pacote final — se recompilarmos
       # DEPOIS do build, a versão recompilada nunca chegaria no instalador.
       - name: Recompilar better-sqlite3 para o Electron
-        run: npm run rebuild:native
+        id: native_rebuild
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          npm run rebuild:native *>&1 | Tee-Object -FilePath native-rebuild.log
+          exit $LASTEXITCODE
         env:
           DEBUG: "electron-rebuild"
           # O node-gyp não usa npm_config_msbuild_path para escolher a
@@ -81,6 +86,21 @@ jobs:
           # suportada de fixar a versão do compilador no Windows.
           npm_config_msvs_version: "2022"
           GYP_MSVS_VERSION: "2022"
+
+      - name: Publicar diagnóstico da compilação nativa
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path native-rebuild.log) {
+            "## Diagnóstico do better-sqlite3" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "```text" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Get-Content native-rebuild.log -Tail 100 | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          if ("${{ steps.native_rebuild.outcome }}" -eq "failure") {
+            Write-Error "A compilação nativa falhou; consulte o resumo deste build."
+            exit 1
+          }
 
       - name: "[Diagnóstico] Verificar onde está o binário compilado"
         shell: pwsh
