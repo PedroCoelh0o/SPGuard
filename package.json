@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "electron": "electron .",
     "electron:build": "npm run rebuild:native && npm run build && electron-builder",
-    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3 --build-from-source",
     "dist:win": "npm run rebuild:native && npm run build && electron-builder --win nsis"
   },
   "build": {

@@ -75,6 +75,8 @@ jobs:
       # DEPOIS do build, a versão recompilada nunca chegaria no instalador.
       - name: Recompilar better-sqlite3 para o Electron
         run: npm run rebuild:native
+        env:
+          DEBUG: "electron-rebuild"
 
       - name: "[Diagnóstico] Verificar onde está o binário compilado"
         shell: pwsh
