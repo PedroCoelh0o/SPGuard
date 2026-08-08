@@ -93,9 +93,9 @@ jobs:
         run: |
           if (Test-Path native-rebuild.log) {
             "## Diagnóstico do better-sqlite3" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            "```text" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            '```text' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
             Get-Content native-rebuild.log -Tail 100 | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            '```' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
           if ("${{ steps.native_rebuild.outcome }}" -eq "failure") {
             Write-Error "A compilação nativa falhou; consulte o resumo deste build."
