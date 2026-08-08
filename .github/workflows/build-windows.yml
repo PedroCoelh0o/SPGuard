@@ -76,6 +76,12 @@ jobs:
       - name: Recompilar better-sqlite3 para o Electron
         run: npm run rebuild:native
 
+      - name: "[Diagnóstico] Listar arquivos gerados pelo rebuild"
+        shell: pwsh
+        run: |
+          Write-Host "=== conteúdo de node_modules/better-sqlite3 ==="
+          Get-ChildItem -Recurse node_modules/better-sqlite3 | Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize
+
       - name: Build do app web (gera .output com o servidor Node)
         run: npm run build
 
