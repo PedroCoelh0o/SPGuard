@@ -37,16 +37,8 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
-      # O better-sqlite3 é um módulo nativo (binário compilado). O binário
-      # que vem pronto no pacote não é compatível com o runtime do
-      # Electron (só com Node.js puro) — precisa ser recompilado
-      # especificamente para o Electron. Isso exige um compilador C++
-      # (MSBuild, parte do Visual Studio). O node-gyp às vezes falha em
-      # localizar o Visual Studio sozinho mesmo quando ele está instalado
-      # no runner — por isso aqui achamos o caminho do MSBuild
-      # explicitamente com o vswhere.exe (que já vem instalado nos
-      # runners do GitHub) e apontamos o node-gyp direto pra ele, em vez
-      # de depender da detecção automática.
+      # O better-sqlite3 é um módulo nativo e precisa ser compilado para a
+      # versão exata do Electron. A compilação usa o MSBuild do VS 2022.
       - name: Localizar o MSBuild e configurar o node-gyp
         shell: pwsh
         run: |
@@ -87,18 +79,9 @@ jobs:
         shell: pwsh
         run: |
           $nodeFile = "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
-          $prebuildFile = "node_modules/better-sqlite3/prebuilds/win32-x64.node"
-
           Write-Host "=== build/Release/better_sqlite3.node ==="
           if (Test-Path $nodeFile) {
             Get-Item $nodeFile | Select-Object FullName, Length, LastWriteTime | Format-List
-          } else {
-            Write-Host "NÃO EXISTE"
-          }
-
-          Write-Host "=== prebuilds/win32-x64.node ==="
-          if (Test-Path $prebuildFile) {
-            Get-Item $prebuildFile | Select-Object FullName, Length, LastWriteTime | Format-List
           } else {
             Write-Host "NÃO EXISTE"
           }
@@ -109,19 +92,11 @@ jobs:
           Write-Host "=== Conteúdo de build/Release (só a raiz, sem entrar em obj/) ==="
           Get-ChildItem node_modules/better-sqlite3/build/Release | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
-          # A versão atual do pacote também fornece o binário N-API em
-          # prebuilds/. O carregador do better-sqlite3, porém, procura-o em
-          # build/Release/. Quando o electron-rebuild não materializa a
-          # cópia nesse destino, o .exe abre mas os cadastros falham com
-          # "Cannot find module ... better_sqlite3.node".
+          # Sem este arquivo o instalador abre, mas toda operação que toca o
+          # banco (por exemplo, cadastrar empresa ou colaborador) falha.
           if (-not (Test-Path $nodeFile)) {
-            if (-not (Test-Path $prebuildFile)) {
-              Write-Error "O binário nativo better_sqlite3.node não foi gerado."
-              exit 1
-            }
-            New-Item -ItemType Directory -Force -Path (Split-Path $nodeFile) | Out-Null
-            Copy-Item $prebuildFile $nodeFile -Force
-            Write-Host "Binário N-API copiado para build/Release."
+            Write-Error "O binário nativo better_sqlite3.node não foi gerado."
+            exit 1
           }
 
       - name: Validar o SQLite dentro do runtime do Electron
