@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local-db/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";

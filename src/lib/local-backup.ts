@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 
 const DB_NAME = "spguard-config";

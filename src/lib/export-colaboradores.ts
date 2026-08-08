@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local-db/client";
 import { formatDate } from "./format";
 
 export type ColabExport = {
@@ -27,15 +27,10 @@ export type ExportFilters = Record<string, string | undefined | null>;
 
 async function logExportacao(tipo: "csv" | "pdf" | "xlsx", filtros: ExportFilters, total: number) {
   try {
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
-    if (!user) return;
     const cleanFilters = Object.fromEntries(
       Object.entries(filtros).filter(([, v]) => v != null && v !== "" && v !== "all"),
     );
     await supabase.from("audit_exportacoes").insert({
-      user_id: user.id,
-      user_email: user.email ?? null,
       tipo,
       modulo: "colaboradores",
       filtros: cleanFilters,

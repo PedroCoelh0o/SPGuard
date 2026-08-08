@@ -1,12 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { createContext, useContext, type ReactNode } from "react";
 
+// App local, uso individual: não há mais login/Supabase Auth. Este contexto
+// existe só para manter compatível a mesma API que o resto do app já usa
+// (canWrite / isAdmin / loading), sem precisar mexer em cada tela.
 export type AppRole = "admin" | "supervisor" | "consulta";
 
 interface AuthCtx {
-  user: User | null;
-  session: Session | null;
+  user: { id: string } | null;
   roles: AppRole[];
   loading: boolean;
   canWrite: boolean;
@@ -14,64 +14,23 @@ interface AuthCtx {
   signOut: () => Promise<void>;
 }
 
-const Ctx = createContext<AuthCtx | null>(null);
+const LOCAL_USER = { id: "local-user" };
 
-const AUTO_EMAIL = "pedromoraes20.pm@gmail.com";
-const AUTO_PASSWORD = "pedromoraes20";
+const value: AuthCtx = {
+  user: LOCAL_USER,
+  roles: ["admin"],
+  loading: false,
+  canWrite: true,
+  isAdmin: true,
+  signOut: async () => {},
+};
 
-async function ensureSession() {
-  const { data } = await supabase.auth.getSession();
-  if (data.session) return data.session;
-  const { data: signed } = await supabase.auth.signInWithPassword({ email: AUTO_EMAIL, password: AUTO_PASSWORD });
-  return signed.session;
-}
+const Ctx = createContext<AuthCtx>(value);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (s?.user) setTimeout(() => loadRoles(s.user.id), 0);
-      else setRoles([]);
-    });
-    ensureSession().then(async (s) => {
-      setSession(s);
-      if (s?.user) await loadRoles(s.user.id);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  async function loadRoles(uid: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    setRoles(((data ?? []) as { role: AppRole }[]).map((r) => r.role));
-  }
-
-  const isAdmin = roles.includes("admin");
-  const canWrite = isAdmin || roles.includes("supervisor");
-
-  return (
-    <Ctx.Provider
-      value={{
-        user: session?.user ?? null,
-        session,
-        roles,
-        loading,
-        isAdmin,
-        canWrite,
-        signOut: async () => { await supabase.auth.signOut(); },
-      }}
-    >
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const c = useContext(Ctx);
-  if (!c) throw new Error("useAuth deve ser usado dentro de AuthProvider");
-  return c;
+  return useContext(Ctx);
 }

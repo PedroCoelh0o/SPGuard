@@ -1,6 +1,6 @@
 // Processo principal do Electron.
 // Sobe o servidor Node (gerado pelo build do TanStack Start / Nitro) e abre
-// uma janela nativa apontando para ele em http://localhost:PORT.
+// uma janela nativa apontando para ele em http://127.0.0.1:PORT.
 //
 // Arquivo em CommonJS (.cjs) porque o package.json do projeto usa
 // "type": "module" — o processo principal do Electron continua sendo
@@ -12,18 +12,24 @@ const http = require("node:http");
 const { fork } = require("node:child_process");
 
 const PORT = process.env.PORT || 3777;
-const SERVER_URL = `http://localhost:${PORT}`;
+// Usa 127.0.0.1 explicitamente (não "localhost") para a janela carregar a
+// página. Em alguns ambientes "localhost" pode resolver para IPv6 (::1)
+// para algumas requisições e IPv4 para outras, o que causa falhas
+// intermitentes de conexão quando o app faz chamadas para o servidor local
+// depois da carga inicial. Usando o IP direto, todas as requisições da
+// página (inclusive as relativas, feitas pelo próprio app) ficam
+// consistentes.
+const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
-// Credenciais públicas (chave "publishable"/anon) do Supabase usadas pelo
-// app. Servem apenas de fallback caso não existam já como variáveis de
-// ambiente reais no sistema — não são segredo, é a chave protegida por RLS
-// que o app usa no navegador normalmente. Se quiser trocar de projeto
-// Supabase no futuro, basta atualizar os valores abaixo (ou definir as
-// mesmas variáveis de ambiente antes de abrir o app).
-const SUPABASE_DEFAULTS = {
-  SUPABASE_URL: "https://gvoxtlguitcpmvelyuat.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_FMOjKxD9ymN0jcEOx7Xarg_1tY9sKjV",
-};
+// Pasta onde ficam o banco SQLite e os arquivos anexados (fotos e
+// documentos dos colaboradores). Usa a pasta de dados do usuário do
+// Windows (ex.: C:\Users\<voce>\AppData\Roaming\Biz People Nexus), então
+// os dados sobrevivem a atualizações/reinstalações do app. Em
+// desenvolvimento (fora do pacote instalável), usa uma pasta local no
+// próprio projeto.
+const LOCAL_DATA_DIR = app.isPackaged
+  ? path.join(app.getPath("userData"), "data")
+  : path.join(__dirname, "..", "local-data");
 
 // Em produção (empacotado), os arquivos do servidor ficam em
 // resources/app-server (copiados via "extraResources" no build do
@@ -44,12 +50,12 @@ function startServer() {
   return new Promise((resolve, reject) => {
     serverProcess = fork(SERVER_ENTRY, [], {
       env: {
-        ...SUPABASE_DEFAULTS,
         ...process.env,
         PORT: String(PORT),
         NITRO_PORT: String(PORT),
         HOST: "127.0.0.1",
         NITRO_PUBLIC_DIR: PUBLIC_DIR,
+        LOCAL_DATA_DIR,
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],
     });
