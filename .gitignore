@@ -16,6 +16,14 @@ dist-ssr
 .nitro
 *.local
 
+# Banco de dados local (SQLite) e arquivos anexados (fotos/documentos de
+# colaboradores) gerados em desenvolvimento — nunca devem ir para o Git,
+# contêm dados sensíveis reais quando usado de verdade.
+local-data/
+
+# Instalador Windows gerado localmente
+dist_electron/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

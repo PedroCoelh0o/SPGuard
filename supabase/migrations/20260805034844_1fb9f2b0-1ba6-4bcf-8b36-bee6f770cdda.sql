@@ -1,2 +1,0 @@
-ALTER TABLE public.colaboradores ADD COLUMN IF NOT EXISTS eletronicos_autorizado boolean NOT NULL DEFAULT true;
-UPDATE public.colaboradores SET eletronicos_autorizado = false WHERE status = 'desligado';
