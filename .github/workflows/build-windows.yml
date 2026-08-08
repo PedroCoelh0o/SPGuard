@@ -76,11 +76,31 @@ jobs:
       - name: Recompilar better-sqlite3 para o Electron
         run: npm run rebuild:native
 
-      - name: "[Diagnóstico] Listar arquivos gerados pelo rebuild"
+      - name: "[Diagnóstico] Verificar onde está o binário compilado"
         shell: pwsh
         run: |
-          Write-Host "=== conteúdo de node_modules/better-sqlite3 ==="
-          Get-ChildItem -Recurse node_modules/better-sqlite3 | Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize
+          $nodeFile = "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          $prebuildFile = "node_modules/better-sqlite3/prebuilds/win32-x64.node"
+
+          Write-Host "=== build/Release/better_sqlite3.node ==="
+          if (Test-Path $nodeFile) {
+            Get-Item $nodeFile | Select-Object FullName, Length, LastWriteTime | Format-List
+          } else {
+            Write-Host "NÃO EXISTE"
+          }
+
+          Write-Host "=== prebuilds/win32-x64.node ==="
+          if (Test-Path $prebuildFile) {
+            Get-Item $prebuildFile | Select-Object FullName, Length, LastWriteTime | Format-List
+          } else {
+            Write-Host "NÃO EXISTE"
+          }
+
+          Write-Host "=== Todos os arquivos .node dentro de node_modules/better-sqlite3 ==="
+          Get-ChildItem -Recurse -Filter "*.node" node_modules/better-sqlite3 | Select-Object FullName, Length, LastWriteTime | Format-List
+
+          Write-Host "=== Conteúdo de build/Release (só a raiz, sem entrar em obj/) ==="
+          Get-ChildItem node_modules/better-sqlite3/build/Release | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
       - name: Build do app web (gera .output com o servidor Node)
         run: npm run build
