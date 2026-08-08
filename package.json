@@ -1,7 +1,7 @@
 {
   "name": "tanstack_start_ts",
   "version": "1.0.0",
-  "description": "Biz People Nexus - gestão de empresas, colaboradores e eletrônicos",
+  "description": "SPGuard - Sistema de Gestão da Segurança Patrimonial",
   "author": "Pedro Coelho",
   "private": true,
   "sideEffects": false,
@@ -20,8 +20,8 @@
     "dist:win": "npm run rebuild:native && npm run build && electron-builder --win nsis"
   },
   "build": {
-    "appId": "com.bizpeoplenexus.app",
-    "productName": "Biz People Nexus",
+    "appId": "com.spguard.app",
+    "productName": "SPGuard",
     "asar": true,
     "npmRebuild": false,
     "directories": {

@@ -11,6 +11,15 @@ const path = require("node:path");
 const http = require("node:http");
 const { pathToFileURL } = require("node:url");
 
+// Garante que o nome do app fique "SPGuard" em tempo de execução também
+// (barra de tarefas do Windows, agrupamento de janelas, notificações) —
+// não só no instalador/atalhos, que já vêm do "productName" configurado
+// no package.json.
+app.setName("SPGuard");
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.spguard.app");
+}
+
 const PORT = process.env.PORT || 3777;
 // Usa 127.0.0.1 explicitamente (não "localhost") para a janela carregar a
 // página. Em alguns ambientes "localhost" pode resolver para IPv6 (::1)
@@ -23,10 +32,9 @@ const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
 // Pasta onde ficam o banco SQLite e os arquivos anexados (fotos e
 // documentos dos colaboradores). Usa a pasta de dados do usuário do
-// Windows (ex.: C:\Users\<voce>\AppData\Roaming\Biz People Nexus), então
-// os dados sobrevivem a atualizações/reinstalações do app. Em
-// desenvolvimento (fora do pacote instalável), usa uma pasta local no
-// próprio projeto.
+// Windows (ex.: C:\Users\<voce>\AppData\Roaming\SPGuard), então os dados
+// sobrevivem a atualizações/reinstalações do app. Em desenvolvimento
+// (fora do pacote instalável), usa uma pasta local no próprio projeto.
 const LOCAL_DATA_DIR = app.isPackaged
   ? path.join(app.getPath("userData"), "data")
   : path.join(__dirname, "..", "local-data");

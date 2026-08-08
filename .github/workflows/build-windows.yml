@@ -6,7 +6,7 @@ name: Build Windows Installer
 #
 # Como usar:
 #   1. Vá em Actions -> "Build Windows Installer" -> "Run workflow".
-#   2. Quando terminar, baixe o artifact "biz-people-nexus-windows-installer".
+#   2. Quando terminar, baixe o artifact "spguard-windows-installer".
 #   3. Dentro do zip está o instalador .exe pronto para rodar no Windows.
 #
 # Também roda automaticamente a cada push na branch main.
@@ -85,5 +85,5 @@ jobs:
       - name: Publicar instalador como artifact
         uses: actions/upload-artifact@v4
         with:
-          name: biz-people-nexus-windows-installer
+          name: spguard-windows-installer
           path: dist_electron/*.exe
