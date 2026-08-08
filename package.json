@@ -22,6 +22,7 @@
     "appId": "com.bizpeoplenexus.app",
     "productName": "Biz People Nexus",
     "asar": true,
+    "npmRebuild": false,
     "directories": {
       "output": "dist_electron"
     },
