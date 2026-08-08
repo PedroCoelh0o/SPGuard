@@ -6,15 +6,23 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 const electronVersion = require("electron/package.json").version;
-const nodeFile = path.join(__dirname, "..", "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
-const prebuildFile = path.join(__dirname, "..", "node_modules", "better-sqlite3", "prebuilds", `${process.platform}-${process.arch}.node`);
-const npmCommand = "npm";
+const addonDir = path.join(__dirname, "..", "node_modules", "better-sqlite3");
+const nodeFile = path.join(addonDir, "build", "Release", "better_sqlite3.node");
+const nodeGypCli = require.resolve("node-gyp/bin/node-gyp.js");
 
-execFileSync(npmCommand, ["rebuild", "better-sqlite3", "--build-from-source"], {
+// Não usamos `npm rebuild`: ele pode considerar o prebuild-download um
+// sucesso sem executar o compilador. Rodar o node-gyp diretamente força a
+// geração do addon para os headers e ABI do Electron instalado.
+execFileSync(process.execPath, [
+  nodeGypCli,
+  "rebuild",
+  "--release",
+  `--target=${electronVersion}`,
+  "--arch=x64",
+  "--dist-url=https://electronjs.org/headers",
+], {
+  cwd: addonDir,
   stdio: "inherit",
-  // Arquivos .cmd não são executáveis diretamente pelo execFile no Windows;
-  // o shell é necessário para resolver o npm.cmd instalado pelo Node.js.
-  shell: process.platform === "win32",
   env: {
     ...process.env,
     npm_config_runtime: "electron",
@@ -23,15 +31,6 @@ execFileSync(npmCommand, ["rebuild", "better-sqlite3", "--build-from-source"], {
     npm_config_build_from_source: "true",
   },
 });
-
-// O npm pode informar sucesso e manter o addon N-API em prebuilds/. Porém,
-// o loader do better-sqlite3 procura exclusivamente em build/Release/.
-// Materializamos a cópia nesse destino; o workflow testa a abertura do banco
-// dentro do Electron logo em seguida, antes de empacotar o instalador.
-if (!fs.existsSync(nodeFile) && fs.existsSync(prebuildFile)) {
-  fs.mkdirSync(path.dirname(nodeFile), { recursive: true });
-  fs.copyFileSync(prebuildFile, nodeFile);
-}
 
 if (!fs.existsSync(nodeFile)) {
   throw new Error(`O binário nativo não foi gerado: ${nodeFile}`);
