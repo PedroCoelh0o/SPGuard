@@ -7,10 +7,13 @@ const fs = require("node:fs");
 
 const electronVersion = require("electron/package.json").version;
 const nodeFile = path.join(__dirname, "..", "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmCommand = "npm";
 
 execFileSync(npmCommand, ["rebuild", "better-sqlite3", "--build-from-source"], {
   stdio: "inherit",
+  // Arquivos .cmd não são executáveis diretamente pelo execFile no Windows;
+  // o shell é necessário para resolver o npm.cmd instalado pelo Node.js.
+  shell: process.platform === "win32",
   env: {
     ...process.env,
     npm_config_runtime: "electron",
