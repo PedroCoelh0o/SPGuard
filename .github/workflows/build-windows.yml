@@ -39,6 +39,11 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
+      - name: Carregar ferramentas C++ do Visual Studio 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       # O better-sqlite3 é um módulo nativo e precisa ser compilado para a
       # versão exata do Electron. A compilação usa o MSBuild do VS 2022.
       - name: Localizar o MSBuild e configurar o node-gyp
@@ -51,7 +56,7 @@ jobs:
             Write-Error "vswhere.exe não encontrado em $vswhere"
             exit 1
           }
-          $msbuild = & $vswhere -products * -version "[17.0,18.0)" -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+          $msbuild = & $vswhere -products * -version "[17.0,18.0)" -requires Microsoft.Component.MSBuild Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
           if (-not $msbuild) {
             Write-Host "Visual Studio 2022 não encontrado, tentando a versão mais recente disponível..."
             $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
