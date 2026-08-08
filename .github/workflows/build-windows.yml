@@ -18,7 +18,13 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # Fixado em "windows-2022" (em vez de "windows-latest") porque essa
+    # imagem vem com Visual Studio 2022 "clássico" instalado. A imagem
+    # mais recente do windows-latest passou a vir com uma versão nova
+    # demais do Visual Studio que a ferramenta de recompilação de módulos
+    # nativos do Electron (@electron/rebuild) ainda não reconhece — um
+    # bug conhecido deles, sem previsão de correção no momento.
+    runs-on: windows-2022
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
