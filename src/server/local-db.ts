@@ -20,7 +20,7 @@ const DATA_DIR = resolveDataDir();
 const DB_PATH = path.join(DATA_DIR, "database.sqlite3");
 const FILES_DIR = path.join(DATA_DIR, "files");
 const STORAGE_BUCKETS = new Set(["colaborador-fotos", "colaborador-documentos"]);
-export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(FILES_DIR, { recursive: true });
@@ -378,11 +378,11 @@ function safeRelPath(bucket: string, relPath: string): string {
 
 export function storageWrite(bucket: string, relPath: string, base64: string): { path: string } {
   if (base64.length > Math.ceil(MAX_ATTACHMENT_BYTES * 4 / 3) + 4) {
-    throw new Error("Arquivo excede o limite de 20 MB");
+    throw new Error("Arquivo excede o limite de 50 MB");
   }
   const abs = safeRelPath(bucket, relPath);
   const contents = Buffer.from(base64, "base64");
-  if (contents.length > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 20 MB");
+  if (contents.length > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 50 MB");
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, contents);
   return { path: relPath };
@@ -391,7 +391,7 @@ export function storageWrite(bucket: string, relPath: string, base64: string): {
 export function storageRead(bucket: string, relPath: string): { base64: string; size: number } | null {
   const abs = safeRelPath(bucket, relPath);
   if (!fs.existsSync(abs)) return null;
-  if (fs.statSync(abs).size > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 20 MB");
+  if (fs.statSync(abs).size > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 50 MB");
   const buf = fs.readFileSync(abs);
   return { base64: buf.toString("base64"), size: buf.length };
 }

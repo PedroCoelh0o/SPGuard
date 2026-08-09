@@ -123,7 +123,7 @@ function storageBucket(bucket: string) {
     async upload(path: string, file: File, opts?: { upsert?: boolean; contentType?: string }) {
       void opts;
       try {
-        if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo excede o limite de 20 MB");
+        if (file.size > 50 * 1024 * 1024) throw new Error("Arquivo excede o limite de 50 MB");
         const base64 = await fileToBase64(file);
         const _localToken = await getLocalToken();
         const res = await storageUploadFn({ data: { bucket, path, base64, _localToken } });
