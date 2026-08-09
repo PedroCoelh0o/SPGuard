@@ -46,6 +46,7 @@ function StatLinha({ titulo, s }: { titulo: string; s?: EntidadeStat }) {
 export function ConfiguracoesDialog() {
   const [open, setOpen] = useState(false);
   const [dirName, setDirName] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -129,6 +130,8 @@ export function ConfiguracoesDialog() {
 
 
   async function pick() {
+    if (picking) return;
+    setPicking(true);
     try {
       const name = await pickAndSaveDir();
       setDirName(name);
@@ -136,7 +139,7 @@ export function ConfiguracoesDialog() {
     } catch (e) {
       const msg = (e as Error).message;
       if (!msg.includes("aborted")) toast.error(msg || "Não foi possível selecionar a pasta");
-    }
+    } finally { setPicking(false); }
   }
 
   async function doSave() {
@@ -181,7 +184,7 @@ export function ConfiguracoesDialog() {
                 <div className="font-mono text-sm">{dirName ? `${dirName}/SPGuard/spguard-dados.xlsx` : "Nenhuma pasta selecionada"}</div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={pick}><FolderOpen className="h-4 w-4" /> Selecionar pasta</Button>
+                <Button variant="outline" onClick={pick} disabled={picking}><FolderOpen className="h-4 w-4" /> {picking ? "Abrindo..." : "Selecionar pasta"}</Button>
                 <Button onClick={doSave} disabled={!dirName || saving}><Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar dados agora"}</Button>
               </div>
               <p className="text-xs text-muted-foreground">

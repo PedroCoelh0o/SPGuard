@@ -5,6 +5,7 @@ import { fetchAllRows } from "@/lib/fetch-all";
 const DB_NAME = "spguard-config";
 const STORE = "handles";
 const KEY = "root-dir";
+let directoryPickerInFlight: Promise<string> | null = null;
 
 function idb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -50,10 +51,24 @@ export async function getSavedDirName(): Promise<string | null> {
 }
 
 export async function pickAndSaveDir(): Promise<string> {
+  // Chromium/Electron permite apenas um seletor de pasta ativo por janela.
+  // Reaproveitar a promessa evita erro caso o botão seja clicado duas vezes
+  // antes de o diálogo do sistema aparecer.
+  if (directoryPickerInFlight) return directoryPickerInFlight;
+
   const picker = (window as unknown as { showDirectoryPicker: (o?: { mode?: string }) => Promise<DirHandle> }).showDirectoryPicker;
-  const handle = await picker({ mode: "readwrite" });
-  await idbSet(KEY, handle);
-  return handle.name;
+  const request = (async () => {
+    const handle = await picker({ mode: "readwrite" });
+    await idbSet(KEY, handle);
+    return handle.name;
+  })();
+  directoryPickerInFlight = request;
+
+  try {
+    return await request;
+  } finally {
+    if (directoryPickerInFlight === request) directoryPickerInFlight = null;
+  }
 }
 
 export async function getDirHandle(): Promise<DirHandle | undefined> {
