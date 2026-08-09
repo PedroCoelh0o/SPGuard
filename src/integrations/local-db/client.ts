@@ -13,6 +13,20 @@ import type { Filter, QueryDescriptor } from "@/server/local-db";
 type PgError = { message: string } | null;
 type PgResult<T> = { data: T | null; error: PgError };
 
+declare global {
+  interface Window { spguardRuntime?: { getRpcToken: () => Promise<string> }; }
+}
+
+let localTokenPromise: Promise<string | undefined> | undefined;
+function getLocalToken() {
+  if (!localTokenPromise) {
+    localTokenPromise = typeof window !== "undefined" && window.spguardRuntime
+      ? window.spguardRuntime.getRpcToken()
+      : Promise.resolve(undefined);
+  }
+  return localTokenPromise;
+}
+
 class QueryBuilder<T = unknown> implements PromiseLike<PgResult<T>> {
   private descriptor: QueryDescriptor;
 
@@ -78,10 +92,10 @@ class QueryBuilder<T = unknown> implements PromiseLike<PgResult<T>> {
     onfulfilled?: ((value: PgResult<T>) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
-    return dbQuery({ data: this.descriptor }).then(
+    return getLocalToken().then((token) => dbQuery({ data: { ...this.descriptor, _localToken: token } }).then(
       (res) => (onfulfilled ? onfulfilled(res as PgResult<T>) : (res as unknown as TResult1)),
       onrejected,
-    );
+    ));
   }
 }
 
@@ -109,20 +123,24 @@ function storageBucket(bucket: string) {
     async upload(path: string, file: File, opts?: { upsert?: boolean; contentType?: string }) {
       void opts;
       try {
+        if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo excede o limite de 20 MB");
         const base64 = await fileToBase64(file);
-        const res = await storageUploadFn({ data: { bucket, path, base64 } });
+        const _localToken = await getLocalToken();
+        const res = await storageUploadFn({ data: { bucket, path, base64, _localToken } });
         return { data: res.data, error: res.error };
       } catch (e) {
         return { data: null, error: { message: (e as Error).message } };
       }
     },
     async remove(paths: string[]) {
-      const res = await storageRemoveFn({ data: { bucket, paths } });
+      const _localToken = await getLocalToken();
+      const res = await storageRemoveFn({ data: { bucket, paths, _localToken } });
       return { data: res.data, error: res.error };
     },
     async createSignedUrl(path: string, _expiresIn: number, opts?: { download?: string }) {
       void _expiresIn;
-      const res = await storageReadFn({ data: { bucket, path } });
+      const _localToken = await getLocalToken();
+      const res = await storageReadFn({ data: { bucket, path, _localToken } });
       if (res.error || !res.data) return { data: null, error: res.error ?? { message: "Arquivo não encontrado" } };
       const contentType = guessContentType(path);
       const blob = base64ToBlob(res.data.base64, contentType);

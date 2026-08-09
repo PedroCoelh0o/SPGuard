@@ -11,6 +11,7 @@ const path = require("node:path");
 const http = require("node:http");
 const { pathToFileURL } = require("node:url");
 const fs = require("node:fs/promises");
+const crypto = require("node:crypto");
 
 // Garante que o nome do app fique "SPGuard" em tempo de execução também
 // (barra de tarefas do Windows, agrupamento de janelas, notificações) —
@@ -30,6 +31,10 @@ const PORT = process.env.PORT || 3777;
 // página (inclusive as relativas, feitas pelo próprio app) ficam
 // consistentes.
 const SERVER_URL = `http://127.0.0.1:${PORT}`;
+const SERVER_ORIGIN = new URL(SERVER_URL).origin;
+// Segredo efêmero: protege as RPCs locais de outros processos. Nunca é
+// persistido e é entregue ao renderer somente pela ponte IPC confiável.
+const LOCAL_RPC_TOKEN = crypto.randomBytes(32).toString("hex");
 
 // Pasta onde ficam o banco SQLite e os arquivos anexados (fotos e
 // documentos dos colaboradores). Usa a pasta de dados do usuário do
@@ -80,6 +85,14 @@ function validarNomePlanilha(name) {
   if (!PLANILHAS_PERMITIDAS.has(name)) throw new Error("Arquivo de planilha inválido");
 }
 
+function senderConfiavel(webContents) {
+  try { return new URL(webContents.getURL()).origin === SERVER_ORIGIN; } catch { return false; }
+}
+
+function exigirSenderConfiavel(event) {
+  if (!senderConfiavel(event.sender)) throw new Error("Origem não autorizada");
+}
+
 async function caminhoPlanilha(name) {
   validarNomePlanilha(name);
   const directory = await diretorioPlanilhas();
@@ -89,6 +102,7 @@ async function caminhoPlanilha(name) {
 }
 
 ipcMain.handle("spguard-files:select-directory", async (event) => {
+  exigirSenderConfiavel(event);
   const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
     title: "Selecione a pasta para as planilhas do SPGuard",
     properties: ["openDirectory", "createDirectory"],
@@ -98,25 +112,34 @@ ipcMain.handle("spguard-files:select-directory", async (event) => {
   return path.basename(result.filePaths[0]);
 });
 
-ipcMain.handle("spguard-files:get-directory-name", async () => {
+ipcMain.handle("spguard-files:get-directory-name", async (event) => {
+  exigirSenderConfiavel(event);
   const directory = await diretorioPlanilhas();
   return directory ? path.basename(directory) : null;
 });
 
 ipcMain.handle("spguard-files:file-exists", async (_event, name) => {
+  exigirSenderConfiavel(_event);
   const { file } = await caminhoPlanilha(name);
   try { await fs.access(file); return true; } catch { return false; }
 });
 
 ipcMain.handle("spguard-files:write-file", async (_event, name, contents) => {
+  exigirSenderConfiavel(_event);
   const { spguard, file } = await caminhoPlanilha(name);
   await fs.mkdir(spguard, { recursive: true });
   await fs.writeFile(file, Buffer.from(contents));
 });
 
 ipcMain.handle("spguard-files:read-file", async (_event, name) => {
+  exigirSenderConfiavel(_event);
   const { file } = await caminhoPlanilha(name);
   return new Uint8Array(await fs.readFile(file));
+});
+
+ipcMain.handle("spguard-runtime:get-rpc-token", async (event) => {
+  exigirSenderConfiavel(event);
+  return LOCAL_RPC_TOKEN;
 });
 
 // O servidor roda DENTRO do próprio processo principal do Electron (não
@@ -129,6 +152,7 @@ function startServer() {
   process.env.HOST = "127.0.0.1";
   process.env.NITRO_PUBLIC_DIR = PUBLIC_DIR;
   process.env.LOCAL_DATA_DIR = LOCAL_DATA_DIR;
+  process.env.LOCAL_RPC_TOKEN = LOCAL_RPC_TOKEN;
 
   // O bundle do Nitro é um módulo ESM (.mjs) que, ao ser importado, já
   // sobe o servidor HTTP como efeito colateral (é o mesmo arquivo que
@@ -178,11 +202,21 @@ function createWindow() {
   // Links externos (ex.: target="_blank") abrem no navegador padrão,
   // não dentro da janela do app.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(SERVER_URL)) {
+    let origin;
+    try { origin = new URL(url).origin; } catch { return { action: "deny" }; }
+    if (origin !== SERVER_ORIGIN) {
       shell.openExternal(url);
       return { action: "deny" };
     }
     return { action: "allow" };
+  });
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    try {
+      if (new URL(url).origin === SERVER_ORIGIN) return;
+    } catch { /* URL inválida também é bloqueada */ }
+    event.preventDefault();
+    shell.openExternal(url);
   });
 
   mainWindow.loadURL(SERVER_URL);

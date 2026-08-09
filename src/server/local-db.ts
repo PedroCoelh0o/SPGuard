@@ -19,6 +19,8 @@ function resolveDataDir(): string {
 const DATA_DIR = resolveDataDir();
 const DB_PATH = path.join(DATA_DIR, "database.sqlite3");
 const FILES_DIR = path.join(DATA_DIR, "files");
+const STORAGE_BUCKETS = new Set(["colaborador-fotos", "colaborador-documentos"]);
+export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(FILES_DIR, { recursive: true });
@@ -362,22 +364,34 @@ export function executeQuery(q: QueryDescriptor): QueryResult {
 // ---------------------------------------------------------------------------
 
 function safeRelPath(bucket: string, relPath: string): string {
+  if (!STORAGE_BUCKETS.has(bucket)) throw new Error("Bucket de arquivo inválido");
   if (!/^[\w.\-/]+$/.test(relPath) || relPath.includes("..")) {
     throw new Error("Caminho de arquivo inválido");
   }
-  return path.join(FILES_DIR, bucket, relPath);
+  const root = path.resolve(FILES_DIR, bucket);
+  const resolved = path.resolve(root, relPath);
+  if (path.relative(root, resolved).startsWith("..") || path.isAbsolute(path.relative(root, resolved))) {
+    throw new Error("Caminho de arquivo inválido");
+  }
+  return resolved;
 }
 
 export function storageWrite(bucket: string, relPath: string, base64: string): { path: string } {
+  if (base64.length > Math.ceil(MAX_ATTACHMENT_BYTES * 4 / 3) + 4) {
+    throw new Error("Arquivo excede o limite de 20 MB");
+  }
   const abs = safeRelPath(bucket, relPath);
+  const contents = Buffer.from(base64, "base64");
+  if (contents.length > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 20 MB");
   fs.mkdirSync(path.dirname(abs), { recursive: true });
-  fs.writeFileSync(abs, Buffer.from(base64, "base64"));
+  fs.writeFileSync(abs, contents);
   return { path: relPath };
 }
 
 export function storageRead(bucket: string, relPath: string): { base64: string; size: number } | null {
   const abs = safeRelPath(bucket, relPath);
   if (!fs.existsSync(abs)) return null;
+  if (fs.statSync(abs).size > MAX_ATTACHMENT_BYTES) throw new Error("Arquivo excede o limite de 20 MB");
   const buf = fs.readFileSync(abs);
   return { base64: buf.toString("base64"), size: buf.length };
 }

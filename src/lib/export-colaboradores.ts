@@ -60,7 +60,8 @@ async function fetchAnexosCount(ids: string[]) {
 }
 
 function csvEscape(v: unknown) {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  if (/^\s*[=+\-@]/.test(s)) s = `'${s}`;
   if (/[",;\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

@@ -9,3 +9,7 @@ contextBridge.exposeInMainWorld("spguardFiles", {
   writeFile: (name, contents) => ipcRenderer.invoke("spguard-files:write-file", name, contents),
   readFile: (name) => ipcRenderer.invoke("spguard-files:read-file", name),
 });
+
+contextBridge.exposeInMainWorld("spguardRuntime", {
+  getRpcToken: () => ipcRenderer.invoke("spguard-runtime:get-rpc-token"),
+});
