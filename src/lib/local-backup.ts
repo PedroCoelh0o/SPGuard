@@ -123,7 +123,13 @@ export async function saveBackupNow(): Promise<{ path: string; total: number }> 
   return { path: `${handle.name}/SPGuard/spguard-dados.xlsx`, total: empresas.length + colaboradores.length + eletronicos.length };
 }
 
-type RestoreResult = { empresas: number; colaboradores: number; eletronicos: number };
+type RestoreResult = {
+  empresas: number;
+  colaboradores: number;
+  eletronicos: number;
+  colaboradoresIgnorados: number;
+  eletronicosIgnorados: number;
+};
 
 function sheetRows(wb: XLSX.WorkBook, name: string): Record<string, unknown>[] {
   const ws = wb.Sheets[name];
@@ -137,6 +143,14 @@ function clean(rows: Record<string, unknown>[]) {
     for (const [k, v] of Object.entries(r)) o[k] = v === "" ? null : v;
     return o;
   });
+}
+
+function digits(value: unknown) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+
+function text(value: unknown) {
+  return String(value ?? "").trim();
 }
 
 async function upsertAll(table: string, rows: Record<string, unknown>[]) {
@@ -168,9 +182,70 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   const colaboradores = clean(sheetRows(wb, "Colaboradores"));
   const eletronicos = clean(sheetRows(wb, "Eletronicos"));
 
+  // O CPF é único. Um backup pode conter o mesmo colaborador mais de uma
+  // vez (por exemplo, após planilhas terem sido mescladas). Mantemos a
+  // primeira ocorrência e atualizamos o registro já existente pelo CPF.
+  const existentes = await fetchAllRows<{ id: string; cpf: string | null }>(
+    () => supabase.from("colaboradores").select("id, cpf") as never,
+  );
+  const idPorCpf = new Map<string, string>();
+  for (const c of existentes) {
+    const cpf = digits(c.cpf);
+    if (cpf) idPorCpf.set(cpf, c.id);
+  }
+
+  const cpfsNoBackup = new Set<string>();
+  const idOriginalParaRestaurado = new Map<string, string>();
+  const colaboradoresValidos: Record<string, unknown>[] = [];
+  let colaboradoresIgnorados = 0;
+
+  for (const colaborador of colaboradores) {
+    const originalId = text(colaborador.id);
+    const cpf = digits(colaborador.cpf);
+    if (cpf && cpfsNoBackup.has(cpf)) {
+      colaboradoresIgnorados++;
+      continue;
+    }
+    if (cpf) cpfsNoBackup.add(cpf);
+
+    const idExistente = cpf ? idPorCpf.get(cpf) : undefined;
+    const idRestaurado = idExistente ?? originalId;
+    if (originalId && idRestaurado) idOriginalParaRestaurado.set(originalId, idRestaurado);
+    colaboradoresValidos.push(idExistente ? { ...colaborador, id: idExistente } : colaborador);
+  }
+
+  const empresasRestauradas = await upsertAll("empresas", empresas);
+  const colaboradoresRestaurados = await upsertAll("colaboradores", colaboradoresValidos);
+
+  // Releitura necessária para cobrir colaboradores novos cujo ID não estava
+  // presente na planilha. Eletrônicos sem colaborador válido são ignorados:
+  // isso evita a falha NOT NULL e preserva o restante do backup.
+  const colaboradoresAposRestore = await fetchAllRows<{ id: string; cpf: string | null }>(
+    () => supabase.from("colaboradores").select("id, cpf") as never,
+  );
+  const idsColaboradores = new Set(colaboradoresAposRestore.map((c) => c.id));
+  for (const c of colaboradoresAposRestore) {
+    const cpf = digits(c.cpf);
+    if (cpf) idPorCpf.set(cpf, c.id);
+  }
+
+  const eletronicosValidos: Record<string, unknown>[] = [];
+  let eletronicosIgnorados = 0;
+  for (const eletronico of eletronicos) {
+    const idOriginal = text(eletronico.colaborador_id);
+    const colaboradorId = idOriginalParaRestaurado.get(idOriginal) ?? idOriginal;
+    if (!colaboradorId || !idsColaboradores.has(colaboradorId)) {
+      eletronicosIgnorados++;
+      continue;
+    }
+    eletronicosValidos.push({ ...eletronico, colaborador_id: colaboradorId });
+  }
+
   return {
-    empresas: await upsertAll("empresas", empresas),
-    colaboradores: await upsertAll("colaboradores", colaboradores),
-    eletronicos: await upsertAll("eletronicos", eletronicos),
+    empresas: empresasRestauradas,
+    colaboradores: colaboradoresRestaurados,
+    eletronicos: await upsertAll("eletronicos", eletronicosValidos),
+    colaboradoresIgnorados,
+    eletronicosIgnorados,
   };
 }

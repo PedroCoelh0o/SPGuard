@@ -156,7 +156,12 @@ export function ConfiguracoesDialog() {
     setRestoring(true);
     try {
       const r = await restoreBackup(file);
-      toast.success(`Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores, ${r.eletronicos} eletrônicos`);
+      toast.success(
+        `Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores, ${r.eletronicos} eletrônicos`,
+        r.colaboradoresIgnorados || r.eletronicosIgnorados
+          ? { description: `${r.colaboradoresIgnorados} colaborador(es) duplicado(s) e ${r.eletronicosIgnorados} eletrônico(s) sem vínculo válido foram ignorados.` }
+          : undefined,
+      );
       setTimeout(() => window.location.reload(), 1200);
     } catch (e) { toast.error((e as Error).message); }
     finally { setRestoring(false); if (fileRef.current) fileRef.current.value = ""; }
