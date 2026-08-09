@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
-import { getDirHandle, ensurePermission } from "@/lib/local-backup";
+import { getDirHandle, ensurePermission, getSavedDirName, hasDesktopFileBridge, desktopFileExists, readDesktopFile, writeDesktopFile } from "@/lib/local-backup";
 
 export const ENTRADA_FILE = "spguard-eletronicos.xlsx";
 const LAST_SYNC_KEY = "spguard-entrada-last-sync";
@@ -54,6 +54,20 @@ async function entradaHandle(create: boolean) {
 
 /** Cria o arquivo de entrada com as planilhas Colaboradores e Eletronicos (não sobrescreve se já existir). */
 export async function createEntradaFile(): Promise<{ path: string; created: boolean }> {
+  if (hasDesktopFileBridge()) {
+    const dirName = await getSavedDirName();
+    if (!dirName) throw new Error("Selecione uma pasta primeiro");
+    const path = `${dirName}/SPGuard/${ENTRADA_FILE}`;
+    if (await desktopFileExists(ENTRADA_FILE)) return { path, created: false };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([COLAB_HEADERS]), "Colaboradores");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([ELETR_HEADERS]), "Eletronicos");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    await writeDesktopFile(ENTRADA_FILE, new Uint8Array(buf));
+    return { path, created: true };
+  }
+
   const dir = await getDirHandle();
   if (!dir) throw new Error("Selecione uma pasta primeiro");
   await ensurePermission(dir);
@@ -143,8 +157,13 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
   report({ fase: "lendo", atual: 0, total: 0, label: "Lendo a planilha..." });
   let file = o.file;
   if (!file) {
-    const { fh } = await entradaHandle(false);
-    file = await fh.getFile();
+    if (hasDesktopFileBridge()) {
+      const bytes = await readDesktopFile(ENTRADA_FILE);
+      file = new File([bytes], ENTRADA_FILE, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    } else {
+      const { fh } = await entradaHandle(false);
+      file = await fh.getFile();
+    }
   }
   const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
   const erros: string[] = [];

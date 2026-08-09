@@ -39,11 +39,51 @@ type DirHandle = FileSystemDirectoryHandle & {
   requestPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
 };
 
+type DesktopFiles = {
+  selectDirectory: () => Promise<string>;
+  getDirectoryName: () => Promise<string | null>;
+  fileExists: (name: string) => Promise<boolean>;
+  writeFile: (name: string, contents: Uint8Array) => Promise<void>;
+  readFile: (name: string) => Promise<Uint8Array>;
+};
+
+declare global {
+  interface Window { spguardFiles?: DesktopFiles; }
+}
+
+function desktopFiles() {
+  return typeof window !== "undefined" ? window.spguardFiles : undefined;
+}
+
+export function hasDesktopFileBridge() {
+  return !!desktopFiles();
+}
+
+export async function desktopFileExists(name: string) {
+  const files = desktopFiles();
+  if (!files) throw new Error("Recurso de arquivos do aplicativo indisponível");
+  return files.fileExists(name);
+}
+
+export async function writeDesktopFile(name: string, contents: Uint8Array) {
+  const files = desktopFiles();
+  if (!files) throw new Error("Recurso de arquivos do aplicativo indisponível");
+  await files.writeFile(name, contents);
+}
+
+export async function readDesktopFile(name: string) {
+  const files = desktopFiles();
+  if (!files) throw new Error("Recurso de arquivos do aplicativo indisponível");
+  return files.readFile(name);
+}
+
 export function isFsSupported() {
-  return typeof window !== "undefined" && "showDirectoryPicker" in window;
+  return hasDesktopFileBridge() || (typeof window !== "undefined" && "showDirectoryPicker" in window);
 }
 
 export async function getSavedDirName(): Promise<string | null> {
+  const files = desktopFiles();
+  if (files) return files.getDirectoryName();
   try {
     const h = await idbGet<DirHandle>(KEY);
     return h?.name ?? null;
@@ -51,6 +91,9 @@ export async function getSavedDirName(): Promise<string | null> {
 }
 
 export async function pickAndSaveDir(): Promise<string> {
+  const files = desktopFiles();
+  if (files) return files.selectDirectory();
+
   // Chromium/Electron permite apenas um seletor de pasta ativo por janela.
   // Reaproveitar a promessa evita erro caso o botão seja clicado duas vezes
   // antes de o diálogo do sistema aparecer.
@@ -103,18 +146,26 @@ async function fetchAllData() {
 }
 
 export async function saveBackupNow(): Promise<{ path: string; total: number }> {
-  const handle = await idbGet<DirHandle>(KEY);
-  if (!handle) throw new Error("Selecione uma pasta primeiro");
-  await ensurePermission(handle);
-  const sp = await handle.getDirectoryHandle("SPGuard", { create: true });
-  const file = await sp.getFileHandle("spguard-dados.xlsx", { create: true });
-
   const { empresas, colaboradores, eletronicos } = await fetchAllData();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(empresas), "Empresas");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(colaboradores), "Colaboradores");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eletronicos), "Eletronicos");
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+
+  const files = desktopFiles();
+  if (files) {
+    const name = await files.getDirectoryName();
+    if (!name) throw new Error("Selecione uma pasta primeiro");
+    await files.writeFile("spguard-dados.xlsx", new Uint8Array(buf));
+    return { path: `${name}/SPGuard/spguard-dados.xlsx`, total: empresas.length + colaboradores.length + eletronicos.length };
+  }
+
+  const handle = await idbGet<DirHandle>(KEY);
+  if (!handle) throw new Error("Selecione uma pasta primeiro");
+  await ensurePermission(handle);
+  const sp = await handle.getDirectoryHandle("SPGuard", { create: true });
+  const file = await sp.getFileHandle("spguard-dados.xlsx", { create: true });
 
   const writable = await (file as unknown as { createWritable: () => Promise<{ write: (b: BufferSource) => Promise<void>; close: () => Promise<void> }> }).createWritable();
   await writable.write(buf);
@@ -169,12 +220,18 @@ async function upsertAll(table: string, rows: Record<string, unknown>[]) {
 export async function restoreBackup(fileOverride?: File): Promise<RestoreResult> {
   let file: File | undefined = fileOverride;
   if (!file) {
+    const files = desktopFiles();
+    if (files) {
+      const bytes = await files.readFile("spguard-dados.xlsx");
+      file = new File([bytes], "spguard-dados.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    } else {
     const handle = await idbGet<DirHandle>(KEY);
     if (!handle) throw new Error("Selecione uma pasta primeiro");
     await ensurePermission(handle);
     const sp = await handle.getDirectoryHandle("SPGuard", { create: false });
     const fh = await sp.getFileHandle("spguard-dados.xlsx", { create: false });
     file = await (fh as unknown as { getFile: () => Promise<File> }).getFile();
+    }
   }
   const wb = XLSX.read(await file!.arrayBuffer(), { type: "array" });
 

@@ -6,10 +6,11 @@
 // "type": "module" — o processo principal do Electron continua sendo
 // carregado normalmente como CommonJS através dessa extensão.
 
-const { app, BrowserWindow, shell, Menu } = require("electron");
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require("electron");
 const path = require("node:path");
 const http = require("node:http");
 const { pathToFileURL } = require("node:url");
+const fs = require("node:fs/promises");
 
 // Garante que o nome do app fique "SPGuard" em tempo de execução também
 // (barra de tarefas do Windows, agrupamento de janelas, notificações) —
@@ -52,6 +53,71 @@ const PUBLIC_DIR = app.isPackaged
   : path.join(__dirname, "..", ".output", "public");
 
 let mainWindow = null;
+
+const PLANILHAS_PERMITIDAS = new Set(["spguard-dados.xlsx", "spguard-eletronicos.xlsx"]);
+const DIRETORIO_CONFIG = "spguard-planilhas.json";
+
+function caminhoConfigPlanilhas() {
+  return path.join(app.getPath("userData"), DIRETORIO_CONFIG);
+}
+
+async function diretorioPlanilhas() {
+  try {
+    const raw = await fs.readFile(caminhoConfigPlanilhas(), "utf8");
+    const value = JSON.parse(raw);
+    return typeof value?.directory === "string" ? value.directory : null;
+  } catch {
+    return null;
+  }
+}
+
+async function salvarDiretorioPlanilhas(directory) {
+  await fs.mkdir(app.getPath("userData"), { recursive: true });
+  await fs.writeFile(caminhoConfigPlanilhas(), JSON.stringify({ directory }), "utf8");
+}
+
+function validarNomePlanilha(name) {
+  if (!PLANILHAS_PERMITIDAS.has(name)) throw new Error("Arquivo de planilha inválido");
+}
+
+async function caminhoPlanilha(name) {
+  validarNomePlanilha(name);
+  const directory = await diretorioPlanilhas();
+  if (!directory) throw new Error("Selecione uma pasta primeiro");
+  const spguard = path.join(directory, "SPGuard");
+  return { spguard, file: path.join(spguard, name) };
+}
+
+ipcMain.handle("spguard-files:select-directory", async (event) => {
+  const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+    title: "Selecione a pasta para as planilhas do SPGuard",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (result.canceled || !result.filePaths[0]) throw new Error("Seleção de pasta cancelada");
+  await salvarDiretorioPlanilhas(result.filePaths[0]);
+  return path.basename(result.filePaths[0]);
+});
+
+ipcMain.handle("spguard-files:get-directory-name", async () => {
+  const directory = await diretorioPlanilhas();
+  return directory ? path.basename(directory) : null;
+});
+
+ipcMain.handle("spguard-files:file-exists", async (_event, name) => {
+  const { file } = await caminhoPlanilha(name);
+  try { await fs.access(file); return true; } catch { return false; }
+});
+
+ipcMain.handle("spguard-files:write-file", async (_event, name, contents) => {
+  const { spguard, file } = await caminhoPlanilha(name);
+  await fs.mkdir(spguard, { recursive: true });
+  await fs.writeFile(file, Buffer.from(contents));
+});
+
+ipcMain.handle("spguard-files:read-file", async (_event, name) => {
+  const { file } = await caminhoPlanilha(name);
+  return new Uint8Array(await fs.readFile(file));
+});
 
 // O servidor roda DENTRO do próprio processo principal do Electron (não
 // como um processo filho separado via child_process.fork). É um padrão
@@ -100,6 +166,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, "preload.cjs"),
     },
     show: false,
   });
