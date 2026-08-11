@@ -152,7 +152,10 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   async function downloadDoc(d: Doc) {
     const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 60, { download: d.nome });
     if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
-    window.open(data.signedUrl, "_blank");
+    // O cliente local já dispara o download ao receber a opção `download`.
+    // Abrir o blob novamente criava uma segunda janela, que ficava em branco
+    // para formatos que o navegador não visualiza nativamente.
+    window.setTimeout(() => URL.revokeObjectURL(data.signedUrl), 1000);
   }
 
   async function viewDoc(d: Doc) {
