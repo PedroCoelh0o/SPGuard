@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Search, Eye, UserX, UserCheck, FileText } from "lucide-react";
+import { Smartphone, Search, Eye, UserX, UserCheck, FileText, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EletronicosTab } from "@/components/EletronicosTab";
+import { Checkbox } from "@/components/ui/checkbox";
 import { exportEletronicosPDF } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
@@ -33,12 +34,14 @@ export const Route = createFileRoute("/_authenticated/eletronicos")({
 });
 
 function EletronicosPage() {
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>("all");
   const [q, setQ] = useState("");
   const [exporting, setExporting] = useState(false);
   const [detalhes, setDetalhes] = useState<{ id: string; nome: string } | null>(null);
+  const [excluindo, setExcluindo] = useState<{ id: string; nome: string } | null>(null);
+  const [selecionados, setSelecionados] = useState<string[]>([]);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -76,8 +79,8 @@ function EletronicosPage() {
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["consulta-eletronicos"],
     queryFn: async () =>
-      await fetchAllRows<{ tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }>(
-        () => supabase.from("eletronicos" as never).select("tipo, colaborador_id").order("created_at") as never,
+      await fetchAllRows<{ id: string; tipo: "celular" | "notebook" | "tablet"; descricao: string | null; modelo: string | null; colaborador_id: string }>(
+        () => supabase.from("eletronicos" as never).select("id, tipo, descricao, modelo, colaborador_id").order("created_at") as never,
       ),
   });
 
@@ -116,6 +119,23 @@ function EletronicosPage() {
   }, [eletronicos, colabs, empresaSel, empresaMap, qd]);
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
+  const itensParaExcluir = excluindo ? eletronicos.filter((e) => e.colaborador_id === excluindo.id) : [];
+
+  const excluirSelecionados = useMutation({
+    mutationFn: async () => {
+      for (const id of selecionados) {
+        const { error } = await supabase.from("eletronicos" as never).delete().eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(`${selecionados.length} eletrônico(s) excluído(s)`);
+      qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+      setExcluindo(null); setSelecionados([]);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   async function exportPdf() {
     if (stats.length === 0) { toast.error("Nenhum colaborador para exportar"); return; }
@@ -219,6 +239,11 @@ function EletronicosPage() {
                           {s.autorizado ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
                         </Button>
                       )}
+                      {isAdmin && (
+                        <Button size="icon" variant="ghost" aria-label={`Excluir eletrônicos de ${s.nome}`} title="Excluir eletrônicos" onClick={() => { setExcluindo({ id: s.id, nome: s.nome }); setSelecionados([]); }}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
 
                   </TableRow>
@@ -239,6 +264,19 @@ function EletronicosPage() {
             <DialogTitle>Eletrônicos de {detalhes?.nome}</DialogTitle>
           </DialogHeader>
           {detalhes && <EletronicosTab colaboradorId={detalhes.id} colaboradorNome={detalhes.nome} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!excluindo} onOpenChange={(v) => { if (!v) { setExcluindo(null); setSelecionados([]); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Excluir eletrônicos de {excluindo?.nome}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para excluir. Esta ação não pode ser desfeita.</p>
+          <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
+            {itensParaExcluir.map((e) => {
+              const label = [e.tipo === "celular" ? "Celular" : e.tipo === "notebook" ? "Notebook" : "Tablet", e.descricao, e.modelo].filter(Boolean).join(" — ");
+              return <label key={e.id} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-muted"><Checkbox checked={selecionados.includes(e.id)} onCheckedChange={(v) => setSelecionados((old) => v ? [...old, e.id] : old.filter((id) => id !== e.id))} /><span className="text-sm">{label}</span></label>;
+            })}
+          </div>
+          <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button><Button variant="destructive" disabled={selecionados.length === 0 || excluirSelecionados.isPending} onClick={() => excluirSelecionados.mutate()}><Trash2 className="h-4 w-4" /> {excluirSelecionados.isPending ? "Excluindo..." : "Excluir selecionados"}</Button></div>
         </DialogContent>
       </Dialog>
     </div>
