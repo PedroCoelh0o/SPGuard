@@ -29,7 +29,7 @@ type Row = {
   sexo: string | null;
   data_admissao: string | null;
   data_desligamento: string | null;
-  motivo_desligamento: string | null;
+  motivo_desligamento: string | null; observacoes: string | null;
   status: string;
   telefone: string | null;
   celular: string | null;
@@ -47,7 +47,7 @@ type Row = {
 
 const HEADERS = [
   "nome","cpf","rg","matricula","empresa","setor","cargo","escolaridade","data_nascimento","sexo",
-  "data_admissao","data_desligamento","motivo_desligamento","status",
+  "data_admissao","data_desligamento","motivo_desligamento","observacoes","status",
   "telefone","celular","email","cep","rua","numero","bairro","cidade","estado",
 ];
 
@@ -190,6 +190,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
         data_admissao: parseDate(get("data_admissao")),
         data_desligamento: parseDate(get("data_desligamento")),
         motivo_desligamento: String(get("motivo_desligamento") ?? "").trim() || null,
+        observacoes: String(get("observacoes") ?? "").trim() || null,
         status: status === "desligado" ? "desligado" : "ativo",
         telefone: String(get("telefone") ?? "").trim() || null,
         celular: String(get("celular") ?? "").trim() || null,
@@ -221,7 +222,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
         nome: r.nome, cpf: r.cpf, rg: r.rg, matricula: r.matricula, empresa_id: r.empresa_id!, setor: r.setor,
         cargo: r.cargo, escolaridade: r.escolaridade, data_nascimento: r.data_nascimento,
         sexo: r.sexo, data_admissao: r.data_admissao, data_desligamento: r.data_desligamento,
-        motivo_desligamento: r.motivo_desligamento, status: r.status,
+        motivo_desligamento: r.motivo_desligamento, observacoes: r.observacoes, status: r.status,
         telefone: r.telefone, celular: r.celular, email: r.email,
         cep: r.cep, rua: r.rua, numero: r.numero, bairro: r.bairro, cidade: r.cidade, estado: r.estado,
       };

@@ -9,7 +9,7 @@ export const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
 
 const COLAB_HEADERS = [
   "nome", "cpf", "rg", "matricula", "empresa", "setor", "cargo", "turno", "escolaridade",
-  "data_nascimento", "sexo", "data_admissao", "data_desligamento", "motivo_desligamento", "status",
+  "data_nascimento", "sexo", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status",
   "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado",
 ];
 
@@ -220,6 +220,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
       data_admissao: parseDate(get("data_admissao")),
       data_desligamento,
       motivo_desligamento: str(get("motivo_desligamento")),
+      observacoes: str(get("observacoes")),
       status: data_desligamento ? "desligado" : (str(get("status")) ?? "ativo"),
       telefone: str(get("telefone")), celular: str(get("celular")), email: str(get("email")),
       cep: str(get("cep")), rua: str(get("rua")), numero: str(get("numero")),

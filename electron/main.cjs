@@ -59,7 +59,11 @@ const PUBLIC_DIR = app.isPackaged
 
 let mainWindow = null;
 
-const PLANILHAS_PERMITIDAS = new Set(["spguard-dados.xlsx", "spguard-eletronicos.xlsx"]);
+const ARQUIVOS_PERMITIDOS = new Set([
+  "spguard-dados.xlsx",
+  "spguard-eletronicos.xlsx",
+  "spguard-backup-completo.zip",
+]);
 const DIRETORIO_CONFIG = "spguard-planilhas.json";
 
 function caminhoConfigPlanilhas() {
@@ -81,8 +85,8 @@ async function salvarDiretorioPlanilhas(directory) {
   await fs.writeFile(caminhoConfigPlanilhas(), JSON.stringify({ directory }), "utf8");
 }
 
-function validarNomePlanilha(name) {
-  if (!PLANILHAS_PERMITIDAS.has(name)) throw new Error("Arquivo de planilha inválido");
+function validarNomeArquivo(name) {
+  if (!ARQUIVOS_PERMITIDOS.has(name)) throw new Error("Arquivo do SPGuard inválido");
 }
 
 function senderConfiavel(webContents) {
@@ -94,7 +98,7 @@ function exigirSenderConfiavel(event) {
 }
 
 async function caminhoPlanilha(name) {
-  validarNomePlanilha(name);
+  validarNomeArquivo(name);
   const directory = await diretorioPlanilhas();
   if (!directory) throw new Error("Selecione uma pasta primeiro");
   const spguard = path.join(directory, "SPGuard");

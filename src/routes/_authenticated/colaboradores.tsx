@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,7 +41,7 @@ type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
   cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
   turno: string | null;
-  data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
+  data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; observacoes: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
   foto_url: string | null;
@@ -285,6 +286,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
             <TabsTrigger value="trab">Trabalhistas</TabsTrigger>
             <TabsTrigger value="contato">Contato</TabsTrigger>
             <TabsTrigger value="end">Endereço</TabsTrigger>
+            <TabsTrigger value="obs">Observações</TabsTrigger>
           </TabsList>
           <TabsContent value="pessoal" className="grid gap-4 sm:grid-cols-2 mt-4">
             <div className="sm:col-span-2"><Label>Nome Completo *</Label><Input required value={v.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
@@ -352,6 +354,10 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
                 <SelectContent>{UFS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+          </TabsContent>
+          <TabsContent value="obs" className="mt-4">
+            <Label htmlFor="observacoes">Observações</Label>
+            <Textarea id="observacoes" className="mt-2 min-h-40" value={v.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} placeholder="Registre informações importantes sobre este colaborador..." />
           </TabsContent>
         </Tabs>
         <DialogFooter className="mt-6">

@@ -37,6 +37,7 @@ function getDb(): Database.Database {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
+  ensureSchemaMigrations(db);
   dbInstance = db;
   return db;
 }
@@ -74,6 +75,7 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   data_admissao TEXT,
   data_desligamento TEXT,
   motivo_desligamento TEXT,
+  observacoes TEXT,
   status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo','desligado')),
   telefone TEXT,
   celular TEXT,
@@ -133,6 +135,15 @@ CREATE TABLE IF NOT EXISTS audit_exportacoes (
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_exportacoes(created_at DESC);
 `;
 
+// CREATE TABLE IF NOT EXISTS não altera bancos que já existiam. A migração
+// mantém todos os cadastros e acrescenta apenas o novo campo opcional.
+function ensureSchemaMigrations(db: Database.Database) {
+  const columns = db.prepare("PRAGMA table_info(colaboradores)").all() as { name: string }[];
+  if (!columns.some((column) => column.name === "observacoes")) {
+    db.exec("ALTER TABLE colaboradores ADD COLUMN observacoes TEXT");
+  }
+}
+
 // Nota: no Postgres original, "touch updated_at" e "auto-status desligado ao
 // preencher data_desligamento" eram triggers de banco. Aqui são aplicados em
 // runInsert/runUpdate (ver applyBusinessRules abaixo) — evita qualquer risco
@@ -149,7 +160,7 @@ function applyBusinessRules(table: string, payload: Record<string, unknown>) {
 
 const TABLE_COLUMNS: Record<string, string[]> = {
   empresas: ["id", "razao_social", "nome_fantasia", "cnpj", "responsavel", "telefone", "email", "endereco", "cidade", "estado", "status", "created_at", "updated_at"],
-  colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "created_at", "updated_at"],
+  colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "created_at", "updated_at"],
   colaborador_documentos: ["id", "colaborador_id", "nome", "tipo", "storage_path", "tamanho", "uploaded_by", "created_at", "updated_at"],
   eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],

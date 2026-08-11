@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { unzipSync, zipSync } from "fflate";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 
@@ -45,6 +46,22 @@ type DesktopFiles = {
   fileExists: (name: string) => Promise<boolean>;
   writeFile: (name: string, contents: Uint8Array) => Promise<void>;
   readFile: (name: string) => Promise<Uint8Array>;
+};
+
+const BACKUP_XLSX = "spguard-dados.xlsx";
+const BACKUP_ZIP = "spguard-backup-completo.zip";
+
+type DocumentoBackup = {
+  id: string;
+  colaborador_id: string;
+  nome: string;
+  tipo: string | null;
+  storage_path: string;
+  tamanho: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+  arquivo_backup?: string;
 };
 
 declare global {
@@ -127,7 +144,7 @@ export async function ensurePermission(handle: DirHandle) {
 }
 
 async function fetchAllData() {
-  const [emp, col, ele] = await Promise.all([
+  const [emp, col, ele, docs] = await Promise.all([
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("empresas").select("*").order("id") as never,
     ),
@@ -137,41 +154,87 @@ async function fetchAllData() {
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("eletronicos" as never).select("*").order("id") as never,
     ),
+    fetchAllRows<DocumentoBackup>(
+      () => supabase.from("colaborador_documentos" as never).select("*").order("id") as never,
+    ),
   ]);
   return {
     empresas: emp,
     colaboradores: col,
     eletronicos: ele,
+    documentos: docs,
   };
 }
 
-export async function saveBackupNow(): Promise<{ path: string; total: number }> {
-  const { empresas, colaboradores, eletronicos } = await fetchAllData();
+function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[]) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(empresas), "Empresas");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(colaboradores), "Colaboradores");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eletronicos), "Eletronicos");
-  const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  return wb;
+}
 
+async function writeToBackupDirectory(name: string, contents: Uint8Array): Promise<string> {
   const files = desktopFiles();
   if (files) {
-    const name = await files.getDirectoryName();
-    if (!name) throw new Error("Selecione uma pasta primeiro");
-    await files.writeFile("spguard-dados.xlsx", new Uint8Array(buf));
-    return { path: `${name}/SPGuard/spguard-dados.xlsx`, total: empresas.length + colaboradores.length + eletronicos.length };
+    const directoryName = await files.getDirectoryName();
+    if (!directoryName) throw new Error("Selecione uma pasta primeiro");
+    await files.writeFile(name, contents);
+    return `${directoryName}/SPGuard/${name}`;
   }
 
   const handle = await idbGet<DirHandle>(KEY);
   if (!handle) throw new Error("Selecione uma pasta primeiro");
   await ensurePermission(handle);
   const sp = await handle.getDirectoryHandle("SPGuard", { create: true });
-  const file = await sp.getFileHandle("spguard-dados.xlsx", { create: true });
-
+  const file = await sp.getFileHandle(name, { create: true });
   const writable = await (file as unknown as { createWritable: () => Promise<{ write: (b: BufferSource) => Promise<void>; close: () => Promise<void> }> }).createWritable();
-  await writable.write(buf);
+  await writable.write(contents);
   await writable.close();
+  return `${handle.name}/SPGuard/${name}`;
+}
 
-  return { path: `${handle.name}/SPGuard/spguard-dados.xlsx`, total: empresas.length + colaboradores.length + eletronicos.length };
+export async function saveBackupNow(): Promise<{ path: string; total: number }> {
+  const { empresas, colaboradores, eletronicos } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos);
+  const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  const path = await writeToBackupDirectory(BACKUP_XLSX, new Uint8Array(buf));
+  return { path, total: empresas.length + colaboradores.length + eletronicos.length };
+}
+
+function safeBackupFileName(name: string) {
+  return name.replace(/[^\w.\-]+/g, "_") || "documento";
+}
+
+/** Cria um único ZIP local com a planilha de dados e todos os documentos anexados. */
+export async function saveFullBackupNow(onProgress?: (done: number, total: number) => void): Promise<{ path: string; total: number; documentos: number }> {
+  const { empresas, colaboradores, eletronicos, documentos } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos);
+  const entries: Record<string, Uint8Array> = {
+    [BACKUP_XLSX]: new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer),
+  };
+  const documentosPlanilha: DocumentoBackup[] = [];
+
+  for (const [index, documento] of documentos.entries()) {
+    onProgress?.(index, documentos.length);
+    const { data, error } = await supabase.storage.from("colaborador-documentos").createSignedUrl(documento.storage_path, 60);
+    if (error || !data) throw new Error(`Não foi possível ler o documento "${documento.nome}"`);
+    try {
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error(`Não foi possível ler o documento "${documento.nome}"`);
+      const backupPath = `documentos/${documento.id}/${safeBackupFileName(documento.nome)}`;
+      entries[backupPath] = new Uint8Array(await response.arrayBuffer());
+      documentosPlanilha.push({ ...documento, arquivo_backup: backupPath });
+    } finally {
+      URL.revokeObjectURL(data.signedUrl);
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(documentosPlanilha), "Documentos");
+  entries[BACKUP_XLSX] = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
+  const path = await writeToBackupDirectory(BACKUP_ZIP, zipSync(entries, { level: 6 }));
+  onProgress?.(documentos.length, documentos.length);
+  return { path, total: empresas.length + colaboradores.length + eletronicos.length, documentos: documentosPlanilha.length };
 }
 
 type RestoreResult = {
@@ -305,4 +368,69 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
     colaboradoresIgnorados,
     eletronicosIgnorados,
   };
+}
+
+export type FullRestoreResult = RestoreResult & { documentos: number; documentosIgnorados: number };
+
+/** Restaura o ZIP criado pelo backup completo. Nenhum arquivo sai do computador. */
+export async function restoreFullBackup(file: File): Promise<FullRestoreResult> {
+  const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+  const xlsx = entries[BACKUP_XLSX];
+  if (!xlsx) throw new Error("O ZIP não contém o arquivo spguard-dados.xlsx");
+
+  const dataFile = new File([xlsx], BACKUP_XLSX, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const result = await restoreBackup(dataFile);
+  const wb = XLSX.read(xlsx, { type: "array" });
+  const documentos = clean(sheetRows(wb, "Documentos")) as DocumentoBackup[];
+  if (documentos.length === 0) return { ...result, documentos: 0, documentosIgnorados: 0 };
+
+  const colaboradoresNoBackup = clean(sheetRows(wb, "Colaboradores"));
+  const colaboradoresAtuais = await fetchAllRows<{ id: string; cpf: string | null }>(
+    () => supabase.from("colaboradores").select("id, cpf") as never,
+  );
+  const porCpf = new Map<string, string>();
+  for (const colaborador of colaboradoresAtuais) {
+    const cpf = digits(colaborador.cpf);
+    if (cpf) porCpf.set(cpf, colaborador.id);
+  }
+  const idsAtuais = new Set(colaboradoresAtuais.map((c) => c.id));
+  const idOriginalParaRestaurado = new Map<string, string>();
+  for (const colaborador of colaboradoresNoBackup) {
+    const originalId = text(colaborador.id);
+    const cpf = digits(colaborador.cpf);
+    const restoredId = (cpf ? porCpf.get(cpf) : undefined) ?? originalId;
+    if (originalId && restoredId && idsAtuais.has(restoredId)) idOriginalParaRestaurado.set(originalId, restoredId);
+  }
+
+  let documentosRestaurados = 0;
+  let documentosIgnorados = 0;
+  for (const documento of documentos) {
+    const colaboradorId = idOriginalParaRestaurado.get(text(documento.colaborador_id)) ?? text(documento.colaborador_id);
+    const backupPath = text(documento.arquivo_backup);
+    const contents = backupPath ? entries[backupPath] : undefined;
+    if (!colaboradorId || !idsAtuais.has(colaboradorId) || !contents) {
+      documentosIgnorados++;
+      continue;
+    }
+
+    const nome = text(documento.nome) || "documento";
+    const storagePath = `${colaboradorId}/${text(documento.id) || globalThis.crypto.randomUUID()}-${safeBackupFileName(nome)}`;
+    const contentType = text(documento.tipo) || "application/octet-stream";
+    const upload = await supabase.storage.from("colaborador-documentos").upload(storagePath, new File([contents], nome, { type: contentType }), { contentType });
+    if (upload.error) throw new Error(`Documento "${nome}": ${upload.error.message}`);
+    const { error } = await supabase.from("colaborador_documentos" as never).upsert([{
+      id: text(documento.id) || undefined,
+      colaborador_id: colaboradorId,
+      nome,
+      tipo: documento.tipo || null,
+      storage_path: storagePath,
+      tamanho: contents.length,
+      uploaded_by: documento.uploaded_by || null,
+      created_at: documento.created_at || undefined,
+    }] as never, { onConflict: "id" });
+    if (error) throw new Error(`Documento "${nome}": ${error.message}`);
+    documentosRestaurados++;
+  }
+
+  return { ...result, documentos: documentosRestaurados, documentosIgnorados };
 }

@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Search, Eye, UserX, UserCheck } from "lucide-react";
+import { Smartphone, Search, Eye, UserX, UserCheck, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EletronicosTab } from "@/components/EletronicosTab";
+import { exportEletronicosPDF } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
@@ -36,6 +37,7 @@ function EletronicosPage() {
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [detalhes, setDetalhes] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: empresas = [] } = useQuery({
@@ -115,6 +117,19 @@ function EletronicosPage() {
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
 
+  async function exportPdf() {
+    if (stats.length === 0) { toast.error("Nenhum colaborador para exportar"); return; }
+    setExporting(true);
+    try {
+      await exportEletronicosPDF(stats, {
+        Busca: q,
+        Empresa: empresaSel === "all" ? "all" : empresaLabel(empresaSel),
+      });
+      toast.success("Relatório PDF gerado");
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setExporting(false); }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -122,9 +137,14 @@ function EletronicosPage() {
           <h1 className="text-2xl font-bold">Consulta de Eletrônicos</h1>
           <p className="text-sm text-muted-foreground">Colaboradores autorizados a portar celulares, notebooks e tablets</p>
         </div>
-        {canWrite && (
-          <ImportarEletronicos onDone={() => qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] })} />
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={exportPdf} disabled={exporting || stats.length === 0}>
+            <FileText className="h-4 w-4" /> {exporting ? "Gerando..." : "Exportar PDF"}
+          </Button>
+          {canWrite && (
+            <ImportarEletronicos onDone={() => qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] })} />
+          )}
+        </div>
       </div>
 
       <Card>

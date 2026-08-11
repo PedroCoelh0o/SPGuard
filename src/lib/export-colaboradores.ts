@@ -25,14 +25,14 @@ export type EmpresaLite = { id: string; razao_social: string; nome_fantasia: str
 
 export type ExportFilters = Record<string, string | undefined | null>;
 
-async function logExportacao(tipo: "csv" | "pdf" | "xlsx", filtros: ExportFilters, total: number) {
+async function logExportacao(tipo: "csv" | "pdf" | "xlsx", filtros: ExportFilters, total: number, modulo = "colaboradores") {
   try {
     const cleanFilters = Object.fromEntries(
       Object.entries(filtros).filter(([, v]) => v != null && v !== "" && v !== "all"),
     );
     await supabase.from("audit_exportacoes").insert({
       tipo,
-      modulo: "colaboradores",
+      modulo,
       filtros: cleanFilters,
       total_registros: total,
     } as never);
@@ -173,6 +173,61 @@ export async function exportColaboradoresPDF(
 
   doc.save(`colaboradores-${timestamp()}.pdf`);
   await logExportacao("pdf", filters, colabs.length);
+}
+
+export type EletronicosExport = {
+  nome: string;
+  empresa: string;
+  setor: string | null;
+  cargo: string | null;
+  celulares: number;
+  notebooks: number;
+  tablets: number;
+  total: number;
+  autorizado: boolean;
+};
+
+/** Gera o relatório exatamente com os colaboradores exibidos na consulta de eletrônicos. */
+export async function exportEletronicosPDF(registros: EletronicosExport[], filters: ExportFilters = {}) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(14);
+  doc.text("Relatório de Eletrônicos", 40, 40);
+  doc.setFontSize(9);
+  doc.setTextColor(90);
+  doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 40, 56);
+  const filtroTxt = doc.splitTextToSize(`Filtros: ${filtersLine(filters)}`, pageWidth - 80);
+  doc.text(filtroTxt, 40, 70);
+  doc.text(`Total de colaboradores: ${registros.length}`, 40, 70 + filtroTxt.length * 11);
+
+  autoTable(doc, {
+    startY: 88 + filtroTxt.length * 11,
+    head: [["Nome", "Empresa", "Setor", "Função", "Celulares", "Notebooks", "Tablets", "Total", "Autorização"]],
+    body: registros.map((r) => [
+      r.nome,
+      r.empresa,
+      r.setor ?? "-",
+      r.cargo ?? "-",
+      String(r.celulares),
+      String(r.notebooks),
+      String(r.tablets),
+      String(r.total),
+      r.autorizado ? "Autorizado" : "Revogado",
+    ]),
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [30, 41, 59] },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    didDrawPage: () => {
+      const str = `Página ${doc.getCurrentPageInfo().pageNumber}`;
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 20);
+    },
+  });
+
+  doc.save(`eletronicos-${timestamp()}.pdf`);
+  await logExportacao("pdf", filters, registros.length, "eletronicos");
 }
 
 export async function exportColaboradoresXLSX(

@@ -18,7 +18,7 @@ type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
   cargo: string | null; setor: string | null; escolaridade: string | null; data_nascimento: string | null; sexo: string | null;
   turno?: string | null;
-  data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; status: string;
+  data_admissao: string | null; data_desligamento: string | null; motivo_desligamento: string | null; observacoes: string | null; status: string;
   telefone: string | null; celular: string | null; email: string | null;
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
   foto_url: string | null;
@@ -221,6 +221,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
             <TabsTrigger value="trab">Trabalhistas</TabsTrigger>
             <TabsTrigger value="contato">Contato</TabsTrigger>
             <TabsTrigger value="end">Endereço</TabsTrigger>
+            <TabsTrigger value="obs">Observações</TabsTrigger>
             <TabsTrigger value="docs">Documentos</TabsTrigger>
             <TabsTrigger value="eletr">Eletrônicos</TabsTrigger>
           </TabsList>
@@ -276,6 +277,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
                 <Field label="Bairro" value={colab.bairro} />
                 <Field label="Cidade / UF" value={cidadeUf || "-"} />
               </dl>
+            </CardContent></Card>
+          </TabsContent>
+
+          <TabsContent value="obs">
+            <Card><CardContent className="p-4">
+              {colab.observacoes ? <p className="whitespace-pre-wrap text-sm">{colab.observacoes}</p> : <p className="text-sm text-muted-foreground">Nenhuma observação registrada.</p>}
             </CardContent></Card>
           </TabsContent>
 

@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, restoreBackup } from "@/lib/local-backup";
+import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, saveFullBackupNow, restoreBackup, restoreFullBackup } from "@/lib/local-backup";
 import {
   createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE,
   getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog, type SyncProgress, type SyncResult, type EntidadeStat,
@@ -48,6 +48,7 @@ export function ConfiguracoesDialog() {
   const [dirName, setDirName] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingFull, setSavingFull] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -58,6 +59,7 @@ export function ConfiguracoesDialog() {
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [history, setHistory] = useState<SyncLog[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fullFileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
   useEffect(() => {
@@ -151,6 +153,15 @@ export function ConfiguracoesDialog() {
     finally { setSaving(false); }
   }
 
+  async function doSaveFull() {
+    setSavingFull(true);
+    try {
+      const r = await saveFullBackupNow();
+      toast.success(`Backup completo salvo em ${r.path}`, { description: `${r.total} registros e ${r.documentos} documento(s).` });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSavingFull(false); }
+  }
+
   async function doRestore(file?: File) {
     if (!confirm("Restaurar dados do backup? Registros com o mesmo ID serão sobrescritos.")) return;
     setRestoring(true);
@@ -165,6 +176,18 @@ export function ConfiguracoesDialog() {
       setTimeout(() => window.location.reload(), 1200);
     } catch (e) { toast.error((e as Error).message); }
     finally { setRestoring(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+
+  async function doRestoreFull(file?: File) {
+    if (!file) return;
+    if (!confirm("Restaurar o backup completo? Os dados e documentos com o mesmo ID serão sobrescritos.")) return;
+    setRestoring(true);
+    try {
+      const r = await restoreFullBackup(file);
+      toast.success(`Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores e ${r.documentos} documento(s)`, r.documentosIgnorados ? { description: `${r.documentosIgnorados} documento(s) sem arquivo ou vínculo válido foram ignorados.` } : undefined);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRestoring(false); if (fullFileRef.current) fullFileRef.current.value = ""; }
   }
 
   return (
@@ -196,6 +219,30 @@ export function ConfiguracoesDialog() {
                 Ao salvar, o app cria a pasta <strong>SPGuard</strong> dentro da pasta selecionada e grava/atualiza o arquivo <strong>spguard-dados.xlsx</strong> com abas de Empresas, Colaboradores e Eletrônicos.
               </p>
             </>
+          )}
+
+          {supported && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="text-sm font-medium">Backup completo com documentos</div>
+              <p className="text-xs text-muted-foreground">
+                Cria <strong>spguard-backup-completo.zip</strong> com os dados, observações e todos os documentos anexados às fichas. O arquivo é criado somente na pasta selecionada.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={doSaveFull} disabled={!dirName || savingFull || saving}>
+                  <Save className="h-4 w-4" /> {savingFull ? "Preparando documentos..." : "Criar backup completo (.zip)"}
+                </Button>
+                <Button variant="secondary" onClick={() => fullFileRef.current?.click()} disabled={restoring || savingFull}>
+                  <RotateCcw className="h-4 w-4" /> Restaurar backup completo
+                </Button>
+                <input
+                  ref={fullFileRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestoreFull(f); }}
+                />
+              </div>
+            </div>
           )}
 
           <div className="rounded-md border p-3 space-y-2">
