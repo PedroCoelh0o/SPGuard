@@ -214,6 +214,7 @@ export async function saveFullBackupNow(onProgress?: (done: number, total: numbe
     [BACKUP_XLSX]: new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer),
   };
   const documentosPlanilha: DocumentoBackup[] = [];
+  const nomePorColaborador = new Map(colaboradores.map((c) => [String(c.id ?? ""), safeBackupFileName(String(c.nome ?? "colaborador"))]));
 
   for (const [index, documento] of documentos.entries()) {
     onProgress?.(index, documentos.length);
@@ -222,7 +223,8 @@ export async function saveFullBackupNow(onProgress?: (done: number, total: numbe
     try {
       const response = await fetch(data.signedUrl);
       if (!response.ok) throw new Error(`Não foi possível ler o documento "${documento.nome}"`);
-      const backupPath = `documentos/${documento.id}/${safeBackupFileName(documento.nome)}`;
+      const pastaColaborador = nomePorColaborador.get(documento.colaborador_id) ?? "colaborador-sem-nome";
+      const backupPath = `documentos/${pastaColaborador}/${documento.id}-${safeBackupFileName(documento.nome)}`;
       entries[backupPath] = new Uint8Array(await response.arrayBuffer());
       documentosPlanilha.push({ ...documento, arquivo_backup: backupPath });
     } finally {

@@ -13,6 +13,8 @@ import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye } from "lucide
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
+import * as XLSX from "xlsx";
+import { unzipSync } from "fflate";
 
 type Colab = {
   id: string; empresa_id: string; nome: string; cpf: string | null; rg: string | null; matricula: string | null;
@@ -63,7 +65,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [preview, setPreview] = useState<{ url: string; doc: Doc } | null>(null);
+  const [preview, setPreview] = useState<{ url: string; doc: Doc; planilha?: string[][]; texto?: string } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
@@ -156,7 +158,22 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   async function viewDoc(d: Doc) {
     const { data, error } = await supabase.storage.from(BUCKET_DOCS).createSignedUrl(d.storage_path, 300);
     if (error || !data) { toast.error(error?.message ?? "Erro ao gerar link"); return; }
-    setPreview({ url: data.signedUrl, doc: d });
+    try {
+      const ext = d.nome.split(".").pop()?.toLowerCase();
+      if (["xlsx", "xls", "xlsm"].includes(ext ?? "")) {
+        const bytes = await (await fetch(data.signedUrl)).arrayBuffer();
+        const wb = XLSX.read(bytes, { type: "array", bookVBA: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" }).slice(0, 200).map((r) => r.slice(0, 30).map((v) => String(v ?? "")));
+        setPreview({ url: data.signedUrl, doc: d, planilha: rows });
+      } else if (ext === "docx") {
+        const bytes = new Uint8Array(await (await fetch(data.signedUrl)).arrayBuffer());
+        const xml = new TextDecoder().decode(unzipSync(bytes)["word/document.xml"] ?? new Uint8Array());
+        const parsed = new DOMParser().parseFromString(xml, "application/xml");
+        const texto = Array.from(parsed.getElementsByTagName("w:p")).map((p) => Array.from(p.getElementsByTagName("w:t")).map((t) => t.textContent ?? "").join("")).filter(Boolean).join("\n\n");
+        setPreview({ url: data.signedUrl, doc: d, texto: texto || "Não foi possível extrair texto deste documento." });
+      } else setPreview({ url: data.signedUrl, doc: d });
+    } catch (e) { URL.revokeObjectURL(data.signedUrl); toast.error(`Não foi possível pré-visualizar: ${(e as Error).message}`); }
   }
 
   async function deleteDoc(d: Doc) {
@@ -350,7 +367,11 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           </DialogHeader>
           <div className="flex-1 min-h-0 rounded-md border overflow-hidden bg-muted">
             {preview && (
-              (preview.doc.tipo?.startsWith("image/") ? (
+              (preview.planilha ? (
+                <div className="h-full overflow-auto bg-background p-3"><table className="text-xs border-collapse">{preview.planilha.map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j} className="border p-2 whitespace-nowrap">{v}</td>)}</tr>)}</table></div>
+              ) : preview.texto ? (
+                <pre className="h-full overflow-auto whitespace-pre-wrap bg-background p-5 text-sm font-sans">{preview.texto}</pre>
+              ) : preview.doc.tipo?.startsWith("image/") ? (
                 <img src={preview.url} alt={preview.doc.nome} className="w-full h-full object-contain bg-black/5" />
               ) : (
                 <iframe src={preview.url} title={preview.doc.nome} className="w-full h-full" />
