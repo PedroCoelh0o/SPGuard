@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/local-db/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -65,6 +66,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
   const [preview, setPreview] = useState<{ url: string; doc: Doc; planilha?: string[][]; texto?: string } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -180,13 +183,15 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   }
 
   async function deleteDoc(d: Doc) {
-    if (!confirm(`Excluir "${d.nome}"?`)) return;
+    setDeletingDoc(true);
     const { error: sErr } = await supabase.storage.from(BUCKET_DOCS).remove([d.storage_path]);
-    if (sErr) { toast.error(sErr.message); return; }
+    if (sErr) { toast.error(sErr.message); setDeletingDoc(false); return; }
     const { error } = await supabase.from("colaborador_documentos").delete().eq("id", d.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); setDeletingDoc(false); return; }
     toast.success("Documento excluído");
     qc.invalidateQueries({ queryKey: ["docs", colab!.id] });
+    setDocToDelete(null);
+    setDeletingDoc(false);
   }
 
   const initials = colab.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
@@ -349,7 +354,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
                           <Button size="icon" variant="ghost" aria-label={`Visualizar ${d.nome}`} title="Visualizar" onClick={() => viewDoc(d)}><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" aria-label={`Baixar ${d.nome}`} title="Baixar" onClick={() => downloadDoc(d)}><Download className="h-4 w-4" /></Button>
                           {isAdmin && (
-                            <Button size="icon" variant="ghost" aria-label={`Excluir ${d.nome}`} title="Excluir" onClick={() => deleteDoc(d)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            <Button size="icon" variant="ghost" aria-label={`Excluir ${d.nome}`} title="Excluir" onClick={() => setDocToDelete(d)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -361,6 +366,21 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <AlertDialog open={!!docToDelete} onOpenChange={(value) => { if (!value && !deletingDoc) setDocToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir documento permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>O arquivo “{docToDelete?.nome}” será removido de forma definitiva e não poderá ser restaurado pela lixeira.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingDoc}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={deletingDoc} onClick={(event) => { event.preventDefault(); if (docToDelete) void deleteDoc(docToDelete); }}>
+              {deletingDoc ? "Excluindo..." : "Excluir permanentemente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!preview} onOpenChange={(v) => !v && setPreview(null)}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
