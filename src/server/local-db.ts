@@ -165,8 +165,8 @@ function ensureSchemaMigrations(db: Database.Database) {
     db.exec("ALTER TABLE eletronicos ADD COLUMN excluido_em TEXT");
   }
 
-  // A lixeira é temporária: após 30 dias, o aplicativo remove os registros.
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // A lixeira é temporária: após 15 dias, o aplicativo remove os registros.
+  const cutoff = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
   const oldColabs = db.prepare("SELECT id, foto_url FROM colaboradores WHERE excluido_em IS NOT NULL AND excluido_em < ?").all(cutoff) as { id: string; foto_url: string | null }[];
   for (const { id, foto_url } of oldColabs) {
     const docs = db.prepare("SELECT storage_path FROM colaborador_documentos WHERE colaborador_id = ?").all(id) as { storage_path: string }[];
@@ -218,7 +218,7 @@ function hasValue(value: unknown) {
  * diferença de maiúsculas/minúsculas ou acentos, sem CPF conflitante. O
  * registro atualizado mais recentemente é mantido como principal, recebendo
  * documentos, eletrônicos e os campos que estiverem preenchidos somente no
- * outro cadastro; o duplicado segue para a lixeira por 30 dias.
+ * outro cadastro; o duplicado segue para a lixeira por 15 dias.
  */
 function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
   const active = db.prepare("SELECT * FROM colaboradores WHERE excluido_em IS NULL ORDER BY created_at, id").all() as Record<string, unknown>[];
@@ -337,6 +337,7 @@ export type QueryDescriptor = {
   values?: Record<string, unknown> | Record<string, unknown>[];
   onConflict?: string;
   trashMode?: "active" | "only" | "all";
+  permanent?: boolean;
 };
 
 export type QueryResult = { data: unknown; error: { message: string } | null };
@@ -511,6 +512,22 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
 
 function runDelete(db: Database.Database, table: string, q: QueryDescriptor): unknown {
   const { clause, params } = buildWhere(table, q.filters, q.trashMode);
+  if (q.permanent && SOFT_DELETE_TABLES.has(table)) {
+    const rows = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
+    if (table === "colaboradores") {
+      for (const row of rows) {
+        const docs = db.prepare("SELECT storage_path FROM colaborador_documentos WHERE colaborador_id = ?").all(row.id) as { storage_path: string }[];
+        for (const doc of docs) {
+          try { fs.unlinkSync(safeRelPath("colaborador-documentos", doc.storage_path)); } catch { /* arquivo já removido */ }
+        }
+        if (hasValue(row.foto_url)) {
+          try { fs.unlinkSync(safeRelPath("colaborador-fotos", String(row.foto_url))); } catch { /* arquivo já removido */ }
+        }
+      }
+    }
+    db.prepare(`DELETE FROM ${table} ${clause}`).run(...params);
+    return null;
+  }
   if (SOFT_DELETE_TABLES.has(table)) {
     const rows = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
     const ts = nowIso();

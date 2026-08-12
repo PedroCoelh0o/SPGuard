@@ -109,7 +109,7 @@ function ColabPage() {
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => {
-      toast.success("Colaborador movido para a lixeira. Você pode restaurá-lo em até 30 dias.");
+      toast.success("Colaborador movido para a lixeira. Você pode restaurá-lo em até 15 dias.");
       qc.invalidateQueries({ queryKey: ["colaboradores"] });
       qc.invalidateQueries({ queryKey: ["lixeira-colaboradores"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
@@ -252,7 +252,7 @@ function ColabPage() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Mover colaborador para a lixeira?</AlertDialogTitle>
-                              <AlertDialogDescription>O colaborador e seus documentos poderão ser restaurados pela lixeira durante 30 dias.</AlertDialogDescription>
+                              <AlertDialogDescription>O colaborador e seus documentos poderão ser restaurados pela lixeira durante 15 dias.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>

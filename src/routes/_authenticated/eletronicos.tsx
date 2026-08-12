@@ -130,7 +130,7 @@ function EletronicosPage() {
       }
     },
     onSuccess: () => {
-      toast.success(`${selecionados.length} eletrônico(s) movido(s) para a lixeira. Restauração disponível por 30 dias.`);
+      toast.success(`${selecionados.length} eletrônico(s) movido(s) para a lixeira. Restauração disponível por 15 dias.`);
       qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["lixeira-eletronicos"] });
@@ -275,7 +275,7 @@ function EletronicosPage() {
       <Dialog open={!!excluindo} onOpenChange={(v) => { if (!v) { setExcluindo(null); setSelecionados([]); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Excluir eletrônicos de {excluindo?.nome}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para mover à lixeira. Eles poderão ser restaurados em até 30 dias.</p>
+          <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para mover à lixeira. Eles poderão ser restaurados em até 15 dias.</p>
           <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
             {itensParaExcluir.map((e) => {
               const label = [e.tipo === "celular" ? "Celular" : e.tipo === "notebook" ? "Notebook" : "Tablet", e.descricao, e.modelo].filter(Boolean).join(" — ");

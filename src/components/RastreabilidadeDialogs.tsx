@@ -5,6 +5,7 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
@@ -106,13 +107,21 @@ export function LixeiraDialog() {
     ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores", "colaboradores-eletr", "consulta-eletronicos", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
   }
 
+  async function permanentlyDelete(item: typeof all[number]) {
+    const table = item.entidade === "colaborador" ? "colaboradores" : "eletronicos";
+    const { error } = await supabase.from(table).delete().permanently().onlyDeleted().eq("id", item.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${item.entidade === "colaborador" ? "Colaborador" : "Eletrônico"} excluído permanentemente`);
+    ["lixeira-colaboradores", "lixeira-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+  }
+
   return (
     <Dialog>
       <DialogTrigger asChild><Button variant="outline" size="sm"><Trash2 className="h-4 w-4" /> Lixeira</Button></DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Lixeira de segurança</DialogTitle>
-          <DialogDescription>Os itens ficam disponíveis para restauração por 30 dias. Depois desse prazo, são removidos definitivamente.</DialogDescription>
+          <DialogDescription>Os itens ficam disponíveis para restauração por 15 dias. Depois desse prazo, são removidos definitivamente.</DialogDescription>
         </DialogHeader>
         <div className="rounded-md border overflow-auto">
           <Table>
@@ -123,7 +132,24 @@ export function LixeiraDialog() {
                   <TableCell><Badge variant="secondary">{item.entidade === "colaborador" ? "Colaborador" : "Eletrônico"}</Badge></TableCell>
                   <TableCell className="font-medium">{item.label}</TableCell>
                   <TableCell>{formatDateTime(item.excluido_em)}</TableCell>
-                  <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => restore(item)}><RotateCcw className="h-4 w-4" /> Restaurar</Button></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => restore(item)}><RotateCcw className="h-4 w-4" /> Restaurar</Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button size="icon" variant="destructive" aria-label="Excluir permanentemente" title="Excluir permanentemente"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
+                            <AlertDialogDescription>{item.entidade === "colaborador" ? "O colaborador, seus documentos e sua foto serão removidos de forma definitiva." : "O eletrônico será removido de forma definitiva."} Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => permanentlyDelete(item)}>Excluir permanentemente</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

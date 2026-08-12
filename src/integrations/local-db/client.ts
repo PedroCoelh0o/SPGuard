@@ -63,6 +63,11 @@ class QueryBuilder<T = unknown> implements PromiseLike<PgResult<T>> {
     return this;
   }
 
+  permanently() {
+    this.descriptor.permanent = true;
+    return this;
+  }
+
   eq(col: string, val: unknown) {
     const filters: Filter[] = this.descriptor.filters ?? [];
     filters.push({ type: "eq", col, val });

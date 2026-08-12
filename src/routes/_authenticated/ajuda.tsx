@@ -41,7 +41,7 @@ const guias: Guia[] = [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",
-      "Use a lixeira para escolher um ou mais dispositivos específicos que devem ser removidos; eles podem ser restaurados por 30 dias.",
+      "Use a lixeira para escolher um ou mais dispositivos específicos que devem ser removidos; eles podem ser restaurados por 15 dias.",
       "Clique em Exportar PDF para criar um relatório somente com os colaboradores filtrados na tela.",
     ],
   },
@@ -62,7 +62,7 @@ const guias: Guia[] = [
     passos: [
       "Ao excluir um colaborador ou eletrônico, o item vai para a Lixeira em vez de ser apagado imediatamente.",
       "Na tela Colaboradores ou Eletrônicos, clique em Lixeira para localizar o item e usar Restaurar.",
-      "Colaboradores restaurados mantêm seus documentos vinculados. Os itens ficam na lixeira por 30 dias e depois são excluídos definitivamente.",
+      "Colaboradores restaurados mantêm seus documentos vinculados. Os itens ficam na lixeira por 15 dias e depois são excluídos definitivamente; você também pode excluir permanentemente um item a qualquer momento.",
     ],
   },
 ];
