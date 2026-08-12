@@ -15,6 +15,8 @@ const guias: Guia[] = [
     passos: [
       "Clique em Novo colaborador para abrir uma ficha vazia.",
       "Preencha ao menos o nome e a empresa; depois complete os demais dados nas abas da ficha.",
+      "O nome é padronizado automaticamente; as partículas da, das, de, do e dos ficam em minúsculas.",
+      "Se houver um cadastro com o mesmo nome normalizado na mesma empresa, o SPGuard o unifica, mantendo documentos, eletrônicos e informações preenchidas.",
       "Na aba Observações, registre informações importantes que devem acompanhar o colaborador.",
       "Abra o ícone de olho para consultar a ficha, anexar documentos, visualizar anexos e conferir eletrônicos vinculados.",
       "Use os botões CSV, XLSX ou PDF para exportar somente os colaboradores que aparecem na pesquisa atual.",

@@ -179,6 +179,7 @@ function ensureSchemaMigrations(db: Database.Database) {
     db.prepare("DELETE FROM colaboradores WHERE id = ?").run(id);
   }
   db.prepare("DELETE FROM eletronicos WHERE excluido_em IS NOT NULL AND excluido_em < ?").run(cutoff);
+  normalizeAndMergeDuplicateCollaborators(db);
 }
 
 // Nota: no Postgres original, "touch updated_at" e "auto-status desligado ao
@@ -188,6 +189,80 @@ function ensureSchemaMigrations(db: Database.Database) {
 function applyBusinessRules(table: string, payload: Record<string, unknown>) {
   if (table === "colaboradores" && payload.data_desligamento) {
     payload.status = "desligado";
+  }
+  if (table === "colaboradores" && typeof payload.nome === "string") {
+    payload.nome = formatCollaboratorName(payload.nome);
+  }
+}
+
+const NAME_PARTICLES = new Set(["da", "das", "de", "do", "dos"]);
+
+function formatCollaboratorName(value: string) {
+  return value.trim().replace(/\s+/g, " ").split(" ").map((part) => {
+    const lower = part.toLocaleLowerCase("pt-BR");
+    if (NAME_PARTICLES.has(lower)) return lower;
+    return lower.split("-").map((piece) => piece ? piece[0].toLocaleUpperCase("pt-BR") + piece.slice(1) : piece).join("-");
+  }).join(" ");
+}
+
+function collaboratorNameKey(value: unknown) {
+  return String(value ?? "").trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+}
+
+function hasValue(value: unknown) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
+}
+
+/**
+ * Consolida somente duplicidades muito claras: mesma empresa, mesmo nome sem
+ * diferença de maiúsculas/minúsculas ou acentos, sem CPF conflitante. O
+ * registro mais antigo é mantido e recebe documentos, eletrônicos e campos
+ * preenchidos do outro; o duplicado segue para a lixeira por 30 dias.
+ */
+function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
+  const active = db.prepare("SELECT * FROM colaboradores WHERE excluido_em IS NULL ORDER BY created_at, id").all() as Record<string, unknown>[];
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const row of active) {
+    const formattedName = formatCollaboratorName(String(row.nome ?? ""));
+    if (formattedName && row.nome !== formattedName) {
+      db.prepare("UPDATE colaboradores SET nome = ?, updated_at = ? WHERE id = ?").run(formattedName, nowIso(), row.id);
+      row.nome = formattedName;
+    }
+    const key = `${row.empresa_id}|${collaboratorNameKey(row.nome)}`;
+    if (!collaboratorNameKey(row.nome)) continue;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+
+  const merge = db.transaction((keeper: Record<string, unknown>, duplicate: Record<string, unknown>) => {
+    const keeperCpf = String(keeper.cpf ?? "").replace(/\D/g, "");
+    const duplicateCpf = String(duplicate.cpf ?? "").replace(/\D/g, "");
+    if (keeperCpf && duplicateCpf && keeperCpf !== duplicateCpf) return;
+
+    const merged: Record<string, unknown> = { ...keeper, nome: formatCollaboratorName(String(keeper.nome ?? duplicate.nome ?? "")) };
+    for (const column of TABLE_COLUMNS.colaboradores) {
+      if (["id", "empresa_id", "created_at", "updated_at", "excluido_em", "nome", "observacoes"].includes(column)) continue;
+      if (!hasValue(merged[column]) && hasValue(duplicate[column])) merged[column] = duplicate[column];
+    }
+    if (hasValue(keeper.observacoes) && hasValue(duplicate.observacoes) && keeper.observacoes !== duplicate.observacoes) {
+      merged.observacoes = `${keeper.observacoes}\n\n[Informação consolidada do cadastro duplicado]\n${duplicate.observacoes}`;
+    } else if (!hasValue(merged.observacoes) && hasValue(duplicate.observacoes)) {
+      merged.observacoes = duplicate.observacoes;
+    }
+    merged.updated_at = nowIso();
+    const fields = Object.keys(merged).filter((column) => TABLE_COLUMNS.colaboradores.includes(column) && !["id", "created_at", "excluido_em"].includes(column));
+    db.prepare(`UPDATE colaboradores SET ${fields.map((column) => `${column} = ?`).join(", ")} WHERE id = ?`).run(...fields.map((column) => toSqlValue(column, merged[column])), keeper.id);
+    db.prepare("UPDATE colaborador_documentos SET colaborador_id = ?, updated_at = ? WHERE colaborador_id = ?").run(keeper.id, nowIso(), duplicate.id);
+    db.prepare("UPDATE eletronicos SET colaborador_id = ?, updated_at = ? WHERE colaborador_id = ?").run(keeper.id, nowIso(), duplicate.id);
+    const deletedAt = nowIso();
+    db.prepare("UPDATE colaboradores SET excluido_em = ?, updated_at = ? WHERE id = ?").run(deletedAt, deletedAt, duplicate.id);
+    const saved = db.prepare("SELECT * FROM colaboradores WHERE id = ?").get(keeper.id) as Record<string, unknown>;
+    recordHistory(db, "colaboradores", saved, "editado", { registro: `cadastro unificado com ${duplicate.nome}` });
+    recordHistory(db, "colaboradores", { ...duplicate, excluido_em: deletedAt }, "movido_para_lixeira", { registro: `cadastro unificado em ${saved.nome}` });
+  });
+
+  for (const rows of groups.values()) {
+    const keeper = rows[0];
+    for (const duplicate of rows.slice(1)) merge(keeper, duplicate);
   }
 }
 
@@ -351,6 +426,7 @@ function runInsert(db: Database.Database, table: string, q: QueryDescriptor): un
     }
   });
   insertOne(rows);
+  if (table === "colaboradores") normalizeAndMergeDuplicateCollaborators(db);
   return inserted;
 }
 
@@ -365,6 +441,7 @@ function runUpdate(db: Database.Database, table: string, q: QueryDescriptor): un
   const setClause = cols.map((c) => `${c} = ?`).join(", ");
   const setValues = cols.map((c) => toSqlValue(c, values[c]));
   db.prepare(`UPDATE ${table} SET ${setClause} ${clause}`).run(...setValues, ...params);
+  if (table === "colaboradores") normalizeAndMergeDuplicateCollaborators(db);
   const afterWhere = values.excluido_em === null
     ? buildWhere(table, q.filters, "active")
     : { clause, params };
@@ -423,6 +500,7 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
     }
   });
   tx(rows);
+  if (table === "colaboradores") normalizeAndMergeDuplicateCollaborators(db);
   return result;
 }
 
