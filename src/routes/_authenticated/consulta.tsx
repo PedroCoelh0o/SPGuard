@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
+import { Search, FileDown, FileText, FileSpreadsheet, Copy, RotateCcw } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
-import { useState as useLocalState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 
 export const Route = createFileRoute("/_authenticated/consulta")({
@@ -37,6 +36,7 @@ function Consulta() {
   const [fCargo, setFCargo] = useState("");
   const [fCidade, setFCidade] = useState("");
   const [fStatus, setFStatus] = useState("all");
+  const [fDocumento, setFDocumento] = useState("all");
   const [admDe, setAdmDe] = useState("");
   const [admAte, setAdmAte] = useState("");
   const [desDe, setDesDe] = useState("");
@@ -61,10 +61,19 @@ function Consulta() {
     },
   });
 
+  const { data: documentos = [] } = useQuery({
+    queryKey: ["documentos-colaboradores"],
+    queryFn: () => fetchAllRows<{ colaborador_id: string }>(
+      () => supabase.from("colaborador_documentos").select("colaborador_id") as never,
+    ),
+  });
+
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
   const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
 
   const qd = useDebounced(q, 250);
+  const colaboradoresComDocumento = useMemo(() => new Set(documentos.map((documento) => documento.colaborador_id)), [documentos]);
+  const cargosDisponiveis = useMemo(() => Array.from(new Set(colabs.map((colab) => colab.cargo?.trim()).filter((cargo): cargo is string => !!cargo))).sort((a, b) => a.localeCompare(b, "pt-BR")), [colabs]);
 
   const filtered = useMemo(() => {
     const s = qd.trim().toLowerCase();
@@ -74,21 +83,23 @@ function Consulta() {
       if (fCargo && !(c.cargo ?? "").toLowerCase().includes(fCargo.toLowerCase())) return false;
       if (fCidade && !(c.cidade ?? "").toLowerCase().includes(fCidade.toLowerCase())) return false;
       if (fStatus !== "all" && c.status !== fStatus) return false;
+      if (fDocumento === "com" && !colaboradoresComDocumento.has(c.id)) return false;
+      if (fDocumento === "sem" && colaboradoresComDocumento.has(c.id)) return false;
       if (admDe && (!c.data_admissao || c.data_admissao < admDe)) return false;
       if (admAte && (!c.data_admissao || c.data_admissao > admAte)) return false;
       if (desDe && (!c.data_desligamento || c.data_desligamento < desDe)) return false;
       if (desAte && (!c.data_desligamento || c.data_desligamento > desAte)) return false;
       return true;
     });
-  }, [colabs, empresaMap, qd, fEmpresa, fCargo, fCidade, fStatus, admDe, admAte, desDe, desAte]);
+  }, [colabs, empresaMap, qd, fEmpresa, fCargo, fCidade, fStatus, fDocumento, colaboradoresComDocumento, admDe, admAte, desDe, desAte]);
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
 
-  const [exporting, setExporting] = useLocalState<"csv" | "pdf" | "xlsx" | null>(null);
+  const [exporting, setExporting] = useState<"csv" | "pdf" | "xlsx" | null>(null);
   const currentFilters = {
     Busca: q, Empresa: fEmpresa !== "all" ? (empresas.find(e => e.id === fEmpresa)?.nome_fantasia || empresas.find(e => e.id === fEmpresa)?.razao_social) : "all",
-    Cargo: fCargo, Cidade: fCidade, Situação: fStatus,
+    Cargo: fCargo || "all", Cidade: fCidade || "all", Situação: fStatus, Documentos: fDocumento === "all" ? "all" : fDocumento === "com" ? "Com documentos" : "Sem documentos",
     "Admitidos de": admDe, "Admitidos até": admAte, "Desligados de": desDe, "Desligados até": desAte,
   };
   async function doExport(kind: "csv" | "pdf" | "xlsx") {
@@ -137,7 +148,12 @@ function Consulta() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Cargo</Label><Input value={fCargo} onChange={(e) => setFCargo(e.target.value)} /></div>
+            <div><Label className="text-xs">Função / Cargo</Label>
+              <Select value={fCargo || "all"} onValueChange={(value) => setFCargo(value === "all" ? "" : value)}>
+                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Todas</SelectItem>{cargosDisponiveis.map((cargo) => <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label className="text-xs">Cidade</Label><Input value={fCidade} onChange={(e) => setFCidade(e.target.value)} /></div>
             <div><Label className="text-xs">Situação</Label>
               <Select value={fStatus} onValueChange={setFStatus}>
@@ -149,10 +165,21 @@ function Consulta() {
                 </SelectContent>
               </Select>
             </div>
+            <div><Label className="text-xs">Documentos</Label>
+              <Select value={fDocumento} onValueChange={setFDocumento}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="com">Com documentos</SelectItem><SelectItem value="sem">Sem documentos</SelectItem></SelectContent>
+              </Select>
+            </div>
             <div><Label className="text-xs">Admitidos de</Label><Input type="date" value={admDe} onChange={(e) => setAdmDe(e.target.value)} /></div>
             <div><Label className="text-xs">Admitidos até</Label><Input type="date" value={admAte} onChange={(e) => setAdmAte(e.target.value)} /></div>
             <div><Label className="text-xs">Desligados de</Label><Input type="date" value={desDe} onChange={(e) => setDesDe(e.target.value)} /></div>
             <div><Label className="text-xs">Desligados até</Label><Input type="date" value={desAte} onChange={(e) => setDesAte(e.target.value)} /></div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setFEmpresa("all"); setFCargo(""); setFCidade(""); setFStatus("all"); setFDocumento("all"); setAdmDe(""); setAdmAte(""); setDesDe(""); setDesAte(""); }}>
+              <RotateCcw className="h-4 w-4" /> Limpar filtros
+            </Button>
           </div>
 
           <div className="text-sm text-muted-foreground">

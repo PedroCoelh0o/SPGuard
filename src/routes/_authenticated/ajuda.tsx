@@ -28,7 +28,7 @@ const guias: Guia[] = [
     descricao: "Encontre colaboradores rapidamente e gere relatórios com filtros.",
     passos: [
       "Digite nome, CPF, matrícula, empresa, cargo ou cidade no campo de pesquisa.",
-      "Se necessário, use os filtros de empresa, cargo, cidade, situação e período de admissão ou desligamento.",
+      "Combine os filtros de empresa, função, cidade, situação, presença de documentos e período de admissão ou desligamento.",
       "A lista é atualizada conforme os critérios preenchidos; não é necessário clicar em Salvar.",
       "Confira o resultado antes de exportar: CSV, XLSX e PDF sempre usam os registros mostrados na tela.",
     ],
