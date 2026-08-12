@@ -216,8 +216,9 @@ function hasValue(value: unknown) {
 /**
  * Consolida somente duplicidades muito claras: mesma empresa, mesmo nome sem
  * diferença de maiúsculas/minúsculas ou acentos, sem CPF conflitante. O
- * registro mais antigo é mantido e recebe documentos, eletrônicos e campos
- * preenchidos do outro; o duplicado segue para a lixeira por 30 dias.
+ * registro atualizado mais recentemente é mantido como principal, recebendo
+ * documentos, eletrônicos e os campos que estiverem preenchidos somente no
+ * outro cadastro; o duplicado segue para a lixeira por 30 dias.
  */
 function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
   const active = db.prepare("SELECT * FROM colaboradores WHERE excluido_em IS NULL ORDER BY created_at, id").all() as Record<string, unknown>[];
@@ -261,8 +262,12 @@ function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
   });
 
   for (const rows of groups.values()) {
-    const keeper = rows[0];
-    for (const duplicate of rows.slice(1)) merge(keeper, duplicate);
+    const keeper = rows.reduce((newest, row) => {
+      const newestDate = String(newest.updated_at ?? newest.created_at ?? "");
+      const rowDate = String(row.updated_at ?? row.created_at ?? "");
+      return rowDate > newestDate ? row : newest;
+    });
+    for (const duplicate of rows.filter((row) => row.id !== keeper.id)) merge(keeper, duplicate);
   }
 }
 
