@@ -204,7 +204,7 @@ function ColabPage() {
             </Select>
           </div>
           <div className="rounded-md border overflow-x-auto">
-            <Table>
+            <Table className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -267,6 +267,7 @@ function ColabPage() {
               </TableBody>
             </Table>
           </div>
+          <p className="text-xs text-muted-foreground">Em telas menores, deslize horizontalmente para visualizar todos os dados sem alterar a altura das linhas.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
             {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}

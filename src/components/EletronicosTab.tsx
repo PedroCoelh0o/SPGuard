@@ -115,7 +115,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
           )}
         </div>
         <div className="rounded-md border overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1180px] whitespace-nowrap">
             <TableHeader>
               <TableRow>
                 <TableHead>Tipo</TableHead>
@@ -143,7 +143,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell>{e.modelo ?? "-"}</TableCell>
                     <TableCell>{e.imei ?? "-"}</TableCell>
                     <TableCell>{e.numero_serie ?? "-"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate" title={e.acessorios ?? ""}>{e.acessorios ?? "-"}</TableCell>
+                    <TableCell>{e.acessorios ?? "-"}</TableCell>
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
