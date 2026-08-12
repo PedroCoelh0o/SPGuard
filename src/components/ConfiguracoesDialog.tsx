@@ -179,7 +179,7 @@ export function ConfiguracoesDialog() {
   }
 
   async function doRestore(file?: File) {
-    if (!confirm("Restaurar dados do backup? Registros com o mesmo ID serão sobrescritos.")) return;
+    if (!confirm("Restaurar dados do backup? O SPGuard identifica colaboradores pelo CPF para atualizar o cadastro correto e evita duplicidades.")) return;
     setRestoring(true);
     try {
       const r = await restoreBackup(file);
@@ -196,7 +196,7 @@ export function ConfiguracoesDialog() {
 
   async function doRestoreFull(file?: File) {
     if (!file) return;
-    if (!confirm("Restaurar o backup completo? Os dados e documentos com o mesmo ID serão sobrescritos.")) return;
+    if (!confirm("Restaurar o backup completo? O SPGuard identifica colaboradores pelo CPF para atualizar o cadastro correto e evita duplicidades.")) return;
     setRestoring(true);
     try {
       const r = await restoreFullBackup(file);
@@ -210,7 +210,7 @@ export function ConfiguracoesDialog() {
     if (!file) return;
     const password = window.prompt("Digite a senha deste backup criptografado.");
     if (password == null) return;
-    if (!confirm("Restaurar o backup criptografado? Os dados e documentos com o mesmo ID serão sobrescritos.")) return;
+    if (!confirm("Restaurar o backup criptografado? O SPGuard identifica colaboradores pelo CPF para atualizar o cadastro correto e evita duplicidades.")) return;
     setRestoring(true);
     try {
       const r = await restoreEncryptedFullBackup(file, password);

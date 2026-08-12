@@ -382,9 +382,11 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
     () => supabase.from("colaboradores").select("id, cpf").includeDeleted() as never,
   );
   const idPorCpf = new Map<string, string>();
+  const cpfPorId = new Map<string, string>();
   for (const c of existentes) {
     const cpf = digits(c.cpf);
     if (cpf) idPorCpf.set(cpf, c.id);
+    cpfPorId.set(c.id, cpf);
   }
 
   const cpfsNoBackup = new Set<string>();
@@ -402,9 +404,15 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
     if (cpf) cpfsNoBackup.add(cpf);
 
     const idExistente = cpf ? idPorCpf.get(cpf) : undefined;
-    const idRestaurado = idExistente ?? originalId;
+    // Um mesmo ID pode apontar para outro colaborador em uma instalação
+    // diferente. Nesse caso, manter o ID do arquivo faria o SQLite tentar
+    // atualizar o registro errado e poderia violar o CPF único. Geramos um
+    // novo ID, mantendo o vínculo correto de eletrônicos e documentos.
+    const cpfNoIdOriginal = originalId ? cpfPorId.get(originalId) : undefined;
+    const idEmConflito = !!originalId && cpfNoIdOriginal !== undefined && !!cpf && !!cpfNoIdOriginal && cpfNoIdOriginal !== cpf;
+    const idRestaurado = idExistente ?? (idEmConflito ? crypto.randomUUID() : (originalId || crypto.randomUUID()));
     if (originalId && idRestaurado) idOriginalParaRestaurado.set(originalId, idRestaurado);
-    colaboradoresValidos.push(idExistente ? { ...colaborador, id: idExistente } : colaborador);
+    colaboradoresValidos.push({ ...colaborador, id: idRestaurado });
   }
 
   const empresasRestauradas = await upsertAll("empresas", empresas);
