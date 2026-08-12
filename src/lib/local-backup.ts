@@ -50,6 +50,18 @@ type DesktopFiles = {
 
 const BACKUP_XLSX = "spguard-dados.xlsx";
 const BACKUP_ZIP = "spguard-backup-completo.zip";
+const BACKUP_ENCRYPTED = "spguard-backup-criptografado.spguard";
+const BACKUP_KDF_ITERATIONS = 600_000;
+
+type EncryptedBackup = {
+  version: 1;
+  algorithm: "AES-256-GCM";
+  kdf: "PBKDF2-SHA-256";
+  iterations: number;
+  salt: string;
+  iv: string;
+  ciphertext: string;
+};
 
 type DocumentoBackup = {
   id: string;
@@ -206,8 +218,46 @@ function safeBackupFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_") || "documento";
 }
 
-/** Cria um único ZIP local com a planilha de dados e todos os documentos anexados. */
-export async function saveFullBackupNow(onProgress?: (done: number, total: number) => void): Promise<{ path: string; total: number; documentos: number }> {
+function bytesToBase64(bytes: Uint8Array) {
+  const parts: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + 0x8000)));
+  }
+  return btoa(parts.join(""));
+}
+
+function base64ToBytes(base64: string) {
+  const text = atob(base64);
+  const bytes = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index++) bytes[index] = text.charCodeAt(index);
+  return bytes;
+}
+
+async function passwordKey(password: string, salt: Uint8Array) {
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: BACKUP_KDF_ITERATIONS }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptBackup(zip: Uint8Array, password: string) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await passwordKey(password, salt);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, zip));
+  const envelope: EncryptedBackup = { version: 1, algorithm: "AES-256-GCM", kdf: "PBKDF2-SHA-256", iterations: BACKUP_KDF_ITERATIONS, salt: bytesToBase64(salt), iv: bytesToBase64(iv), ciphertext: bytesToBase64(ciphertext) };
+  return new TextEncoder().encode(JSON.stringify(envelope));
+}
+
+async function decryptBackup(file: File, password: string) {
+  let envelope: EncryptedBackup;
+  try { envelope = JSON.parse(new TextDecoder().decode(await file.arrayBuffer())) as EncryptedBackup; } catch { throw new Error("Arquivo de backup criptografado inválido"); }
+  if (envelope.version !== 1 || envelope.algorithm !== "AES-256-GCM" || envelope.kdf !== "PBKDF2-SHA-256" || envelope.iterations !== BACKUP_KDF_ITERATIONS) throw new Error("Formato de backup criptografado não suportado");
+  try {
+    const key = await passwordKey(password, base64ToBytes(envelope.salt));
+    return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(envelope.iv) }, key, base64ToBytes(envelope.ciphertext)));
+  } catch { throw new Error("Senha incorreta ou arquivo de backup alterado"); }
+}
+
+async function createFullBackupZip(onProgress?: (done: number, total: number) => void): Promise<{ contents: Uint8Array; total: number; documentos: number }> {
   const { empresas, colaboradores, eletronicos, documentos } = await fetchAllData();
   const wb = createBackupWorkbook(empresas, colaboradores, eletronicos);
   const entries: Record<string, Uint8Array> = {
@@ -234,9 +284,23 @@ export async function saveFullBackupNow(onProgress?: (done: number, total: numbe
 
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(documentosPlanilha), "Documentos");
   entries[BACKUP_XLSX] = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
-  const path = await writeToBackupDirectory(BACKUP_ZIP, zipSync(entries, { level: 6 }));
   onProgress?.(documentos.length, documentos.length);
-  return { path, total: empresas.length + colaboradores.length + eletronicos.length, documentos: documentosPlanilha.length };
+  return { contents: zipSync(entries, { level: 6 }), total: empresas.length + colaboradores.length + eletronicos.length, documentos: documentosPlanilha.length };
+}
+
+/** Cria um único ZIP local com a planilha de dados e todos os documentos anexados. */
+export async function saveFullBackupNow(onProgress?: (done: number, total: number) => void): Promise<{ path: string; total: number; documentos: number }> {
+  const backup = await createFullBackupZip(onProgress);
+  const path = await writeToBackupDirectory(BACKUP_ZIP, backup.contents);
+  return { path, total: backup.total, documentos: backup.documentos };
+}
+
+/** Cria um backup completo criptografado. A senha não é salva pelo SPGuard. */
+export async function saveEncryptedFullBackup(password: string, onProgress?: (done: number, total: number) => void): Promise<{ path: string; total: number; documentos: number }> {
+  if (password.length < 12) throw new Error("Use uma senha com pelo menos 12 caracteres");
+  const backup = await createFullBackupZip(onProgress);
+  const path = await writeToBackupDirectory(BACKUP_ENCRYPTED, await encryptBackup(backup.contents, password));
+  return { path, total: backup.total, documentos: backup.documentos };
 }
 
 type RestoreResult = {
@@ -435,4 +499,10 @@ export async function restoreFullBackup(file: File): Promise<FullRestoreResult> 
   }
 
   return { ...result, documentos: documentosRestaurados, documentosIgnorados };
+}
+
+/** Descriptografa localmente e restaura o backup protegido por senha. */
+export async function restoreEncryptedFullBackup(file: File, password: string): Promise<FullRestoreResult> {
+  const zip = await decryptBackup(file, password);
+  return restoreFullBackup(new File([zip], BACKUP_ZIP, { type: "application/zip" }));
 }

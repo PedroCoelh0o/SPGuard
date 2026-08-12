@@ -63,6 +63,7 @@ const ARQUIVOS_PERMITIDOS = new Set([
   "spguard-dados.xlsx",
   "spguard-eletronicos.xlsx",
   "spguard-backup-completo.zip",
+  "spguard-backup-criptografado.spguard",
 ]);
 const DIRETORIO_CONFIG = "spguard-planilhas.json";
 

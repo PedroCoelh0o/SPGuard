@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleHelp, Database, FileSpreadsheet, RotateCcw, Save, Search, Settings, Smartphone, Users } from "lucide-react";
+import { CircleHelp, Database, FileKey, FileSpreadsheet, RotateCcw, Save, Search, Settings, Smartphone, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajuda")({ component: Ajuda });
 
@@ -66,6 +66,18 @@ const configuracoes: Guia[] = [
       "O arquivo spguard-backup-completo.zip reúne os dados em planilha e todos os documentos anexados nas fichas.",
       "Os documentos são organizados em subpastas pelo nome de cada colaborador.",
       "Guarde esse ZIP em local seguro, como um pendrive ou disco externo. Ele é criado localmente e não é enviado ao GitHub ou à nuvem pelo SPGuard.",
+    ],
+  },
+  {
+    icon: FileKey,
+    titulo: "Backup criptografado com senha",
+    descricao: "Protege o backup completo contra a leitura por pessoas que tenham acesso à pasta ou ao arquivo.",
+    passos: [
+      "Clique em Criar backup com senha e defina uma senha de pelo menos 12 caracteres.",
+      "Confirme a mesma senha. O SPGuard cria o arquivo spguard-backup-criptografado.spguard com dados e documentos protegidos.",
+      "A senha é usada apenas nesse backup; ela não cria login para usar o SPGuard e não é armazenada pelo sistema.",
+      "Para restaurar, clique em Restaurar backup com senha, escolha o arquivo e informe a senha correta.",
+      "Guarde a senha em local seguro. Se ela for esquecida, o backup não poderá ser recuperado.",
     ],
   },
   {

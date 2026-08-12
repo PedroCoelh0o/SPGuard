@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, saveFullBackupNow, restoreBackup, restoreFullBackup } from "@/lib/local-backup";
+import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, saveEncryptedFullBackup, saveFullBackupNow, restoreBackup, restoreEncryptedFullBackup, restoreFullBackup } from "@/lib/local-backup";
 import {
   createEntradaFile, syncFromEntrada, getLastSync, isAutoSyncEnabled, setAutoSyncEnabled, ENTRADA_FILE,
   getSyncHistory, clearSyncHistory, logSyncResult, logSyncError, type SyncLog, type SyncProgress, type SyncResult, type EntidadeStat,
@@ -49,6 +49,7 @@ export function ConfiguracoesDialog() {
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingFull, setSavingFull] = useState(false);
+  const [savingEncrypted, setSavingEncrypted] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -60,6 +61,7 @@ export function ConfiguracoesDialog() {
   const [history, setHistory] = useState<SyncLog[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const fullFileRef = useRef<HTMLInputElement>(null);
+  const encryptedFileRef = useRef<HTMLInputElement>(null);
   const supported = isFsSupported();
 
   useEffect(() => {
@@ -162,6 +164,20 @@ export function ConfiguracoesDialog() {
     finally { setSavingFull(false); }
   }
 
+  async function doSaveEncrypted() {
+    const password = window.prompt("Defina uma senha para este backup criptografado (mínimo de 12 caracteres). Guarde-a em local seguro: ela não pode ser recuperada pelo SPGuard.");
+    if (password == null) return;
+    const confirmation = window.prompt("Digite a mesma senha novamente para confirmar o backup criptografado.");
+    if (confirmation == null) return;
+    if (password !== confirmation) { toast.error("As senhas não conferem"); return; }
+    setSavingEncrypted(true);
+    try {
+      const r = await saveEncryptedFullBackup(password);
+      toast.success(`Backup criptografado salvo em ${r.path}`, { description: `${r.total} registros e ${r.documentos} documento(s). A senha não foi salva no SPGuard.` });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSavingEncrypted(false); }
+  }
+
   async function doRestore(file?: File) {
     if (!confirm("Restaurar dados do backup? Registros com o mesmo ID serão sobrescritos.")) return;
     setRestoring(true);
@@ -188,6 +204,20 @@ export function ConfiguracoesDialog() {
       setTimeout(() => window.location.reload(), 1200);
     } catch (e) { toast.error((e as Error).message); }
     finally { setRestoring(false); if (fullFileRef.current) fullFileRef.current.value = ""; }
+  }
+
+  async function doRestoreEncrypted(file?: File) {
+    if (!file) return;
+    const password = window.prompt("Digite a senha deste backup criptografado.");
+    if (password == null) return;
+    if (!confirm("Restaurar o backup criptografado? Os dados e documentos com o mesmo ID serão sobrescritos.")) return;
+    setRestoring(true);
+    try {
+      const r = await restoreEncryptedFullBackup(file, password);
+      toast.success(`Restaurado: ${r.empresas} empresas, ${r.colaboradores} colaboradores e ${r.documentos} documento(s)`, r.documentosIgnorados ? { description: `${r.documentosIgnorados} documento(s) sem arquivo ou vínculo válido foram ignorados.` } : undefined);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRestoring(false); if (encryptedFileRef.current) encryptedFileRef.current.value = ""; }
   }
 
   return (
@@ -228,10 +258,10 @@ export function ConfiguracoesDialog() {
                 Cria <strong>spguard-backup-completo.zip</strong> com os dados, observações e todos os documentos anexados às fichas. O arquivo é criado somente na pasta selecionada.
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" onClick={doSaveFull} disabled={!dirName || savingFull || saving}>
+                <Button variant="outline" onClick={doSaveFull} disabled={!dirName || savingFull || saving || savingEncrypted}>
                   <Save className="h-4 w-4" /> {savingFull ? "Preparando documentos..." : "Criar backup completo (.zip)"}
                 </Button>
-                <Button variant="secondary" onClick={() => fullFileRef.current?.click()} disabled={restoring || savingFull}>
+                <Button variant="secondary" onClick={() => fullFileRef.current?.click()} disabled={restoring || savingFull || savingEncrypted}>
                   <RotateCcw className="h-4 w-4" /> Restaurar backup completo
                 </Button>
                 <input
@@ -242,6 +272,24 @@ export function ConfiguracoesDialog() {
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestoreFull(f); }}
                 />
               </div>
+              <p className="pt-1 text-xs text-muted-foreground">Este ZIP não possui senha. Para proteger o conteúdo, utilize a opção criptografada abaixo.</p>
+            </div>
+          )}
+
+          {supported && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <div className="text-sm font-medium">Backup criptografado com senha</div>
+              <p className="text-xs text-muted-foreground">Cria <strong>spguard-backup-criptografado.spguard</strong> com dados e documentos protegidos. Sem a senha, o arquivo não pode ser aberto ou restaurado.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={doSaveEncrypted} disabled={!dirName || savingEncrypted || savingFull || saving}>
+                  <Save className="h-4 w-4" /> {savingEncrypted ? "Criptografando..." : "Criar backup com senha"}
+                </Button>
+                <Button variant="secondary" onClick={() => encryptedFileRef.current?.click()} disabled={restoring || savingEncrypted || savingFull}>
+                  <RotateCcw className="h-4 w-4" /> Restaurar backup com senha
+                </Button>
+                <input ref={encryptedFileRef} type="file" accept=".spguard,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestoreEncrypted(f); }} />
+              </div>
+              <p className="text-xs text-destructive">A senha não é armazenada pelo SPGuard. Se for esquecida, não será possível restaurar este backup.</p>
             </div>
           )}
 
