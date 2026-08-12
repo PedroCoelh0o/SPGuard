@@ -411,6 +411,13 @@ function changedFields(before: Record<string, unknown>, after: Record<string, un
   return changes;
 }
 
+function collaboratorByCpf(db: Database.Database, cpf: unknown) {
+  const cpfDigits = String(cpf ?? "").replace(/\D/g, "");
+  if (!cpfDigits) return undefined;
+  const rows = db.prepare("SELECT * FROM colaboradores WHERE cpf IS NOT NULL").all() as Record<string, unknown>[];
+  return rows.find((row) => String(row.cpf ?? "").replace(/\D/g, "") === cpfDigits);
+}
+
 function runInsert(db: Database.Database, table: string, q: QueryDescriptor): unknown {
   const rows = Array.isArray(q.values) ? q.values : q.values ? [q.values] : [];
   const inserted: unknown[] = [];
@@ -420,6 +427,21 @@ function runInsert(db: Database.Database, table: string, q: QueryDescriptor): un
       const ts = nowIso();
       const payload: Record<string, unknown> = { ...item, id };
       applyBusinessRules(table, payload);
+      // CPF é único. A sincronização de uma planilha pode trazer a mesma
+      // pessoa duas vezes com identificadores diferentes; nesse cenário,
+      // atualizamos o cadastro já existente em vez de deixar o SQLite abortar
+      // toda a operação com "UNIQUE constraint failed".
+      const sameCpf = table === "colaboradores" ? collaboratorByCpf(db, payload.cpf) : undefined;
+      if (sameCpf) {
+        const patch = { ...payload, id: sameCpf.id, excluido_em: null, updated_at: ts };
+        const cols = Object.keys(patch).filter((c) => TABLE_COLUMNS[table].includes(c) && c !== "id" && c !== "created_at");
+        db.prepare(`UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`).run(...cols.map((c) => toSqlValue(c, patch[c])), sameCpf.id);
+        const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(sameCpf.id) as Record<string, unknown>;
+        const changes = changedFields(sameCpf, row);
+        if (Object.keys(changes).length) recordHistory(db, table, row, "editado", changes);
+        inserted.push(fromSqlRow(table, row));
+        continue;
+      }
       if (TABLE_COLUMNS[table].includes("created_at") && !payload.created_at) payload.created_at = ts;
       if (TABLE_COLUMNS[table].includes("updated_at")) payload.updated_at = ts;
       const cols = Object.keys(payload).filter((c) => TABLE_COLUMNS[table].includes(c));

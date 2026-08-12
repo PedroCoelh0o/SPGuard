@@ -18,6 +18,10 @@ const crypto = require("node:crypto");
 // não só no instalador/atalhos, que já vêm do "productName" configurado
 // no package.json.
 app.setName("SPGuard");
+// O nome técnico antigo do projeto podia fazer o Electron escolher uma pasta
+// diferente em algumas atualizações. Fixar este caminho garante que todas as
+// versões instaladas usem sempre a mesma base local já existente.
+app.setPath("userData", path.join(app.getPath("appData"), "SPGuard"));
 if (process.platform === "win32") {
   app.setAppUserModelId("com.spguard.app");
 }
