@@ -182,7 +182,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
   }
 
   let colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
-    () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id") as never,
+    () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id").includeDeleted() as never,
   );
 
   // --- Colaboradores ---
@@ -230,7 +230,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
     const ref = `linha ${i + 2}: ${nome}`;
     if (existing) {
       if (!dryRun) {
-        const { error } = await supabase.from("colaboradores").update(payload as never).eq("id", existing.id);
+        const { error } = await supabase.from("colaboradores").update({ ...payload, excluido_em: null } as never).includeDeleted().eq("id", existing.id);
         if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
       }
       addAtualizado(detalhe.colaboradores, ref);
@@ -246,7 +246,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
 
   if (colabCount > 0 && !dryRun) {
     colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
-      () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id") as never,
+      () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id").includeDeleted() as never,
     );
   }
 
@@ -262,7 +262,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
   }
 
   const existentes = await fetchAllRows<{ id: string; imei: string | null; numero_serie: string | null }>(
-    () => supabase.from("eletronicos" as never).select("id, imei, numero_serie") as never,
+    () => supabase.from("eletronicos" as never).select("id, imei, numero_serie").includeDeleted() as never,
   );
   const byImei = new Map<string, string>();
   const bySerie = new Map<string, string>();
@@ -310,7 +310,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
     const existingId = (imei ? byImei.get(onlyDigits(imei)) : undefined) ?? (numero_serie ? bySerie.get(norm(numero_serie)) : undefined);
     if (existingId) {
       if (!dryRun) {
-        const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", existingId);
+        const { error } = await supabase.from("eletronicos" as never).update({ ...payload, excluido_em: null } as never).includeDeleted().eq("id", existingId);
         if (error) { erros.push(`Eletronicos linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.eletronicos, `${ref} — ${error.message}`); continue; }
       }
       addAtualizado(detalhe.eletronicos, ref);

@@ -81,7 +81,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
     const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 
     const colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null }>(
-      () => supabase.from("colaboradores").select("id, nome, cpf, matricula") as never,
+      () => supabase.from("colaboradores").select("id, nome, cpf, matricula").includeDeleted() as never,
     );
     const byCpf = new Map<string, string>();
     const byMat = new Map<string, string>();
@@ -93,7 +93,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
     }
 
     const existing = await fetchAllRows<{ id: string; colaborador_id: string; tipo: string; imei: string | null; numero_serie: string | null }>(
-      () => supabase.from("eletronicos" as never).select("id, colaborador_id, tipo, imei, numero_serie") as never,
+      () => supabase.from("eletronicos" as never).select("id, colaborador_id, tipo, imei, numero_serie").includeDeleted() as never,
     );
     const byImei = new Map<string, string>();
     const bySerie = new Map<string, string>();
@@ -164,7 +164,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
       };
       try {
         if (r.existingId) {
-          const { error } = await supabase.from("eletronicos" as never).update(payload as never).eq("id", r.existingId);
+          const { error } = await supabase.from("eletronicos" as never).update({ ...payload, excluido_em: null } as never).includeDeleted().eq("id", r.existingId);
           if (error) throw error;
           updated++;
         } else {
@@ -223,6 +223,14 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
               <Badge className="bg-blue-600">Atualizar: {stats.update}</Badge>
               {stats.error > 0 && <Badge variant="destructive">Erros: {stats.error}</Badge>}
             </div>
+          )}
+
+          {rows.length > 0 && !running && !result && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>Prévia de validação pronta</AlertTitle>
+              <AlertDescription>Confira os novos registros, as atualizações e as linhas inválidas. Nenhum dado é salvo antes da confirmação da importação.</AlertDescription>
+            </Alert>
           )}
 
           {running && (

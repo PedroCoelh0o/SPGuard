@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleHelp, Database, FileKey, FileSpreadsheet, RotateCcw, Save, Search, Settings, Smartphone, Users } from "lucide-react";
+import { CircleHelp, Database, FileKey, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajuda")({ component: Ajuda });
 
@@ -39,8 +39,28 @@ const guias: Guia[] = [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",
-      "Use a lixeira para escolher um ou mais dispositivos específicos que devem ser excluídos.",
+      "Use a lixeira para escolher um ou mais dispositivos específicos que devem ser removidos; eles podem ser restaurados por 30 dias.",
       "Clique em Exportar PDF para criar um relatório somente com os colaboradores filtrados na tela.",
+    ],
+  },
+  {
+    icon: History,
+    titulo: "Histórico de alterações",
+    descricao: "Mostra a rastreabilidade dos cadastros e das mudanças realizadas no computador.",
+    passos: [
+      "Nas telas Colaboradores ou Eletrônicos, clique em Histórico.",
+      "Cada registro informa data e hora, tipo de registro, ação realizada, campos alterados e o responsável identificado como Usuário local.",
+      "O histórico inclui cadastros, edições, itens enviados para a lixeira e restaurações.",
+    ],
+  },
+  {
+    icon: Trash2,
+    titulo: "Lixeira de segurança",
+    descricao: "Evita a perda imediata de colaboradores e eletrônicos removidos por engano.",
+    passos: [
+      "Ao excluir um colaborador ou eletrônico, o item vai para a Lixeira em vez de ser apagado imediatamente.",
+      "Na tela Colaboradores ou Eletrônicos, clique em Lixeira para localizar o item e usar Restaurar.",
+      "Colaboradores restaurados mantêm seus documentos vinculados. Os itens ficam na lixeira por 30 dias e depois são excluídos definitivamente.",
     ],
   },
 ];
@@ -54,7 +74,7 @@ const configuracoes: Guia[] = [
       "Abra Configurações pelo ícone de engrenagem no canto superior direito.",
       "Clique em Selecionar pasta e escolha uma pasta de sua preferência no computador ou em um disco externo.",
       "Clique em Salvar dados agora. O SPGuard cria a pasta SPGuard e o arquivo spguard-dados.xlsx.",
-      "Esse arquivo contém empresas, colaboradores, observações e eletrônicos; ele não inclui os documentos anexados.",
+      "Esse arquivo contém empresas, colaboradores, observações, eletrônicos, histórico e itens da lixeira; ele não inclui os documentos anexados.",
     ],
   },
   {
@@ -63,7 +83,7 @@ const configuracoes: Guia[] = [
     descricao: "É a cópia mais completa do sistema e a mais indicada antes de atualizações importantes.",
     passos: [
       "Depois de selecionar a pasta, clique em Criar backup completo (.zip).",
-      "O arquivo spguard-backup-completo.zip reúne os dados em planilha e todos os documentos anexados nas fichas.",
+      "O arquivo spguard-backup-completo.zip reúne os dados em planilha, histórico, itens da lixeira e todos os documentos anexados nas fichas.",
       "Os documentos são organizados em subpastas pelo nome de cada colaborador.",
       "Guarde esse ZIP em local seguro, como um pendrive ou disco externo. Ele é criado localmente e não é enviado ao GitHub ou à nuvem pelo SPGuard.",
     ],

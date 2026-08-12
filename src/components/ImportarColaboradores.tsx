@@ -127,7 +127,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
 
     // Fetch existing colaboradores for duplicate detection (cpf + matricula+empresa)
     const existing = await fetchAllRows<{ id: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
-      () => supabase.from("colaboradores").select("id, cpf, matricula, empresa_id").order("id") as never,
+      () => supabase.from("colaboradores").select("id, cpf, matricula, empresa_id").includeDeleted().order("id") as never,
     );
     const byCpf = new Map<string, { id: string; empresa_id: string }>();
     const byMatEmp = new Map<string, string>();
@@ -228,7 +228,7 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
       };
       try {
         if (r.existingId) {
-          const { error } = await supabase.from("colaboradores").update(payload).eq("id", r.existingId);
+          const { error } = await supabase.from("colaboradores").update({ ...payload, excluido_em: null }).includeDeleted().eq("id", r.existingId);
           if (error) throw error;
           updated++;
         } else {
@@ -291,6 +291,14 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
               <Badge className="bg-blue-600">Atualizar: {stats.update}</Badge>
               {stats.error > 0 && <Badge variant="destructive">Erros: {stats.error}</Badge>}
             </div>
+          )}
+
+          {rows.length > 0 && !running && !result && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>Prévia de validação pronta</AlertTitle>
+              <AlertDescription>Confira abaixo os registros novos, as atualizações e as linhas inválidas. Nenhum dado é salvo antes de clicar em “Importar”.</AlertDescription>
+            </Alert>
           )}
 
           {running && (

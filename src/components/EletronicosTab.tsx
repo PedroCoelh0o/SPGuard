@@ -70,6 +70,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
       toast.success("Dispositivo salvo");
       qc.invalidateQueries({ queryKey: ["eletronicos", colaboradorId] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
       setOpen(false);
       setEditing(null);
     },
@@ -82,9 +83,11 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Dispositivo excluído");
+      toast.success("Dispositivo movido para a lixeira. Restauração disponível por 30 dias.");
       qc.invalidateQueries({ queryKey: ["eletronicos", colaboradorId] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["lixeira-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -145,7 +148,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
                       {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                      {isAdmin && <Button size="icon" variant="ghost" aria-label={`Excluir ${e.descricao}`} title="Excluir" onClick={() => { if (confirm("Excluir dispositivo?")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                      {isAdmin && <Button size="icon" variant="ghost" aria-label={`Mover ${e.descricao} para a lixeira`} title="Mover para lixeira" onClick={() => { if (confirm("Mover dispositivo para a lixeira? Ele poderá ser restaurado por 30 dias.")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
                   </TableRow>
                 );

@@ -87,6 +87,19 @@ class QueryBuilder<T = unknown> implements PromiseLike<PgResult<T>> {
     return this;
   }
 
+  // Registros removidos ficam em uma lixeira temporária. Estas opções são
+  // usadas apenas pelas telas de histórico/lixeira, sem expor itens removidos
+  // nas consultas normais do aplicativo.
+  onlyDeleted() {
+    this.descriptor.trashMode = "only";
+    return this;
+  }
+
+  includeDeleted() {
+    this.descriptor.trashMode = "all";
+    return this;
+  }
+
   // Torna o builder "awaitable", igual ao supabase-js: `await db.from(x).select()`.
   then<TResult1 = PgResult<T>, TResult2 = never>(
     onfulfilled?: ((value: PgResult<T>) => TResult1 | PromiseLike<TResult1>) | null,

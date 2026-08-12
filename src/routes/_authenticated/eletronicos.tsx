@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { EletronicosTab } from "@/components/EletronicosTab";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportEletronicosPDF } from "@/lib/export-colaboradores";
+import { HistoricoAlteracoesDialog, LixeiraDialog } from "@/components/RastreabilidadeDialogs";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
@@ -129,9 +130,11 @@ function EletronicosPage() {
       }
     },
     onSuccess: () => {
-      toast.success(`${selecionados.length} eletrônico(s) excluído(s)`);
+      toast.success(`${selecionados.length} eletrônico(s) movido(s) para a lixeira. Restauração disponível por 30 dias.`);
       qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["lixeira-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
       setExcluindo(null); setSelecionados([]);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -158,11 +161,13 @@ function EletronicosPage() {
           <p className="text-sm text-muted-foreground">Colaboradores autorizados a portar celulares, notebooks e tablets</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <HistoricoAlteracoesDialog />
+          <LixeiraDialog />
           <Button variant="outline" size="sm" onClick={exportPdf} disabled={exporting || stats.length === 0}>
             <FileText className="h-4 w-4" /> {exporting ? "Gerando..." : "Exportar PDF"}
           </Button>
           {canWrite && (
-            <ImportarEletronicos onDone={() => qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] })} />
+            <ImportarEletronicos onDone={() => { qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
           )}
         </div>
       </div>
@@ -269,14 +274,14 @@ function EletronicosPage() {
       <Dialog open={!!excluindo} onOpenChange={(v) => { if (!v) { setExcluindo(null); setSelecionados([]); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Excluir eletrônicos de {excluindo?.nome}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para excluir. Esta ação não pode ser desfeita.</p>
+          <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para mover à lixeira. Eles poderão ser restaurados em até 30 dias.</p>
           <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
             {itensParaExcluir.map((e) => {
               const label = [e.tipo === "celular" ? "Celular" : e.tipo === "notebook" ? "Notebook" : "Tablet", e.descricao, e.modelo].filter(Boolean).join(" — ");
               return <label key={e.id} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-muted"><Checkbox checked={selecionados.includes(e.id)} onCheckedChange={(v) => setSelecionados((old) => v ? [...old, e.id] : old.filter((id) => id !== e.id))} /><span className="text-sm">{label}</span></label>;
             })}
           </div>
-          <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button><Button variant="destructive" disabled={selecionados.length === 0 || excluirSelecionados.isPending} onClick={() => excluirSelecionados.mutate()}><Trash2 className="h-4 w-4" /> {excluirSelecionados.isPending ? "Excluindo..." : "Excluir selecionados"}</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button><Button variant="destructive" disabled={selecionados.length === 0 || excluirSelecionados.isPending} onClick={() => excluirSelecionados.mutate()}><Trash2 className="h-4 w-4" /> {excluirSelecionados.isPending ? "Movendo..." : "Mover para lixeira"}</Button></div>
         </DialogContent>
       </Dialog>
     </div>

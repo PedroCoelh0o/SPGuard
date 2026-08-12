@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   estado TEXT,
   foto_url TEXT,
   eletronicos_autorizado INTEGER NOT NULL DEFAULT 1,
+  excluido_em TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -119,6 +120,7 @@ CREATE TABLE IF NOT EXISTS eletronicos (
   numero_selo TEXT,
   numero_serie TEXT,
   acessorios TEXT,
+  excluido_em TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -133,15 +135,50 @@ CREATE TABLE IF NOT EXISTS audit_exportacoes (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_exportacoes(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS historico_alteracoes (
+  id TEXT PRIMARY KEY,
+  entidade TEXT NOT NULL CHECK (entidade IN ('colaborador','eletronico')),
+  registro_id TEXT NOT NULL,
+  registro_nome TEXT NOT NULL,
+  acao TEXT NOT NULL CHECK (acao IN ('criado','editado','movido_para_lixeira','restaurado')),
+  alteracoes TEXT NOT NULL DEFAULT '{}',
+  autor TEXT NOT NULL DEFAULT 'Usuário local',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_historico_registro ON historico_alteracoes(entidade, registro_id, created_at DESC);
 `;
 
 // CREATE TABLE IF NOT EXISTS não altera bancos que já existiam. A migração
 // mantém todos os cadastros e acrescenta apenas o novo campo opcional.
 function ensureSchemaMigrations(db: Database.Database) {
-  const columns = db.prepare("PRAGMA table_info(colaboradores)").all() as { name: string }[];
-  if (!columns.some((column) => column.name === "observacoes")) {
+  const columns = (table: string) => db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  const colabColumns = columns("colaboradores");
+  if (!colabColumns.some((column) => column.name === "observacoes")) {
     db.exec("ALTER TABLE colaboradores ADD COLUMN observacoes TEXT");
   }
+  if (!colabColumns.some((column) => column.name === "excluido_em")) {
+    db.exec("ALTER TABLE colaboradores ADD COLUMN excluido_em TEXT");
+  }
+  const eletrColumns = columns("eletronicos");
+  if (!eletrColumns.some((column) => column.name === "excluido_em")) {
+    db.exec("ALTER TABLE eletronicos ADD COLUMN excluido_em TEXT");
+  }
+
+  // A lixeira é temporária: após 30 dias, o aplicativo remove os registros.
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const oldColabs = db.prepare("SELECT id, foto_url FROM colaboradores WHERE excluido_em IS NOT NULL AND excluido_em < ?").all(cutoff) as { id: string; foto_url: string | null }[];
+  for (const { id, foto_url } of oldColabs) {
+    const docs = db.prepare("SELECT storage_path FROM colaborador_documentos WHERE colaborador_id = ?").all(id) as { storage_path: string }[];
+    for (const doc of docs) {
+      try { fs.unlinkSync(safeRelPath("colaborador-documentos", doc.storage_path)); } catch { /* arquivo já removido */ }
+    }
+    if (foto_url) {
+      try { fs.unlinkSync(safeRelPath("colaborador-fotos", foto_url)); } catch { /* arquivo já removido */ }
+    }
+    db.prepare("DELETE FROM colaboradores WHERE id = ?").run(id);
+  }
+  db.prepare("DELETE FROM eletronicos WHERE excluido_em IS NOT NULL AND excluido_em < ?").run(cutoff);
 }
 
 // Nota: no Postgres original, "touch updated_at" e "auto-status desligado ao
@@ -160,14 +197,16 @@ function applyBusinessRules(table: string, payload: Record<string, unknown>) {
 
 const TABLE_COLUMNS: Record<string, string[]> = {
   empresas: ["id", "razao_social", "nome_fantasia", "cnpj", "responsavel", "telefone", "email", "endereco", "cidade", "estado", "status", "created_at", "updated_at"],
-  colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "created_at", "updated_at"],
+  colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "excluido_em", "created_at", "updated_at"],
   colaborador_documentos: ["id", "colaborador_id", "nome", "tipo", "storage_path", "tamanho", "uploaded_by", "created_at", "updated_at"],
-  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "created_at", "updated_at"],
+  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "excluido_em", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],
+  historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
 };
 
 const BOOLEAN_COLUMNS = new Set(["eletronicos_autorizado"]);
-const JSON_COLUMNS = new Set(["filtros"]);
+const JSON_COLUMNS = new Set(["filtros", "alteracoes"]);
+const SOFT_DELETE_TABLES = new Set(["colaboradores", "eletronicos"]);
 
 function assertTable(table: string): asserts table is keyof typeof TABLE_COLUMNS {
   if (!Object.prototype.hasOwnProperty.call(TABLE_COLUMNS, table)) {
@@ -217,6 +256,7 @@ export type QueryDescriptor = {
   range?: { from: number; to: number };
   values?: Record<string, unknown> | Record<string, unknown>[];
   onConflict?: string;
+  trashMode?: "active" | "only" | "all";
 };
 
 export type QueryResult = { data: unknown; error: { message: string } | null };
@@ -225,11 +265,14 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function buildWhere(table: string, filters: Filter[] | undefined): { clause: string; params: unknown[] } {
-  if (!filters || filters.length === 0) return { clause: "", params: [] };
+function buildWhere(table: string, filters: Filter[] | undefined, trashMode: QueryDescriptor["trashMode"] = "active"): { clause: string; params: unknown[] } {
   const parts: string[] = [];
   const params: unknown[] = [];
-  for (const f of filters) {
+  if (SOFT_DELETE_TABLES.has(table)) {
+    if (trashMode === "active") parts.push("excluido_em IS NULL");
+    if (trashMode === "only") parts.push("excluido_em IS NOT NULL");
+  }
+  for (const f of filters ?? []) {
     assertColumn(table, f.col);
     if (f.type === "eq") {
       parts.push(`${f.col} = ?`);
@@ -252,7 +295,7 @@ function selectColumns(table: string, columns: string | undefined): string {
 
 function runSelect(db: Database.Database, table: string, q: QueryDescriptor): unknown {
   const cols = selectColumns(table, q.columns);
-  const { clause, params } = buildWhere(table, q.filters);
+  const { clause, params } = buildWhere(table, q.filters, q.trashMode);
   let sql = `SELECT ${cols} FROM ${table} ${clause}`;
   if (q.order) {
     assertColumn(table, q.order.col);
@@ -264,6 +307,27 @@ function runSelect(db: Database.Database, table: string, q: QueryDescriptor): un
   }
   const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
   return rows.map((r) => fromSqlRow(table, r));
+}
+
+function historyName(table: string, row: Record<string, unknown>) {
+  if (table === "colaboradores") return String(row.nome ?? "Colaborador sem nome");
+  return [row.tipo, row.descricao, row.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação";
+}
+
+function recordHistory(db: Database.Database, table: string, row: Record<string, unknown>, acao: "criado" | "editado" | "movido_para_lixeira" | "restaurado", alteracoes: Record<string, unknown>) {
+  if (table !== "colaboradores" && table !== "eletronicos") return;
+  db.prepare("INSERT INTO historico_alteracoes (id, entidade, registro_id, registro_nome, acao, alteracoes, autor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(crypto.randomUUID(), table === "colaboradores" ? "colaborador" : "eletronico", row.id, historyName(table, row), acao, JSON.stringify(alteracoes), "Usuário local", nowIso());
+}
+
+function changedFields(before: Record<string, unknown>, after: Record<string, unknown>) {
+  const ignored = new Set(["id", "created_at", "updated_at", "excluido_em"]);
+  const changes: Record<string, unknown> = {};
+  for (const key of Object.keys(after)) {
+    if (ignored.has(key) || before[key] === after[key]) continue;
+    changes[key] = { de: before[key] ?? null, para: after[key] ?? null };
+  }
+  return changes;
 }
 
 function runInsert(db: Database.Database, table: string, q: QueryDescriptor): unknown {
@@ -282,6 +346,7 @@ function runInsert(db: Database.Database, table: string, q: QueryDescriptor): un
       const values = cols.map((c) => toSqlValue(c, payload[c]));
       db.prepare(`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${placeholders})`).run(...values);
       const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as Record<string, unknown>;
+      recordHistory(db, table, row, "criado", { registro: "criado" });
       inserted.push(fromSqlRow(table, row));
     }
   });
@@ -293,13 +358,25 @@ function runUpdate(db: Database.Database, table: string, q: QueryDescriptor): un
   const values = { ...((Array.isArray(q.values) ? q.values[0] : q.values) ?? {}) } as Record<string, unknown>;
   applyBusinessRules(table, values);
   if (TABLE_COLUMNS[table].includes("updated_at")) values.updated_at = nowIso();
-  const { clause, params } = buildWhere(table, q.filters);
+  const { clause, params } = buildWhere(table, q.filters, q.trashMode);
   const cols = Object.keys(values).filter((c) => TABLE_COLUMNS[table].includes(c) && c !== "id");
   if (cols.length === 0) return [];
+  const before = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
   const setClause = cols.map((c) => `${c} = ?`).join(", ");
   const setValues = cols.map((c) => toSqlValue(c, values[c]));
   db.prepare(`UPDATE ${table} SET ${setClause} ${clause}`).run(...setValues, ...params);
-  const rows = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
+  const afterWhere = values.excluido_em === null
+    ? buildWhere(table, q.filters, "active")
+    : { clause, params };
+  const rows = db.prepare(`SELECT * FROM ${table} ${afterWhere.clause}`).all(...afterWhere.params) as Record<string, unknown>[];
+  for (const row of rows) {
+    const old = before.find((item) => item.id === row.id) ?? {};
+    const action = old.excluido_em && !row.excluido_em ? "restaurado" : "editado";
+    const changes = changedFields(old, row);
+    if (action === "restaurado" || Object.keys(changes).length) {
+      recordHistory(db, table, row, action, action === "restaurado" ? { registro: "restaurado" } : changes);
+    }
+  }
   return rows.map((r) => fromSqlRow(table, r));
 }
 
@@ -311,7 +388,7 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
     for (const item of items) {
       const conflictVal = item[conflictCol];
       const existing = conflictVal !== undefined
-        ? db.prepare(`SELECT id FROM ${table} WHERE ${conflictCol} = ?`).get(toSqlValue(conflictCol, conflictVal)) as { id: string } | undefined
+        ? db.prepare(`SELECT * FROM ${table} WHERE ${conflictCol} = ?`).get(toSqlValue(conflictCol, conflictVal)) as Record<string, unknown> | undefined
         : undefined;
       if (existing) {
         const patch: Record<string, unknown> = { ...item };
@@ -324,6 +401,9 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
           db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).run(...setValues, existing.id);
         }
         const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(existing.id) as Record<string, unknown>;
+        const action = existing.excluido_em && !row.excluido_em ? "restaurado" : "editado";
+        const changes = changedFields(existing, row);
+        if (action === "restaurado" || Object.keys(changes).length) recordHistory(db, table, row, action, action === "restaurado" ? { registro: "restaurado" } : changes);
         result.push(fromSqlRow(table, row));
       } else {
         const id = (item.id as string) || crypto.randomUUID();
@@ -337,6 +417,7 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
         const values = cols.map((c) => toSqlValue(c, payload[c]));
         db.prepare(`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${placeholders})`).run(...values);
         const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as Record<string, unknown>;
+        recordHistory(db, table, row, "criado", { registro: "criado" });
         result.push(fromSqlRow(table, row));
       }
     }
@@ -346,7 +427,14 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
 }
 
 function runDelete(db: Database.Database, table: string, q: QueryDescriptor): unknown {
-  const { clause, params } = buildWhere(table, q.filters);
+  const { clause, params } = buildWhere(table, q.filters, q.trashMode);
+  if (SOFT_DELETE_TABLES.has(table)) {
+    const rows = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
+    const ts = nowIso();
+    db.prepare(`UPDATE ${table} SET excluido_em = ?, updated_at = ? ${clause}`).run(ts, ts, ...params);
+    for (const row of rows) recordHistory(db, table, { ...row, excluido_em: ts }, "movido_para_lixeira", { registro: "movido para a lixeira" });
+    return null;
+  }
   db.prepare(`DELETE FROM ${table} ${clause}`).run(...params);
   return null;
 }

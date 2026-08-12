@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
+import { HistoricoAlteracoesDialog, LixeiraDialog } from "@/components/RastreabilidadeDialogs";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
@@ -97,6 +98,7 @@ function ColabPage() {
       qc.invalidateQueries({ queryKey: ["colaboradores"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
+      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
       setOpen(false);
       setEditing(null);
     },
@@ -106,7 +108,12 @@ function ColabPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { toast.success("Colaborador excluído"); qc.invalidateQueries({ queryKey: ["colaboradores"] }); },
+    onSuccess: () => {
+      toast.success("Colaborador movido para a lixeira. Você pode restaurá-lo em até 30 dias.");
+      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["lixeira-colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -140,6 +147,8 @@ function ColabPage() {
           <p className="text-sm text-muted-foreground">Cadastro completo por empresa contratada</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <HistoricoAlteracoesDialog />
+          <LixeiraDialog />
           <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={async () => {
             try { await exportColaboradoresCSV(filtered, empresas, { Busca: q }); toast.success("CSV gerado"); }
             catch (e) { toast.error((e as Error).message); }
@@ -154,7 +163,7 @@ function ColabPage() {
           }}><FileText className="h-4 w-4" /> PDF</Button>
           {canWrite && (
             <>
-              <ImportarColaboradores empresas={empresas} onDone={() => qc.invalidateQueries({ queryKey: ["colaboradores"] })} />
+              <ImportarColaboradores empresas={empresas} onDone={() => { qc.invalidateQueries({ queryKey: ["colaboradores"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
               <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
                 <DialogTrigger asChild>
                   <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
@@ -242,12 +251,12 @@ function ColabPage() {
                           <AlertDialogTrigger asChild><Button size="icon" variant="ghost" aria-label={`Excluir ${c.nome}`} title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir colaborador?</AlertDialogTitle>
-                              <AlertDialogDescription>Essa ação é permanente.</AlertDialogDescription>
+                              <AlertDialogTitle>Mover colaborador para a lixeira?</AlertDialogTitle>
+                              <AlertDialogDescription>O colaborador e seus documentos poderão ser restaurados pela lixeira durante 30 dias.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => del.mutate(c.id)}>Excluir</AlertDialogAction>
+                              <AlertDialogAction onClick={() => del.mutate(c.id)}>Mover para lixeira</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

@@ -156,18 +156,21 @@ export async function ensurePermission(handle: DirHandle) {
 }
 
 async function fetchAllData() {
-  const [emp, col, ele, docs] = await Promise.all([
+  const [emp, col, ele, docs, historico] = await Promise.all([
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("empresas").select("*").order("id") as never,
     ),
     fetchAllRows<Record<string, unknown>>(
-      () => supabase.from("colaboradores").select("*").order("id") as never,
+      () => supabase.from("colaboradores").select("*").includeDeleted().order("id") as never,
     ),
     fetchAllRows<Record<string, unknown>>(
-      () => supabase.from("eletronicos" as never).select("*").order("id") as never,
+      () => supabase.from("eletronicos" as never).select("*").includeDeleted().order("id") as never,
     ),
     fetchAllRows<DocumentoBackup>(
       () => supabase.from("colaborador_documentos" as never).select("*").order("id") as never,
+    ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("historico_alteracoes").select("*").order("created_at", { ascending: false }) as never,
     ),
   ]);
   return {
@@ -175,14 +178,16 @@ async function fetchAllData() {
     colaboradores: col,
     eletronicos: ele,
     documentos: docs,
+    historico,
   };
 }
 
-function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[]) {
+function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[], historico: Record<string, unknown>[]) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(empresas), "Empresas");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(colaboradores), "Colaboradores");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eletronicos), "Eletronicos");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historico), "Historico");
   return wb;
 }
 
@@ -207,8 +212,8 @@ async function writeToBackupDirectory(name: string, contents: Uint8Array): Promi
 }
 
 export async function saveBackupNow(): Promise<{ path: string; total: number }> {
-  const { empresas, colaboradores, eletronicos } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos);
+  const { empresas, colaboradores, eletronicos, historico } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico);
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
   const path = await writeToBackupDirectory(BACKUP_XLSX, new Uint8Array(buf));
   return { path, total: empresas.length + colaboradores.length + eletronicos.length };
@@ -258,8 +263,8 @@ async function decryptBackup(file: File, password: string) {
 }
 
 async function createFullBackupZip(onProgress?: (done: number, total: number) => void): Promise<{ contents: Uint8Array; total: number; documentos: number }> {
-  const { empresas, colaboradores, eletronicos, documentos } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos);
+  const { empresas, colaboradores, eletronicos, documentos, historico } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico);
   const entries: Record<string, Uint8Array> = {
     [BACKUP_XLSX]: new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer),
   };
@@ -307,6 +312,7 @@ type RestoreResult = {
   empresas: number;
   colaboradores: number;
   eletronicos: number;
+  historico: number;
   colaboradoresIgnorados: number;
   eletronicosIgnorados: number;
 };
@@ -367,12 +373,13 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   const empresas = clean(sheetRows(wb, "Empresas"));
   const colaboradores = clean(sheetRows(wb, "Colaboradores"));
   const eletronicos = clean(sheetRows(wb, "Eletronicos"));
+  const historico = clean(sheetRows(wb, "Historico"));
 
   // O CPF é único. Um backup pode conter o mesmo colaborador mais de uma
   // vez (por exemplo, após planilhas terem sido mescladas). Mantemos a
   // primeira ocorrência e atualizamos o registro já existente pelo CPF.
   const existentes = await fetchAllRows<{ id: string; cpf: string | null }>(
-    () => supabase.from("colaboradores").select("id, cpf") as never,
+    () => supabase.from("colaboradores").select("id, cpf").includeDeleted() as never,
   );
   const idPorCpf = new Map<string, string>();
   for (const c of existentes) {
@@ -407,7 +414,7 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   // presente na planilha. Eletrônicos sem colaborador válido são ignorados:
   // isso evita a falha NOT NULL e preserva o restante do backup.
   const colaboradoresAposRestore = await fetchAllRows<{ id: string; cpf: string | null }>(
-    () => supabase.from("colaboradores").select("id, cpf") as never,
+    () => supabase.from("colaboradores").select("id, cpf").includeDeleted() as never,
   );
   const idsColaboradores = new Set(colaboradoresAposRestore.map((c) => c.id));
   for (const c of colaboradoresAposRestore) {
@@ -427,10 +434,13 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
     eletronicosValidos.push({ ...eletronico, colaborador_id: colaboradorId });
   }
 
+  const historicoRestaurado = await upsertAll("historico_alteracoes", historico);
+
   return {
     empresas: empresasRestauradas,
     colaboradores: colaboradoresRestaurados,
     eletronicos: await upsertAll("eletronicos", eletronicosValidos),
+    historico: historicoRestaurado,
     colaboradoresIgnorados,
     eletronicosIgnorados,
   };
