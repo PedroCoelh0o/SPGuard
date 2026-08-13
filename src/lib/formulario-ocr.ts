@@ -98,17 +98,78 @@ async function renderFile(file: File) {
   return canvas;
 }
 
-function rotateLandscape(canvas: HTMLCanvasElement) {
-  if (canvas.height >= canvas.width) return canvas;
+function rotateCanvas(canvas: HTMLCanvasElement, quarterTurns: 0 | 1 | 2 | 3) {
+  if (quarterTurns === 0) return canvas;
   const rotated = document.createElement("canvas");
-  rotated.width = canvas.height;
-  rotated.height = canvas.width;
+  const swapsDimensions = quarterTurns === 1 || quarterTurns === 3;
+  rotated.width = swapsDimensions ? canvas.height : canvas.width;
+  rotated.height = swapsDimensions ? canvas.width : canvas.height;
   const context = rotated.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Não foi possível girar o formulário.");
-  context.translate(rotated.width, 0);
-  context.rotate(Math.PI / 2);
+  if (quarterTurns === 1) {
+    context.translate(rotated.width, 0);
+    context.rotate(Math.PI / 2);
+  } else if (quarterTurns === 2) {
+    context.translate(rotated.width, rotated.height);
+    context.rotate(Math.PI);
+  } else {
+    context.translate(0, rotated.height);
+    context.rotate(-Math.PI / 2);
+  }
   context.drawImage(canvas, 0, 0);
   return rotated;
+}
+
+type OrientationWorker = {
+  recognize(image: HTMLCanvasElement): Promise<{ data: { text: string; confidence: number } }>;
+};
+
+const FORM_KEYWORDS = [
+  "dados", "portador", "colaborador", "propriedade", "equipamento",
+  "celular", "notebook", "justificativa", "nome", "empresa", "matricula",
+  "cpf", "marca", "modelo", "identidade", "acessorios",
+];
+
+function normalizedOcrText(value: string) {
+  return value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function orientationScore(text: string, confidence: number) {
+  const normalized = normalizedOcrText(text);
+  const recognizedKeywords = FORM_KEYWORDS.filter((keyword) => normalized.includes(keyword)).length;
+  // Os rótulos impressos do formulário são mais confiáveis que a confiança
+  // média, que também inclui linhas, carimbos e escrita manual.
+  return confidence + recognizedKeywords * 12;
+}
+
+async function orientForm(
+  canvas: HTMLCanvasElement,
+  worker: OrientationWorker,
+  onProgress?: (progress: ProgressoOcr) => void,
+) {
+  // O PDF.js já respeita o metadado /Rotate do PDF. Portanto, um documento
+  // horizontal pode precisar ser girado para qualquer um dos dois lados.
+  // Para imagens verticais, compare a posição original com 180 graus.
+  const candidates = canvas.width > canvas.height
+    ? [rotateCanvas(canvas, 1), rotateCanvas(canvas, 3)]
+    : [canvas, rotateCanvas(canvas, 2)];
+  let best = candidates[0];
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < candidates.length; index++) {
+    onProgress?.({ etapa: `Conferindo orientação ${index + 1} de ${candidates.length}`, percentual: 7 + index * 4 });
+    const preview = candidates[index];
+    const scale = Math.min(1, 1100 / Math.max(preview.width, preview.height));
+    const sample = scale < 1
+      ? canvasFromImage(preview, Math.round(preview.width * scale), Math.round(preview.height * scale))
+      : preview;
+    const result = await worker.recognize(sample);
+    const score = orientationScore(result.data.text, result.data.confidence);
+    if (score > bestScore) {
+      best = preview;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 function improveContrast(canvas: HTMLCanvasElement) {
@@ -175,23 +236,28 @@ function parseEquipment(text: string, tipo: "celular" | "notebook"): Equipamento
 
 export async function lerFormularioOffline(file: File, onProgress?: (progress: ProgressoOcr) => void): Promise<ResultadoFormularioOcr> {
   onProgress?.({ etapa: "Preparando o documento localmente", percentual: 5 });
-  const rendered = rotateLandscape(await renderFile(file));
-  const enhanced = improveContrast(rendered);
-  const imagem = rendered.toDataURL("image/jpeg", 0.82);
+  const rendered = await renderFile(file);
 
   const { createWorker, OEM, PSM } = await import("tesseract.js");
+  let reportDetailedProgress = false;
   const worker = await createWorker("por", OEM.LSTM_ONLY, {
     workerPath: "/ocr/worker.min.js",
     langPath: "/ocr/lang",
     corePath: "/ocr/core",
     cacheMethod: "none",
     logger(message) {
-      if (typeof message.progress === "number") onProgress?.({ etapa: "Reconhecendo a escrita no computador", percentual: 10 + Math.round(message.progress * 75) });
+      if (reportDetailedProgress && typeof message.progress === "number") {
+        onProgress?.({ etapa: "Reconhecendo a escrita no computador", percentual: 15 + Math.round(message.progress * 70) });
+      }
     },
   });
 
   try {
     await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, preserve_interword_spaces: "1" });
+    const oriented = await orientForm(rendered, worker, onProgress);
+    reportDetailedProgress = true;
+    const enhanced = improveContrast(oriented);
+    const imagem = oriented.toDataURL("image/jpeg", 0.82);
     // As caixas terminam antes das assinaturas e dos carimbos.
     const areas = {
       portador: crop(enhanced, { x: 0.06, y: 0.05, width: 0.88, height: 0.13 }),
