@@ -45,8 +45,35 @@ function canvasFromImage(source: CanvasImageSource, width: number, height: numbe
   return canvas;
 }
 
+function ensurePdfBinaryCompatibility() {
+  if (!("toHex" in Uint8Array.prototype)) {
+    Object.defineProperty(Uint8Array.prototype, "toHex", {
+      configurable: true,
+      writable: true,
+      value(this: Uint8Array) {
+        let output = "";
+        for (const byte of this) output += byte.toString(16).padStart(2, "0");
+        return output;
+      },
+    });
+  }
+  if (!("fromBase64" in Uint8Array)) {
+    Object.defineProperty(Uint8Array, "fromBase64", {
+      configurable: true,
+      writable: true,
+      value(value: string) {
+        const binary = atob(value);
+        const output = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) output[index] = binary.charCodeAt(index);
+        return output;
+      },
+    });
+  }
+}
+
 async function renderFile(file: File) {
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    ensurePdfBinaryCompatibility();
     const pdfjs = await import("pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc = "/ocr/pdf.worker.min.mjs";
     const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
