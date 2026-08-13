@@ -239,17 +239,31 @@ function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
   }
 
   const merge = db.transaction((keeper: Record<string, unknown>, duplicate: Record<string, unknown>) => {
-    const keeperCpf = String(keeper.cpf ?? "").replace(/\D/g, "");
+    // Um grupo pode ter mais de dois cadastros. Releia o principal a cada
+    // junção para comparar com o CPF que eventualmente acabou de ser
+    // incorporado na iteração anterior.
+    const currentKeeper = db.prepare("SELECT * FROM colaboradores WHERE id = ?").get(keeper.id) as Record<string, unknown> | undefined;
+    if (!currentKeeper) return;
+    const keeperCpf = String(currentKeeper.cpf ?? "").replace(/\D/g, "");
     const duplicateCpf = String(duplicate.cpf ?? "").replace(/\D/g, "");
     if (keeperCpf && duplicateCpf && keeperCpf !== duplicateCpf) return;
 
-    const merged: Record<string, unknown> = { ...keeper, nome: formatCollaboratorName(String(keeper.nome ?? duplicate.nome ?? "")) };
+    // O registro duplicado ainda participa do índice UNIQUE mesmo depois de
+    // ir para a lixeira. Libere primeiro o CPF que será preservado no cadastro
+    // principal. Sem essa ordem, um cadastro principal mais recente e sem CPF
+    // tentava receber o CPF do duplicado enquanto ele ainda era o proprietário
+    // desse valor, interrompendo a abertura do banco inteiro.
+    if (duplicateCpf) {
+      db.prepare("UPDATE colaboradores SET cpf = NULL, updated_at = ? WHERE id = ?").run(nowIso(), duplicate.id);
+    }
+
+    const merged: Record<string, unknown> = { ...currentKeeper, nome: formatCollaboratorName(String(currentKeeper.nome ?? duplicate.nome ?? "")) };
     for (const column of TABLE_COLUMNS.colaboradores) {
       if (["id", "empresa_id", "created_at", "updated_at", "excluido_em", "nome", "observacoes"].includes(column)) continue;
       if (!hasValue(merged[column]) && hasValue(duplicate[column])) merged[column] = duplicate[column];
     }
-    if (hasValue(keeper.observacoes) && hasValue(duplicate.observacoes) && keeper.observacoes !== duplicate.observacoes) {
-      merged.observacoes = `${keeper.observacoes}\n\n[Informação consolidada do cadastro duplicado]\n${duplicate.observacoes}`;
+    if (hasValue(currentKeeper.observacoes) && hasValue(duplicate.observacoes) && currentKeeper.observacoes !== duplicate.observacoes) {
+      merged.observacoes = `${currentKeeper.observacoes}\n\n[Informação consolidada do cadastro duplicado]\n${duplicate.observacoes}`;
     } else if (!hasValue(merged.observacoes) && hasValue(duplicate.observacoes)) {
       merged.observacoes = duplicate.observacoes;
     }
