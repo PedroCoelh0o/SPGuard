@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Smartphone, Laptop, Tablet } from "lucide-react";
+import { Plus, Pencil, Trash2, Smartphone, Laptop, Tablet, FileScan } from "lucide-react";
 import { toast } from "sonner";
 
 export type Eletronico = {
@@ -26,15 +26,16 @@ export type Eletronico = {
   numero_selo: string | null;
   numero_serie: string | null;
   acessorios: string | null;
+  justificativa: string | null;
   created_at: string;
 };
 
 const tipoLabel = { celular: "Celular", notebook: "Notebook", tablet: "Tablet" } as const;
 const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as const;
 
-const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "" };
+const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
 
-export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
+export function EletronicosTab({ colaboradorId, colaboradorNome, onScanAuthorization }: { colaboradorId: string; colaboradorNome: string; onScanAuthorization?: () => void }) {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -97,7 +98,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Eletrônicos de {colaboradorNome}</h4>
-          {canWrite && (
+          <div className="flex flex-wrap gap-2 justify-end">{canWrite && onScanAuthorization && <Button size="sm" variant="outline" onClick={onScanAuthorization}><FileScan className="h-4 w-4" /> Ler autorização</Button>}{canWrite && (
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => setEditing({ ...empty, descricao: `${colaboradorNome} - ` })}>
@@ -112,7 +113,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 saving={save.isPending}
               />
             </Dialog>
-          )}
+          )}</div>
         </div>
         <div className="rounded-md border overflow-x-auto">
           <Table className="min-w-[1180px] whitespace-nowrap">
@@ -124,6 +125,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 <TableHead>IMEI</TableHead>
                 <TableHead>Nº Série</TableHead>
                 <TableHead>Acessórios</TableHead>
+                <TableHead>Justificativa</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Nº Selo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -131,9 +133,9 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
               ) : items.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
               ) : items.map((e) => {
                 const Icon = tipoIcon[e.tipo];
                 return (
@@ -144,6 +146,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell>{e.imei ?? "-"}</TableCell>
                     <TableCell>{e.numero_serie ?? "-"}</TableCell>
                     <TableCell>{e.acessorios ?? "-"}</TableCell>
+                    <TableCell className="max-w-[260px] truncate" title={e.justificativa ?? undefined}>{e.justificativa ?? "-"}</TableCell>
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
@@ -208,6 +211,10 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
         <div className="sm:col-span-2">
           <Label>Acessórios</Label>
           <Textarea rows={2} value={v.acessorios ?? ""} onChange={(e) => set("acessorios", e.target.value)} placeholder="Ex.: Carregador, fone de ouvido, capa, mouse" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Justificativa</Label>
+          <Textarea rows={3} value={v.justificativa ?? ""} onChange={(e) => set("justificativa", e.target.value)} placeholder="Motivo apresentado na autorização de entrada/saída." />
         </div>
         <DialogFooter className="sm:col-span-2 mt-2">
           <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>

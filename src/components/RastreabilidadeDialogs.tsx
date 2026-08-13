@@ -28,7 +28,7 @@ const fieldLabels: Record<string, string> = {
   motivo_desligamento: "Motivo do desligamento", observacoes: "Observação", status: "Status", telefone: "Telefone", celular: "Celular",
   email: "E-mail", cep: "CEP", rua: "Rua", numero: "Número", bairro: "Bairro", cidade: "Cidade", estado: "Estado",
   eletronicos_autorizado: "Autorização de eletrônicos", tipo: "Tipo", descricao: "Descrição", imei: "IMEI", modelo: "Modelo",
-  contato: "Contato", numero_selo: "Nº do selo", numero_serie: "Nº de série", acessorios: "Acessórios",
+  contato: "Contato", numero_selo: "Nº do selo", numero_serie: "Nº de série", acessorios: "Acessórios", justificativa: "Justificativa",
 };
 
 const actionLabel: Record<Historico["acao"], string> = {

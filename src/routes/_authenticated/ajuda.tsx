@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleHelp, Database, FileKey, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users } from "lucide-react";
+import { CircleHelp, Database, FileKey, FileScan, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajuda")({ component: Ajuda });
 
@@ -43,6 +43,20 @@ const guias: Guia[] = [
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",
       "Use a lixeira para escolher um ou mais dispositivos específicos que devem ser removidos; eles podem ser restaurados por 15 dias.",
       "Clique em Exportar PDF para criar um relatório somente com os colaboradores filtrados na tela.",
+    ],
+  },
+  {
+    icon: FileScan,
+    titulo: "Autorização digitalizada de eletrônicos",
+    descricao: "Lê o formulário padrão da autorização e prepara o cadastro do celular e/ou notebook.",
+    passos: [
+      "Abra a ficha do colaborador, entre na aba Eletrônicos e clique em Ler autorização.",
+      "Escolha o formulário digitalizado em PDF, PNG, JPG ou JPEG. O SPGuard gira e analisa a primeira página no próprio computador.",
+      "O sistema lê somente os dados do portador, a descrição do celular, a descrição do notebook e a justificativa. Assinaturas e carimbos não são analisados.",
+      "Confira todos os campos. Informações duvidosas ou ilegíveis podem ficar vazias ou destacadas e devem ser corrigidas manualmente.",
+      "Marque quais equipamentos devem ser cadastrados e clique em Confirmar e cadastrar. Nada é gravado antes dessa confirmação.",
+      "O formulário original fica anexado à ficha e a justificativa acompanha os equipamentos cadastrados.",
+      "A leitura é 100% offline: nenhum documento ou dado é enviado à internet, nuvem, GitHub ou serviço externo.",
     ],
   },
   {

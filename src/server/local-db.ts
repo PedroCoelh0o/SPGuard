@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS eletronicos (
   numero_selo TEXT,
   numero_serie TEXT,
   acessorios TEXT,
+  justificativa TEXT,
   excluido_em TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -163,6 +164,9 @@ function ensureSchemaMigrations(db: Database.Database) {
   const eletrColumns = columns("eletronicos");
   if (!eletrColumns.some((column) => column.name === "excluido_em")) {
     db.exec("ALTER TABLE eletronicos ADD COLUMN excluido_em TEXT");
+  }
+  if (!eletrColumns.some((column) => column.name === "justificativa")) {
+    db.exec("ALTER TABLE eletronicos ADD COLUMN justificativa TEXT");
   }
 
   // A lixeira é temporária: após 15 dias, o aplicativo remove os registros.
@@ -279,7 +283,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   empresas: ["id", "razao_social", "nome_fantasia", "cnpj", "responsavel", "telefone", "email", "endereco", "cidade", "estado", "status", "created_at", "updated_at"],
   colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "excluido_em", "created_at", "updated_at"],
   colaborador_documentos: ["id", "colaborador_id", "nome", "tipo", "storage_path", "tamanho", "uploaded_by", "created_at", "updated_at"],
-  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "excluido_em", "created_at", "updated_at"],
+  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "justificativa", "excluido_em", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],
   historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
 };
