@@ -14,7 +14,6 @@ import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye } from "lucide
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
-import { AutorizacaoDigitalizadaDialog, type AutorizacaoConfirmada } from "@/components/AutorizacaoDigitalizadaDialog";
 import * as XLSX from "xlsx";
 import { unzipSync } from "fflate";
 
@@ -70,11 +69,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
   const [deletingDoc, setDeletingDoc] = useState(false);
   const [preview, setPreview] = useState<{ url: string; doc: Doc; planilha?: string[][]; texto?: string } | null>(null);
-  const [ocrFile, setOcrFile] = useState<File | null>(null);
-  const [savingOcr, setSavingOcr] = useState(false);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
-  const ocrRef = useRef<HTMLInputElement>(null);
 
   const { data: docs = [], isLoading } = useQuery({
     enabled: !!colab && open,
@@ -198,60 +194,6 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
     setDeletingDoc(false);
   }
 
-  async function saveScannedAuthorization(data: AutorizacaoConfirmada) {
-    if (!colab || !ocrFile) return;
-    setSavingOcr(true);
-    try {
-      const safe = ocrFile.name.replace(/[^\w.\-]+/g, "_");
-      const storagePath = `${colab.id}/${Date.now()}-autorizacao-${safe}`;
-      const uploaded = await supabase.storage.from(BUCKET_DOCS).upload(storagePath, ocrFile, { contentType: ocrFile.type || "application/pdf" });
-      if (uploaded.error) throw uploaded.error;
-      const documentRecord = await supabase.from("colaborador_documentos").insert({
-        colaborador_id: colab.id, nome: ocrFile.name, tipo: ocrFile.type || "application/pdf", storage_path: storagePath,
-        tamanho: ocrFile.size, uploaded_by: user?.id ?? null,
-      });
-      if (documentRecord.error) {
-        await supabase.storage.from(BUCKET_DOCS).remove([storagePath]);
-        throw documentRecord.error;
-      }
-
-      const equipmentRows = data.equipamentos.map((equipment) => {
-        const description = [equipment.marca, equipment.modelo].filter(Boolean).join(" ") || `${colab.nome} - ${equipment.tipo}`;
-        return {
-          colaborador_id: colab.id,
-          tipo: equipment.tipo,
-          descricao: description,
-          modelo: equipment.modelo || null,
-          imei: equipment.imei || null,
-          numero_serie: equipment.numero_serie || null,
-          acessorios: equipment.acessorios || null,
-          contato: equipment.contato || null,
-          justificativa: data.justificativa || null,
-        };
-      });
-      const equipmentInsert = await supabase.from("eletronicos" as never).insert(equipmentRows as never);
-      if (equipmentInsert.error) {
-        await supabase.from("colaborador_documentos").delete().eq("storage_path", storagePath);
-        await supabase.storage.from(BUCKET_DOCS).remove([storagePath]);
-        throw equipmentInsert.error;
-      }
-      const authorization = await supabase.from("colaboradores").update({ eletronicos_autorizado: true } as never).eq("id", colab.id);
-      if (authorization.error) throw authorization.error;
-      toast.success(`${data.equipamentos.length} equipamento(s) cadastrado(s) e autorização anexada.`);
-      qc.invalidateQueries({ queryKey: ["docs", colab.id] });
-      qc.invalidateQueries({ queryKey: ["eletronicos", colab.id] });
-      qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
-      qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
-      setOcrFile(null);
-    } catch (reason) {
-      toast.error(`Não foi possível concluir o cadastro: ${(reason as Error).message}`);
-    } finally {
-      setSavingOcr(false);
-      if (ocrRef.current) ocrRef.current.value = "";
-    }
-  }
-
   const initials = colab.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
   const endereco = [colab.rua, colab.numero].filter(Boolean).join(", ");
   const cidadeUf = [colab.cidade, colab.estado].filter(Boolean).join(" - ");
@@ -310,8 +252,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           </TabsList>
 
           <TabsContent value="eletr">
-            <input ref={ocrRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) setOcrFile(file); }} />
-            <EletronicosTab colaboradorId={colab.id} colaboradorNome={colab.nome} onScanAuthorization={() => ocrRef.current?.click()} />
+            <EletronicosTab colaboradorId={colab.id} colaboradorNome={colab.nome} />
           </TabsContent>
 
           <TabsContent value="pessoal">
@@ -470,7 +411,6 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           </div>
         </DialogContent>
       </Dialog>
-      <AutorizacaoDigitalizadaDialog file={ocrFile} colaboradorNome={colab.nome} saving={savingOcr} onClose={() => { if (!savingOcr) { setOcrFile(null); if (ocrRef.current) ocrRef.current.value = ""; } }} onConfirm={(data) => void saveScannedAuthorization(data)} />
     </Dialog>
   );
 }

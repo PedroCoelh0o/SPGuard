@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Smartphone, Laptop, Tablet, FileScan } from "lucide-react";
+import { Plus, Pencil, Trash2, Smartphone, Laptop, Tablet } from "lucide-react";
 import { toast } from "sonner";
 
 export type Eletronico = {
@@ -35,7 +35,7 @@ const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as co
 
 const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
 
-export function EletronicosTab({ colaboradorId, colaboradorNome, onScanAuthorization }: { colaboradorId: string; colaboradorNome: string; onScanAuthorization?: () => void }) {
+export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -98,7 +98,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome, onScanAuthoriza
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Eletrônicos de {colaboradorNome}</h4>
-          <div className="flex flex-wrap gap-2 justify-end">{canWrite && onScanAuthorization && <Button size="sm" variant="outline" onClick={onScanAuthorization}><FileScan className="h-4 w-4" /> Ler autorização</Button>}{canWrite && (
+          <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => setEditing({ ...empty, descricao: `${colaboradorNome} - ` })}>
