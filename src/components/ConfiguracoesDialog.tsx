@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Settings, FolderOpen, Save, RotateCcw, FileSpreadsheet, RefreshCw, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getSavedDirName, isFsSupported, pickAndSaveDir, saveBackupNow, saveEncryptedFullBackup, saveFullBackupNow, restoreBackup, restoreEncryptedFullBackup, restoreFullBackup } from "@/lib/local-backup";
@@ -51,6 +52,11 @@ export function ConfiguracoesDialog() {
   const [savingFull, setSavingFull] = useState(false);
   const [savingEncrypted, setSavingEncrypted] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [encryptedAction, setEncryptedAction] = useState<"create" | "restore" | null>(null);
+  const [encryptedPassword, setEncryptedPassword] = useState("");
+  const [encryptedConfirmation, setEncryptedConfirmation] = useState("");
+  const [encryptedFile, setEncryptedFile] = useState<File | null>(null);
+  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -164,16 +170,39 @@ export function ConfiguracoesDialog() {
     finally { setSavingFull(false); }
   }
 
-  async function doSaveEncrypted() {
-    const password = window.prompt("Defina uma senha para este backup criptografado (mínimo de 12 caracteres). Guarde-a em local seguro: ela não pode ser recuperada pelo SPGuard.");
-    if (password == null) return;
-    const confirmation = window.prompt("Digite a mesma senha novamente para confirmar o backup criptografado.");
-    if (confirmation == null) return;
-    if (password !== confirmation) { toast.error("As senhas não conferem"); return; }
+  function closeEncryptedDialog() {
+    if (savingEncrypted || restoring) return;
+    setEncryptedAction(null);
+    setEncryptedPassword("");
+    setEncryptedConfirmation("");
+    setEncryptedFile(null);
+    setRestoreConfirmed(false);
+  }
+
+  function openEncryptedCreate() {
+    setEncryptedPassword("");
+    setEncryptedConfirmation("");
+    setEncryptedFile(null);
+    setRestoreConfirmed(false);
+    setEncryptedAction("create");
+  }
+
+  function openEncryptedRestore(file: File) {
+    setEncryptedPassword("");
+    setEncryptedConfirmation("");
+    setEncryptedFile(file);
+    setRestoreConfirmed(false);
+    setEncryptedAction("restore");
+  }
+
+  async function doSaveEncrypted(password: string) {
     setSavingEncrypted(true);
     try {
       const r = await saveEncryptedFullBackup(password);
       toast.success(`Backup criptografado salvo em ${r.path}`, { description: `${r.total} registros e ${r.documentos} documento(s). A senha não foi salva no SPGuard.` });
+      setEncryptedAction(null);
+      setEncryptedPassword("");
+      setEncryptedConfirmation("");
     } catch (e) { toast.error((e as Error).message); }
     finally { setSavingEncrypted(false); }
   }
@@ -206,11 +235,7 @@ export function ConfiguracoesDialog() {
     finally { setRestoring(false); if (fullFileRef.current) fullFileRef.current.value = ""; }
   }
 
-  async function doRestoreEncrypted(file?: File) {
-    if (!file) return;
-    const password = window.prompt("Digite a senha deste backup criptografado.");
-    if (password == null) return;
-    if (!confirm("Restaurar o backup criptografado? O SPGuard identifica colaboradores pelo CPF para atualizar o cadastro correto e evita duplicidades.")) return;
+  async function doRestoreEncrypted(file: File, password: string) {
     setRestoring(true);
     try {
       const r = await restoreEncryptedFullBackup(file, password);
@@ -220,7 +245,37 @@ export function ConfiguracoesDialog() {
     finally { setRestoring(false); if (encryptedFileRef.current) encryptedFileRef.current.value = ""; }
   }
 
+  async function submitEncryptedDialog() {
+    if (encryptedAction === "create") {
+      if (encryptedPassword.length < 12) {
+        toast.error("A senha precisa ter pelo menos 12 caracteres");
+        return;
+      }
+      if (encryptedPassword !== encryptedConfirmation) {
+        toast.error("As senhas não conferem");
+        return;
+      }
+      await doSaveEncrypted(encryptedPassword);
+      return;
+    }
+
+    if (!encryptedFile) {
+      toast.error("Selecione um arquivo de backup criptografado");
+      return;
+    }
+    if (!encryptedPassword) {
+      toast.error("Digite a senha do backup");
+      return;
+    }
+    if (!restoreConfirmed) {
+      toast.error("Confirme a restauração antes de continuar");
+      return;
+    }
+    await doRestoreEncrypted(encryptedFile, encryptedPassword);
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Configurações"><Settings className="h-5 w-5" /></Button>
@@ -281,13 +336,13 @@ export function ConfiguracoesDialog() {
               <div className="text-sm font-medium">Backup criptografado com senha</div>
               <p className="text-xs text-muted-foreground">Cria <strong>spguard-backup-criptografado.spguard</strong> com dados e documentos protegidos. Sem a senha, o arquivo não pode ser aberto ou restaurado.</p>
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={doSaveEncrypted} disabled={!dirName || savingEncrypted || savingFull || saving}>
+                <Button onClick={openEncryptedCreate} disabled={!dirName || savingEncrypted || savingFull || saving}>
                   <Save className="h-4 w-4" /> {savingEncrypted ? "Criptografando..." : "Criar backup com senha"}
                 </Button>
                 <Button variant="secondary" onClick={() => encryptedFileRef.current?.click()} disabled={restoring || savingEncrypted || savingFull}>
                   <RotateCcw className="h-4 w-4" /> Restaurar backup com senha
                 </Button>
-                <input ref={encryptedFileRef} type="file" accept=".spguard,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) doRestoreEncrypted(f); }} />
+                <input ref={encryptedFileRef} type="file" accept=".spguard,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) openEncryptedRestore(f); }} />
               </div>
               <p className="text-xs text-destructive">A senha não é armazenada pelo SPGuard. Se for esquecida, não será possível restaurar este backup.</p>
             </div>
@@ -440,5 +495,70 @@ export function ConfiguracoesDialog() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={encryptedAction !== null} onOpenChange={(isOpen) => { if (!isOpen) closeEncryptedDialog(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{encryptedAction === "create" ? "Criar backup criptografado" : "Restaurar backup criptografado"}</DialogTitle>
+          <DialogDescription>
+            {encryptedAction === "create"
+              ? "Defina uma senha forte. Ela protege os dados e documentos do backup e não é guardada pelo SPGuard."
+              : "Digite a senha usada ao criar este backup. Sem ela, o arquivo não pode ser restaurado."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {encryptedAction === "restore" && encryptedFile && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground break-all">
+              Arquivo selecionado: <span className="font-medium text-foreground">{encryptedFile.name}</span>
+            </div>
+          )}
+          <div className="space-y-2">
+            <label htmlFor="encrypted-backup-password" className="text-sm font-medium">{encryptedAction === "create" ? "Senha" : "Senha do backup"}</label>
+            <Input
+              id="encrypted-backup-password"
+              type="password"
+              autoComplete="new-password"
+              value={encryptedPassword}
+              onChange={(e) => setEncryptedPassword(e.target.value)}
+              placeholder={encryptedAction === "create" ? "Mínimo de 12 caracteres" : "Digite a senha"}
+              disabled={savingEncrypted || restoring}
+              autoFocus
+            />
+          </div>
+          {encryptedAction === "create" && (
+            <div className="space-y-2">
+              <label htmlFor="encrypted-backup-confirmation" className="text-sm font-medium">Confirmar senha</label>
+              <Input
+                id="encrypted-backup-confirmation"
+                type="password"
+                autoComplete="new-password"
+                value={encryptedConfirmation}
+                onChange={(e) => setEncryptedConfirmation(e.target.value)}
+                placeholder="Digite a senha novamente"
+                disabled={savingEncrypted}
+              />
+            </div>
+          )}
+          {encryptedAction === "restore" && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm cursor-pointer">
+              <input type="checkbox" checked={restoreConfirmed} onChange={(e) => setRestoreConfirmed(e.target.checked)} disabled={restoring} className="mt-0.5" />
+              <span>Entendo que a restauração atualiza os cadastros pelos CPFs e pode substituir informações existentes.</span>
+            </label>
+          )}
+          <p className="text-xs text-destructive">A senha não pode ser recuperada. Guarde-a em local seguro.</p>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={closeEncryptedDialog} disabled={savingEncrypted || restoring}>Cancelar</Button>
+          <Button onClick={submitEncryptedDialog} disabled={savingEncrypted || restoring}>
+            {encryptedAction === "create"
+              ? (savingEncrypted ? "Criptografando..." : "Criar backup")
+              : (restoring ? "Restaurando..." : "Restaurar backup")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

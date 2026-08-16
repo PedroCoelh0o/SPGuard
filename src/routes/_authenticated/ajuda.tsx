@@ -97,10 +97,10 @@ const configuracoes: Guia[] = [
     titulo: "Backup criptografado com senha",
     descricao: "Protege o backup completo contra a leitura por pessoas que tenham acesso à pasta ou ao arquivo.",
     passos: [
-      "Clique em Criar backup com senha e defina uma senha de pelo menos 12 caracteres.",
-      "Confirme a mesma senha. O SPGuard cria o arquivo spguard-backup-criptografado.spguard com dados e documentos protegidos.",
+      "Clique em Criar backup com senha. Uma janela do próprio SPGuard solicitará uma senha de pelo menos 12 caracteres.",
+      "Confirme a mesma senha nessa janela. O SPGuard cria o arquivo spguard-backup-criptografado.spguard com dados e documentos protegidos.",
       "A senha é usada apenas nesse backup; ela não cria login para usar o SPGuard e não é armazenada pelo sistema.",
-      "Para restaurar, clique em Restaurar backup com senha, escolha o arquivo e informe a senha correta.",
+      "Para restaurar, clique em Restaurar backup com senha, escolha o arquivo, informe a senha na janela exibida e confirme a operação.",
       "Guarde a senha em local seguro. Se ela for esquecida, o backup não poderá ser recuperado.",
     ],
   },
