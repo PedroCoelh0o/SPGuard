@@ -148,7 +148,11 @@ export function ConfiguracoesDialog() {
       toast.success(`Pasta selecionada: ${name}`);
     } catch (e) {
       const msg = (e as Error).message;
-      if (!msg.includes("aborted")) toast.error(msg || "Não foi possível selecionar a pasta");
+      if (/seleção de pasta cancelada|aborted/i.test(msg)) {
+        toast.info("Seleção de pasta cancelada");
+      } else {
+        toast.error(msg || "Não foi possível selecionar a pasta");
+      }
     } finally { setPicking(false); }
   }
 
