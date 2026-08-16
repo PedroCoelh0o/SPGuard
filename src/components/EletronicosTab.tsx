@@ -185,8 +185,8 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           </Select>
         </div>
         <div>
-          <Label>Nº Selo</Label>
-          <Input value={v.numero_selo ?? ""} onChange={(e) => set("numero_selo", e.target.value)} placeholder="Selo da segurança patrimonial" />
+          <Label>Nº patrimônio / selo</Label>
+          <Input value={v.numero_selo ?? ""} onChange={(e) => set("numero_selo", e.target.value)} placeholder="Patrimônio ou selo da segurança" />
         </div>
         <div className="sm:col-span-2">
           <Label>Descrição</Label>

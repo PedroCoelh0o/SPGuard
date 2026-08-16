@@ -436,6 +436,43 @@ function collaboratorByCpf(db: Database.Database, cpf: unknown) {
   return rows.find((row) => String(row.cpf ?? "").replace(/\D/g, "") === cpfDigits);
 }
 
+function normalizeElectronicIdentifier(value: unknown, kind: "imei" | "numero_serie" | "numero_selo") {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return kind === "imei"
+    ? raw.replace(/\D/g, "")
+    : raw.toLocaleUpperCase("pt-BR").replace(/[^A-Z0-9]/g, "");
+}
+
+function assertElectronicIdentifiersAvailable(db: Database.Database, payload: Record<string, unknown>, currentId?: unknown) {
+  const identifiers: Array<{ column: "imei" | "numero_serie" | "numero_selo"; label: string }> = [
+    { column: "imei", label: "IMEI" },
+    { column: "numero_serie", label: "número de série" },
+    { column: "numero_selo", label: "número de patrimônio/selo" },
+  ];
+  const rows = db.prepare(`
+    SELECT e.id, e.colaborador_id, e.imei, e.numero_serie, e.numero_selo, c.nome AS colaborador_nome
+    FROM eletronicos e
+    LEFT JOIN colaboradores c ON c.id = e.colaborador_id
+    WHERE e.excluido_em IS NULL
+  `).all() as Record<string, unknown>[];
+
+  const current = rows.find((row) => String(row.id) === String(currentId ?? ""));
+  if (current && payload.colaborador_id && String(current.colaborador_id) !== String(payload.colaborador_id)) {
+    throw new Error(`Este dispositivo já está vinculado a ${String(current.colaborador_nome ?? "outro colaborador")}.`);
+  }
+
+  for (const identifier of identifiers) {
+    const value = normalizeElectronicIdentifier(payload[identifier.column], identifier.column);
+    if (!value) continue;
+    const conflict = rows.find((row) => String(row.id) !== String(currentId ?? "") && normalizeElectronicIdentifier(row[identifier.column], identifier.column) === value);
+    if (conflict) {
+      const owner = String(conflict.colaborador_nome ?? "outro colaborador");
+      throw new Error(`O ${identifier.label} informado já está vinculado a ${owner}.`);
+    }
+  }
+}
+
 function runInsert(db: Database.Database, table: string, q: QueryDescriptor): unknown {
   const rows = Array.isArray(q.values) ? q.values : q.values ? [q.values] : [];
   const inserted: unknown[] = [];
@@ -445,6 +482,7 @@ function runInsert(db: Database.Database, table: string, q: QueryDescriptor): un
       const ts = nowIso();
       const payload: Record<string, unknown> = { ...item, id };
       applyBusinessRules(table, payload);
+      if (table === "eletronicos") assertElectronicIdentifiersAvailable(db, payload);
       // CPF é único. A sincronização de uma planilha pode trazer a mesma
       // pessoa duas vezes com identificadores diferentes; nesse cenário,
       // atualizamos o cadastro já existente em vez de deixar o SQLite abortar
@@ -484,6 +522,9 @@ function runUpdate(db: Database.Database, table: string, q: QueryDescriptor): un
   const cols = Object.keys(values).filter((c) => TABLE_COLUMNS[table].includes(c) && c !== "id");
   if (cols.length === 0) return [];
   const before = db.prepare(`SELECT * FROM ${table} ${clause}`).all(...params) as Record<string, unknown>[];
+  if (table === "eletronicos") {
+    for (const row of before) assertElectronicIdentifiersAvailable(db, { ...row, ...values }, row.id);
+  }
   const setClause = cols.map((c) => `${c} = ?`).join(", ");
   const setValues = cols.map((c) => toSqlValue(c, values[c]));
   db.prepare(`UPDATE ${table} SET ${setClause} ${clause}`).run(...setValues, ...params);
@@ -516,6 +557,7 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
       if (existing) {
         const patch: Record<string, unknown> = { ...item };
         applyBusinessRules(table, patch);
+        if (table === "eletronicos") assertElectronicIdentifiersAvailable(db, { ...existing, ...patch }, existing.id);
         if (TABLE_COLUMNS[table].includes("updated_at")) patch.updated_at = nowIso();
         const cols = Object.keys(patch).filter((c) => TABLE_COLUMNS[table].includes(c) && c !== "id");
         if (cols.length > 0) {
@@ -533,6 +575,7 @@ function runUpsert(db: Database.Database, table: string, q: QueryDescriptor): un
         const ts = nowIso();
         const payload: Record<string, unknown> = { ...item, id };
         applyBusinessRules(table, payload);
+        if (table === "eletronicos") assertElectronicIdentifiersAvailable(db, payload);
         if (TABLE_COLUMNS[table].includes("created_at") && !payload.created_at) payload.created_at = ts;
         if (TABLE_COLUMNS[table].includes("updated_at")) payload.updated_at = ts;
         const cols = Object.keys(payload).filter((c) => TABLE_COLUMNS[table].includes(c));

@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { formatCPF, formatPhone, formatCEP, UFS, formatDate } from "@/lib/format";
+import { formatCPF, formatPhone, formatCEP, isValidCPF, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
 import { HistoricoAlteracoesDialog, LixeiraDialog } from "@/components/RastreabilidadeDialogs";
@@ -85,6 +85,16 @@ function ColabPage() {
     mutationFn: async (payload: Partial<Colab>) => {
       const { id, ...rest } = payload;
       const clean = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v === "" ? null : v]));
+      const cpf = String(clean.cpf ?? "").replace(/\D/g, "");
+      if (cpf && !isValidCPF(cpf)) {
+        throw new Error("CPF inválido. Confira os 11 dígitos antes de salvar.");
+      }
+      const existingCpf = cpf
+        ? colabs.find((colaborador) => colaborador.id !== id && String(colaborador.cpf ?? "").replace(/\D/g, "") === cpf)
+        : undefined;
+      if (existingCpf) {
+        throw new Error(`Este CPF já está cadastrado para ${existingCpf.nome}.`);
+      }
       if (id) {
         const { error } = await supabase.from("colaboradores").update(clean as unknown as { nome?: string }).eq("id", id);
         if (error) throw error;

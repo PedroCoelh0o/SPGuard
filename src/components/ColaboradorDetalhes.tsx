@@ -10,10 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye } from "lucide-react";
+import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
+import { exportFichaColaboradorPDF, type FichaEletronico } from "@/lib/export-ficha-colaborador";
 import * as XLSX from "xlsx";
 import { unzipSync } from "fflate";
 
@@ -68,6 +69,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
   const [deletingDoc, setDeletingDoc] = useState(false);
+  const [exportingFicha, setExportingFicha] = useState(false);
   const [preview, setPreview] = useState<{ url: string; doc: Doc; planilha?: string[][]; texto?: string } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -194,6 +196,23 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
     setDeletingDoc(false);
   }
 
+  async function exportFicha() {
+    setExportingFicha(true);
+    try {
+      const { data, error } = await supabase
+        .from("eletronicos" as never)
+        .select("tipo, descricao, modelo, imei, numero_serie, numero_selo, acessorios, justificativa")
+        .eq("colaborador_id", colab.id);
+      if (error) throw error;
+      exportFichaColaboradorPDF(colab, empresaLabel || "-", (data ?? []) as FichaEletronico[], docs);
+      toast.success("Ficha completa em PDF gerada");
+    } catch (e) {
+      toast.error(`Não foi possível gerar a ficha: ${(e as Error).message}`);
+    } finally {
+      setExportingFicha(false);
+    }
+  }
+
   const initials = colab.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
   const endereco = [colab.rua, colab.numero].filter(Boolean).join(", ");
   const cidadeUf = [colab.cidade, colab.estado].filter(Boolean).join(" - ");
@@ -237,6 +256,9 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
               </Badge>
               {empresaLabel && <span className="text-sm text-muted-foreground">{empresaLabel}</span>}
             </div>
+            <Button size="sm" variant="outline" onClick={exportFicha} disabled={exportingFicha || isLoading}>
+              <FileDown className="h-4 w-4" /> {exportingFicha ? "Gerando ficha..." : "Exportar ficha PDF"}
+            </Button>
           </div>
         </div>
 
