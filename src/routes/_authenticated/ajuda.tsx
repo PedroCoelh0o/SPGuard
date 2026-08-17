@@ -83,7 +83,7 @@ const guias: Guia[] = [
       "Anexe imagens e outros arquivos como evidência. Imagens podem ser visualizadas; os demais arquivos podem ser baixados localmente após o desbloqueio da área.",
       "Use o status Em análise, Encaminhada, Encerrada ou Arquivada. Arquivar preserva o registro, apenas o remove da lista ativa; escolha Arquivadas ou Todas no filtro para encontrá-lo e reabri-lo.",
       "Use Exportar PDF para gerar a ficha da ocorrência. Antes de gerar, escolha se deseja incluir fotos das pessoas e/ou imagens de evidências; documentos não visuais continuam relacionados no PDF.",
-      "Os gráficos mostram somente contagens de ocorrências por categoria e situação. Nenhum dado desta aba é enviado à internet, GitHub ou nuvem pelo SPGuard.",
+      "Os gráficos mostram somente contagens de ocorrências por categoria e situação.",
     ],
   },
 ];
