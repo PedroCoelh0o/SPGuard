@@ -1068,7 +1068,10 @@ function Ocorrencias() {
                     <CardHeader>
                       <CardTitle className="text-base">Histórico</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent
+                      className="max-h-64 overflow-y-auto pr-3"
+                      aria-label="Histórico da ocorrência"
+                    >
                       {selectedItem.historico
                         .slice()
                         .reverse()
