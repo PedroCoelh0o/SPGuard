@@ -1,7 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleHelp, Database, FileKey, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users, ShieldAlert } from "lucide-react";
+import {
+  CircleHelp,
+  Database,
+  FileKey,
+  FileSpreadsheet,
+  History,
+  RotateCcw,
+  Save,
+  Search,
+  Settings,
+  Smartphone,
+  Trash2,
+  Users,
+  ShieldAlert,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajuda")({ component: Ajuda });
 
@@ -74,13 +88,14 @@ const guias: Guia[] = [
   {
     icon: ShieldAlert,
     titulo: "Ocorrências e Apurações",
-    descricao: "Registre fatos, pessoas vinculadas e evidências em uma área local protegida por senha exclusiva.",
+    descricao:
+      "Registre fatos, pessoas vinculadas e evidências em uma área local protegida por senha exclusiva.",
     passos: [
       "Abra Ocorrências e Apurações no menu. Na primeira utilização, crie uma senha de pelo menos 12 caracteres e uma palavra de recuperação de 7 a 16 caracteres. Elas não criam login para o restante do SPGuard.",
       "Os registros, fotos e evidências são criptografados antes de serem gravados no computador. A senha e a palavra de recuperação não são guardadas em texto; mantenha-as separadas e em local seguro.",
-      "Clique em Nova ocorrência e informe protocolo, data, local, categoria, relato factual e encaminhamentos. Use termos objetivos e registre fatos observados.",
-      "Na ficha da ocorrência, vincule uma ou mais pessoas, identifique o tipo de vínculo e inclua a foto quando necessário. Clique na foto para ampliá-la.",
-      "Anexe imagens, PDFs e outros arquivos como evidência. Imagens e PDFs podem ser visualizados dentro do SPGuard; os demais arquivos podem ser baixados localmente após o desbloqueio da área.",
+      "Clique em Nova ocorrência e informe protocolo, data, local, área, setor, ponto de referência, coordenadas opcionais, categoria, relato factual e encaminhamentos. Use termos objetivos e registre fatos observados.",
+      "Na ficha da ocorrência, vincule uma ou mais pessoas, identifique o tipo de vínculo e inclua a foto quando necessário. Clique na foto para ampliá-la e use o ícone de lápis para editar os dados dessa pessoa.",
+      "Anexe imagens, PDFs e outros arquivos como evidência. Imagens e PDFs podem ser visualizados dentro do SPGuard; use o ícone de lixeira para excluir um arquivo após confirmar a ação.",
       "Use o status Em análise, Encaminhada, Encerrada ou Arquivada. Arquivar preserva o registro, apenas o remove da lista ativa; escolha Arquivadas ou Todas no filtro para encontrá-lo e reabri-lo.",
       "Use Exportar PDF para gerar a ficha da ocorrência. Antes de gerar, escolha se deseja incluir fotos das pessoas e/ou imagens de evidências; documentos não visuais continuam relacionados no PDF.",
       "Os gráficos mostram somente contagens de ocorrências por categoria e situação.",
@@ -104,7 +119,8 @@ const configuracoes: Guia[] = [
   {
     icon: Save,
     titulo: "Backup completo com documentos",
-    descricao: "É a cópia mais completa do sistema e a mais indicada antes de atualizações importantes.",
+    descricao:
+      "É a cópia mais completa do sistema e a mais indicada antes de atualizações importantes.",
     passos: [
       "Depois de selecionar a pasta, clique em Criar backup completo (.zip).",
       "O arquivo spguard-backup-completo.zip reúne os dados em planilha, histórico, itens da lixeira, documentos das fichas e os arquivos cifrados de Ocorrências e Apurações.",
@@ -115,7 +131,8 @@ const configuracoes: Guia[] = [
   {
     icon: FileKey,
     titulo: "Backup criptografado com senha",
-    descricao: "Protege o backup completo contra a leitura por pessoas que tenham acesso à pasta ou ao arquivo.",
+    descricao:
+      "Protege o backup completo contra a leitura por pessoas que tenham acesso à pasta ou ao arquivo.",
     passos: [
       "Clique em Criar backup com senha. Uma janela do próprio SPGuard solicitará uma senha de pelo menos 12 caracteres.",
       "Confirme a mesma senha nessa janela. O SPGuard cria o arquivo spguard-backup-criptografado.spguard com dados e documentos protegidos.",
@@ -138,7 +155,8 @@ const configuracoes: Guia[] = [
   {
     icon: FileSpreadsheet,
     titulo: "Planilha de entrada manual",
-    descricao: "Permite cadastrar ou atualizar muitos colaboradores e eletrônicos por uma única planilha.",
+    descricao:
+      "Permite cadastrar ou atualizar muitos colaboradores e eletrônicos por uma única planilha.",
     passos: [
       "Clique em Criar planilha de entrada para gerar spguard-eletronicos.xlsx na pasta SPGuard.",
       "Preencha as abas Colaboradores e Eletronicos sem alterar os nomes das colunas.",
@@ -151,9 +169,59 @@ const configuracoes: Guia[] = [
 
 function GuiaCard({ guia }: { guia: Guia }) {
   const Icon = guia.icon;
-  return <Card><CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Icon className="h-5 w-5 text-primary" /> {guia.titulo}</CardTitle><p className="text-sm font-normal text-muted-foreground">{guia.descricao}</p></CardHeader><CardContent><ol className="space-y-3">{guia.passos.map((passo, index) => <li key={passo} className="flex gap-3 text-sm"><Badge className="h-6 w-6 shrink-0 rounded-full grid place-items-center p-0">{index + 1}</Badge><span className="pt-1">{passo}</span></li>)}</ol></CardContent></Card>;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Icon className="h-5 w-5 text-primary" /> {guia.titulo}
+        </CardTitle>
+        <p className="text-sm font-normal text-muted-foreground">{guia.descricao}</p>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-3">
+          {guia.passos.map((passo, index) => (
+            <li key={passo} className="flex gap-3 text-sm">
+              <Badge className="h-6 w-6 shrink-0 rounded-full grid place-items-center p-0">
+                {index + 1}
+              </Badge>
+              <span className="pt-1">{passo}</span>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
 }
 
 function Ajuda() {
-  return <div className="space-y-6 max-w-4xl"><div><h1 className="text-2xl font-bold flex items-center gap-2"><CircleHelp className="h-6 w-6 text-primary" /> Ajuda</h1><p className="text-sm text-muted-foreground mt-1">Guia rápido para usar o SPGuard e preservar seus dados com segurança.</p></div><section className="space-y-4"><h2 className="text-lg font-semibold">Operações do dia a dia</h2><div className="grid gap-4">{guias.map((guia) => <GuiaCard key={guia.titulo} guia={guia} />)}</div></section><section className="space-y-4"><h2 className="text-lg font-semibold flex items-center gap-2"><Settings className="h-5 w-5 text-primary" /> Configurações e backups</h2><div className="grid gap-4">{configuracoes.map((guia) => <GuiaCard key={guia.titulo} guia={guia} />)}</div></section></div>;
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <CircleHelp className="h-6 w-6 text-primary" /> Ajuda
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Guia rápido para usar o SPGuard e preservar seus dados com segurança.
+        </p>
+      </div>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Operações do dia a dia</h2>
+        <div className="grid gap-4">
+          {guias.map((guia) => (
+            <GuiaCard key={guia.titulo} guia={guia} />
+          ))}
+        </div>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" /> Configurações e backups
+        </h2>
+        <div className="grid gap-4">
+          {configuracoes.map((guia) => (
+            <GuiaCard key={guia.titulo} guia={guia} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }
