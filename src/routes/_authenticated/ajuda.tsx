@@ -7,7 +7,6 @@ import {
   FileKey,
   FileSpreadsheet,
   History,
-  RotateCcw,
   Save,
   Search,
   Settings,
@@ -108,11 +107,13 @@ const configuracoes: Guia[] = [
   {
     icon: Database,
     titulo: "Armazenamento local dos dados em planilha .xlsx",
-    descricao: "Cria uma cópia dos dados cadastrais em Excel na pasta que você escolher.",
+    descricao:
+      "Cria ou restaura uma cópia dos dados cadastrais em Excel na mesma área de Configurações.",
     passos: [
       "Abra Configurações pelo ícone de engrenagem no canto superior direito.",
       "Clique em Selecionar pasta e escolha uma pasta de sua preferência no computador ou em um disco externo.",
       "Clique em Salvar dados agora. O SPGuard cria a pasta SPGuard e o arquivo spguard-dados.xlsx.",
+      "Na mesma caixa, use Restaurar da pasta para recuperar o arquivo salvo na pasta escolhida ou Escolher arquivo para selecionar outro spguard-dados.xlsx.",
       "Esse arquivo contém empresas, colaboradores, observações, eletrônicos, histórico, itens da lixeira e os registros protegidos de Ocorrências e Apurações; ele não inclui documentos ou evidências anexadas.",
     ],
   },
@@ -139,17 +140,6 @@ const configuracoes: Guia[] = [
       "A senha é usada apenas nesse backup; ela não cria login para usar o SPGuard e não é armazenada pelo sistema.",
       "Para restaurar, clique em Restaurar backup com senha, escolha o arquivo, informe a senha na janela exibida e confirme a operação.",
       "Guarde a senha em local seguro. Se ela for esquecida, o backup não poderá ser recuperado.",
-    ],
-  },
-  {
-    icon: RotateCcw,
-    titulo: "Restaurar dados do backup",
-    descricao: "Use quando precisar recuperar uma cópia anterior dos dados.",
-    passos: [
-      "Para restaurar somente empresas, colaboradores e eletrônicos, use Restaurar da pasta ou Escolher arquivo e selecione spguard-dados.xlsx.",
-      "Para restaurar também os documentos anexados, use Restaurar backup completo e selecione spguard-backup-completo.zip.",
-      "Confirme a ação com atenção: registros com o mesmo ID são atualizados pelo conteúdo do backup.",
-      "Após a restauração, o sistema é recarregado para exibir os dados recuperados.",
     ],
   },
   {
