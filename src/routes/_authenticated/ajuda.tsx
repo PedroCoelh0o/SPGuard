@@ -76,14 +76,15 @@ const guias: Guia[] = [
     titulo: "Ocorrências e Apurações",
     descricao: "Registre fatos, pessoas vinculadas e evidências em uma área local protegida por senha exclusiva.",
     passos: [
-      "Abra Ocorrências e Apurações no menu. Na primeira utilização, crie uma senha de pelo menos 12 caracteres; ela não cria login para o restante do SPGuard e não é armazenada pelo sistema.",
-      "Os registros, fotos e evidências são criptografados antes de serem gravados no computador. Sem a senha, esta área não pode ser lida; guarde-a em local seguro.",
+      "Abra Ocorrências e Apurações no menu. Na primeira utilização, crie uma senha de pelo menos 12 caracteres e uma palavra de recuperação de 7 a 16 caracteres. Elas não criam login para o restante do SPGuard.",
+      "Os registros, fotos e evidências são criptografados antes de serem gravados no computador. A senha e a palavra de recuperação não são guardadas em texto; mantenha-as separadas e em local seguro.",
       "Clique em Nova ocorrência e informe protocolo, data, local, categoria, relato factual e encaminhamentos. Use termos objetivos e registre fatos observados.",
       "Na ficha da ocorrência, vincule uma ou mais pessoas, identifique o tipo de vínculo e inclua a foto quando necessário. Clique na foto para ampliá-la.",
-      "Anexe imagens e outros arquivos como evidência. Imagens podem ser visualizadas; os demais arquivos podem ser baixados localmente após o desbloqueio da área.",
+      "Anexe imagens, PDFs e outros arquivos como evidência. Imagens e PDFs podem ser visualizados dentro do SPGuard; os demais arquivos podem ser baixados localmente após o desbloqueio da área.",
       "Use o status Em análise, Encaminhada, Encerrada ou Arquivada. Arquivar preserva o registro, apenas o remove da lista ativa; escolha Arquivadas ou Todas no filtro para encontrá-lo e reabri-lo.",
       "Use Exportar PDF para gerar a ficha da ocorrência. Antes de gerar, escolha se deseja incluir fotos das pessoas e/ou imagens de evidências; documentos não visuais continuam relacionados no PDF.",
       "Os gráficos mostram somente contagens de ocorrências por categoria e situação.",
+      "Se esquecer a senha, use Esqueci minha senha na tela de acesso ou Alterar senha dentro da aba. Informe a palavra de recuperação e defina uma nova senha: os registros e anexos serão preservados.",
     ],
   },
 ];

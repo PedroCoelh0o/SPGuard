@@ -174,6 +174,15 @@ CREATE TABLE IF NOT EXISTS ocorrencias_protecao (
   verifier_iv TEXT NOT NULL,
   verifier_ciphertext TEXT NOT NULL,
   iterations INTEGER NOT NULL,
+  recovery_salt TEXT,
+  recovery_verifier_iv TEXT,
+  recovery_verifier_ciphertext TEXT,
+  secret_password_iv TEXT,
+  secret_password_ciphertext TEXT,
+  secret_recovery_iv TEXT,
+  secret_recovery_ciphertext TEXT,
+  data_mode TEXT,
+  data_salt TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -196,6 +205,11 @@ function ensureSchemaMigrations(db: Database.Database) {
   }
   if (!eletrColumns.some((column) => column.name === "justificativa")) {
     db.exec("ALTER TABLE eletronicos ADD COLUMN justificativa TEXT");
+  }
+  const protectionColumns = columns("ocorrencias_protecao");
+  const protectionAdditions = ["recovery_salt", "recovery_verifier_iv", "recovery_verifier_ciphertext", "secret_password_iv", "secret_password_ciphertext", "secret_recovery_iv", "secret_recovery_ciphertext", "data_mode", "data_salt"];
+  for (const column of protectionAdditions) {
+    if (!protectionColumns.some((current) => current.name === column)) db.exec(`ALTER TABLE ocorrencias_protecao ADD COLUMN ${column} TEXT`);
   }
 
   // A lixeira é temporária: após 15 dias, o aplicativo remove os registros.
@@ -331,7 +345,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
   ocorrencias: ["id", "payload", "created_at", "updated_at"],
   ocorrencia_arquivos: ["id", "ocorrencia_id", "storage_path", "created_at", "updated_at"],
-  ocorrencias_protecao: ["id", "salt", "verifier_iv", "verifier_ciphertext", "iterations", "created_at", "updated_at"],
+  ocorrencias_protecao: ["id", "salt", "verifier_iv", "verifier_ciphertext", "iterations", "recovery_salt", "recovery_verifier_iv", "recovery_verifier_ciphertext", "secret_password_iv", "secret_password_ciphertext", "secret_recovery_iv", "secret_recovery_ciphertext", "data_mode", "data_salt", "created_at", "updated_at"],
 };
 
 const BOOLEAN_COLUMNS = new Set(["eletronicos_autorizado"]);
