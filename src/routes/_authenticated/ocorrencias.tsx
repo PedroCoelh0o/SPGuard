@@ -91,6 +91,17 @@ const categories = [
 ];
 const statuses: Occurrence["status"][] = ["Em análise", "Encaminhada", "Encerrada", "Arquivada"];
 const now = () => new Date().toISOString();
+const chartText = "var(--color-foreground)";
+const axisTick = { fontSize: 11, fill: chartText };
+const tooltipStyle = {
+  backgroundColor: "var(--color-popover)",
+  border: "1px solid hsl(0 0% 50% / 0.4)",
+  borderRadius: "8px",
+  color: "var(--color-popover-foreground)",
+  fontSize: "12px",
+} as const;
+const tooltipLabelStyle = { color: "var(--color-popover-foreground)", fontWeight: 600 } as const;
+const tooltipItemStyle = { color: "var(--color-popover-foreground)" } as const;
 const emptyOccurrence = (): Occurrence => ({
   id: crypto.randomUUID(),
   protocolo: `OC-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
@@ -162,7 +173,6 @@ function Ocorrencias() {
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState<Occurrence | null>(null);
   const [personEditing, setPersonEditing] = useState<Person | null>(null);
-  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
   const evidenceInput = useRef<HTMLInputElement>(null);
 
@@ -683,10 +693,11 @@ function Ocorrencias() {
           </CardHeader>
           <CardContent>
             <div className="rounded-md border overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
                     <th className="p-3 font-medium">Protocolo</th>
+                    <th className="p-3 font-medium">Local</th>
                     <th className="p-3 font-medium">Categoria</th>
                     <th className="p-3 font-medium">Envolvido</th>
                     <th className="p-3 font-medium">Status</th>
@@ -695,13 +706,13 @@ function Ocorrencias() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="p-4 text-muted-foreground" colSpan={4}>
+                      <td className="p-4 text-muted-foreground" colSpan={5}>
                         Carregando…
                       </td>
                     </tr>
                   ) : shown.length === 0 ? (
                     <tr>
-                      <td className="p-4 text-muted-foreground" colSpan={4}>
+                      <td className="p-4 text-muted-foreground" colSpan={5}>
                         Nenhuma ocorrência encontrada.
                       </td>
                     </tr>
@@ -714,10 +725,9 @@ function Ocorrencias() {
                       >
                         <td className="p-3">
                           <strong>{item.protocolo}</strong>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {item.data} · {item.local || "Local não informado"}
-                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">{item.data}</p>
                         </td>
+                        <td className="p-3 font-medium">{item.local || "Local não informado"}</td>
                         <td className="p-3">{item.categoria || "Sem categoria"}</td>
                         <td className="p-3">
                           <span className="line-clamp-2">
@@ -746,33 +756,30 @@ function Ocorrencias() {
           <CardContent>
             <div className="max-h-[620px] overflow-y-auto pr-2">
               {stats.length ? (
-                <ResponsiveContainer width="100%" height={Math.max(320, stats.length * 42)}>
+                <ResponsiveContainer width="100%" height={Math.max(160, stats.length * 38)}>
                   <BarChart data={stats} layout="vertical" margin={{ left: 16, right: 24 }}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       stroke="hsl(0 0% 50% / 0.4)"
                       opacity={0.5}
                     />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" width={170} interval={0} />
+                    <XAxis type="number" allowDecimals={false} tick={axisTick} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={170}
+                      interval={0}
+                      tick={axisTick}
+                    />
                     <Tooltip
+                      shared={false}
                       cursor={false}
-                      content={<CategoryTooltip hoveredCategory={hoveredCategory} />}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
+                      itemStyle={tooltipItemStyle}
+                      formatter={(value: number) => [value, "Total"]}
                     />
-                    <Bar
-                      dataKey="total"
-                      barSize={16}
-                      fill="var(--color-chart-1)"
-                      radius={[0, 6, 6, 0]}
-                      onMouseEnter={(entry) => {
-                        const point = entry as unknown as {
-                          name?: string;
-                          payload?: { name?: string };
-                        };
-                        setHoveredCategory(point.name ?? point.payload?.name ?? null);
-                      }}
-                      onMouseLeave={() => setHoveredCategory(null)}
-                    />
+                    <Bar dataKey="total" fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -1428,25 +1435,6 @@ function Metric({ title, total }: { title: string; total: number }) {
         <p className="text-2xl font-bold">{total}</p>
       </CardContent>
     </Card>
-  );
-}
-function CategoryTooltip({
-  active,
-  payload,
-  hoveredCategory,
-}: {
-  active?: boolean;
-  payload?: { payload?: { name?: string; total?: number } }[];
-  hoveredCategory: string | null;
-}) {
-  const item = payload?.[0]?.payload;
-  if (!active || !item || item.name !== hoveredCategory) return null;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow">
-      <strong>{item.name}</strong>
-      <br />
-      Total: {item.total ?? 0}
-    </div>
   );
 }
 function StatusBadge({ status }: { status: Occurrence["status"] }) {
