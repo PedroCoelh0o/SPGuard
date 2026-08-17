@@ -19,7 +19,7 @@ function resolveDataDir(): string {
 const DATA_DIR = resolveDataDir();
 const DB_PATH = path.join(DATA_DIR, "database.sqlite3");
 const FILES_DIR = path.join(DATA_DIR, "files");
-const STORAGE_BUCKETS = new Set(["colaborador-fotos", "colaborador-documentos"]);
+const STORAGE_BUCKETS = new Set(["colaborador-fotos", "colaborador-documentos", "ocorrencia-evidencias"]);
 export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -148,6 +148,35 @@ CREATE TABLE IF NOT EXISTS historico_alteracoes (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_historico_registro ON historico_alteracoes(entidade, registro_id, created_at DESC);
+
+-- Os dados desta área são cifrados no navegador antes de serem gravados.
+-- O SQLite guarda somente o envelope criptografado e metadados técnicos.
+CREATE TABLE IF NOT EXISTS ocorrencias (
+  id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ocorrencias_updated ON ocorrencias(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS ocorrencia_arquivos (
+  id TEXT PRIMARY KEY,
+  ocorrencia_id TEXT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ocorrencia_arquivos_ocorrencia ON ocorrencia_arquivos(ocorrencia_id);
+
+CREATE TABLE IF NOT EXISTS ocorrencias_protecao (
+  id TEXT PRIMARY KEY,
+  salt TEXT NOT NULL,
+  verifier_iv TEXT NOT NULL,
+  verifier_ciphertext TEXT NOT NULL,
+  iterations INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `;
 
 // CREATE TABLE IF NOT EXISTS não altera bancos que já existiam. A migração
@@ -300,6 +329,9 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "justificativa", "excluido_em", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],
   historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
+  ocorrencias: ["id", "payload", "created_at", "updated_at"],
+  ocorrencia_arquivos: ["id", "ocorrencia_id", "storage_path", "created_at", "updated_at"],
+  ocorrencias_protecao: ["id", "salt", "verifier_iv", "verifier_ciphertext", "iterations", "created_at", "updated_at"],
 };
 
 const BOOLEAN_COLUMNS = new Set(["eletronicos_autorizado"]);

@@ -70,6 +70,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
   const [deletingDoc, setDeletingDoc] = useState(false);
   const [exportingFicha, setExportingFicha] = useState(false);
+  const [fotoPreviewOpen, setFotoPreviewOpen] = useState(false);
   const [preview, setPreview] = useState<{ url: string; doc: Doc; planilha?: string[][]; texto?: string } | null>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -92,13 +93,14 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
     let alive = true;
     async function load() {
       setFotoUrl(null);
+      setFotoPreviewOpen(false);
       if (!colab?.foto_url) return;
       const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(colab.foto_url, 3600);
       if (alive) setFotoUrl(data?.signedUrl ?? null);
     }
     load();
     return () => { alive = false; };
-  }, [colab?.foto_url]);
+  }, [colab?.id, colab?.foto_url]);
 
   if (!colab) return null;
 
@@ -227,10 +229,24 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
 
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <div className="flex flex-col items-center gap-3">
-            <Avatar className="h-32 w-32">
-              {fotoUrl ? <AvatarImage src={fotoUrl} alt={colab.nome} /> : null}
-              <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
-            </Avatar>
+            {fotoUrl ? (
+              <button
+                type="button"
+                className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onClick={() => setFotoPreviewOpen(true)}
+                title="Ampliar foto"
+                aria-label={`Ampliar foto de ${colab.nome}`}
+              >
+                <Avatar className="h-32 w-32 cursor-zoom-in">
+                  <AvatarImage src={fotoUrl} alt={colab.nome} />
+                  <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+                </Avatar>
+              </button>
+            ) : (
+              <Avatar className="h-32 w-32">
+                <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+              </Avatar>
+            )}
             {canWrite && (
               <>
                 <input
@@ -403,6 +419,16 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={fotoPreviewOpen} onOpenChange={setFotoPreviewOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Foto de {colab.nome}</DialogTitle>
+            <DialogDescription>Visualização ampliada da foto do colaborador</DialogDescription>
+          </DialogHeader>
+          {fotoUrl && <img src={fotoUrl} alt={colab.nome} className="max-h-[70vh] w-full rounded-md bg-muted object-contain" />}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!preview} onOpenChange={(v) => !v && setPreview(null)}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">

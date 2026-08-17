@@ -76,6 +76,15 @@ type DocumentoBackup = {
   arquivo_backup?: string;
 };
 
+type OcorrenciaArquivoBackup = {
+  id: string;
+  ocorrencia_id: string;
+  storage_path: string;
+  created_at: string;
+  updated_at: string;
+  arquivo_backup?: string;
+};
+
 declare global {
   interface Window { spguardFiles?: DesktopFiles; }
 }
@@ -156,7 +165,7 @@ export async function ensurePermission(handle: DirHandle) {
 }
 
 async function fetchAllData() {
-  const [emp, col, ele, docs, historico] = await Promise.all([
+  const [emp, col, ele, docs, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao] = await Promise.all([
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("empresas").select("*").order("id") as never,
     ),
@@ -172,6 +181,15 @@ async function fetchAllData() {
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("historico_alteracoes").select("*").order("created_at", { ascending: false }) as never,
     ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("ocorrencias" as never).select("*").order("id") as never,
+    ),
+    fetchAllRows<OcorrenciaArquivoBackup>(
+      () => supabase.from("ocorrencia_arquivos" as never).select("*").order("id") as never,
+    ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("ocorrencias_protecao" as never).select("*").order("id") as never,
+    ),
   ]);
   return {
     empresas: emp,
@@ -179,15 +197,21 @@ async function fetchAllData() {
     eletronicos: ele,
     documentos: docs,
     historico,
+    ocorrencias,
+    ocorrenciaArquivos,
+    ocorrenciasProtecao,
   };
 }
 
-function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[], historico: Record<string, unknown>[]) {
+function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[], historico: Record<string, unknown>[], ocorrencias: Record<string, unknown>[] = [], ocorrenciaArquivos: Record<string, unknown>[] = [], ocorrenciasProtecao: Record<string, unknown>[] = []) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(empresas), "Empresas");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(colaboradores), "Colaboradores");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eletronicos), "Eletronicos");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historico), "Historico");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrencias), "Ocorrencias");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrenciaArquivos), "OcorrenciaArquivos");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrenciasProtecao), "OcorrenciasProtecao");
   return wb;
 }
 
@@ -212,11 +236,11 @@ async function writeToBackupDirectory(name: string, contents: Uint8Array): Promi
 }
 
 export async function saveBackupNow(): Promise<{ path: string; total: number }> {
-  const { empresas, colaboradores, eletronicos, historico } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico);
+  const { empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
   const path = await writeToBackupDirectory(BACKUP_XLSX, new Uint8Array(buf));
-  return { path, total: empresas.length + colaboradores.length + eletronicos.length };
+  return { path, total: empresas.length + colaboradores.length + eletronicos.length + ocorrencias.length };
 }
 
 function safeBackupFileName(name: string) {
@@ -263,8 +287,8 @@ async function decryptBackup(file: File, password: string) {
 }
 
 async function createFullBackupZip(onProgress?: (done: number, total: number) => void): Promise<{ contents: Uint8Array; total: number; documentos: number }> {
-  const { empresas, colaboradores, eletronicos, documentos, historico } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico);
+  const { empresas, colaboradores, eletronicos, documentos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
   const entries: Record<string, Uint8Array> = {
     [BACKUP_XLSX]: new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer),
   };
@@ -287,10 +311,27 @@ async function createFullBackupZip(onProgress?: (done: number, total: number) =>
     }
   }
 
+  const ocorrenciaArquivosPlanilha: OcorrenciaArquivoBackup[] = [];
+  for (const arquivo of ocorrenciaArquivos) {
+    const { data, error } = await supabase.storage.from("ocorrencia-evidencias").createSignedUrl(arquivo.storage_path, 60);
+    if (error || !data) throw new Error("Não foi possível ler um arquivo protegido de Ocorrências e Apurações");
+    try {
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("Não foi possível ler um arquivo protegido de Ocorrências e Apurações");
+      const backupPath = `ocorrencias/${arquivo.ocorrencia_id}/${arquivo.id}.bin`;
+      entries[backupPath] = new Uint8Array(await response.arrayBuffer());
+      ocorrenciaArquivosPlanilha.push({ ...arquivo, arquivo_backup: backupPath });
+    } finally { URL.revokeObjectURL(data.signedUrl); }
+  }
+
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(documentosPlanilha), "Documentos");
+  // Os caminhos dos anexos protegidos são mantidos somente como identificadores
+  // técnicos; nomes e conteúdo continuam cifrados dentro do backup.
+  const protectedSheet = wb.Sheets["OcorrenciaArquivos"];
+  if (protectedSheet) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrenciaArquivosPlanilha), "OcorrenciaArquivosCompleto");
   entries[BACKUP_XLSX] = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
   onProgress?.(documentos.length, documentos.length);
-  return { contents: zipSync(entries, { level: 6 }), total: empresas.length + colaboradores.length + eletronicos.length, documentos: documentosPlanilha.length };
+  return { contents: zipSync(entries, { level: 6 }), total: empresas.length + colaboradores.length + eletronicos.length + ocorrencias.length, documentos: documentosPlanilha.length + ocorrenciaArquivosPlanilha.length };
 }
 
 /** Cria um único ZIP local com a planilha de dados e todos os documentos anexados. */
@@ -315,6 +356,7 @@ type RestoreResult = {
   historico: number;
   colaboradoresIgnorados: number;
   eletronicosIgnorados: number;
+  ocorrencias: number;
 };
 
 function sheetRows(wb: XLSX.WorkBook, name: string): Record<string, unknown>[] {
@@ -374,6 +416,8 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   const colaboradores = clean(sheetRows(wb, "Colaboradores"));
   const eletronicos = clean(sheetRows(wb, "Eletronicos"));
   const historico = clean(sheetRows(wb, "Historico"));
+  const ocorrencias = clean(sheetRows(wb, "Ocorrencias"));
+  const ocorrenciasProtecao = clean(sheetRows(wb, "OcorrenciasProtecao"));
 
   // O CPF é único. Um backup pode conter o mesmo colaborador mais de uma
   // vez (por exemplo, após planilhas terem sido mescladas). Mantemos a
@@ -443,6 +487,8 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   }
 
   const historicoRestaurado = await upsertAll("historico_alteracoes", historico);
+  const ocorrenciasRestauradas = await upsertAll("ocorrencias", ocorrencias);
+  await upsertAll("ocorrencias_protecao", ocorrenciasProtecao);
 
   return {
     empresas: empresasRestauradas,
@@ -451,6 +497,7 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
     historico: historicoRestaurado,
     colaboradoresIgnorados,
     eletronicosIgnorados,
+    ocorrencias: ocorrenciasRestauradas,
   };
 }
 
@@ -466,7 +513,8 @@ export async function restoreFullBackup(file: File): Promise<FullRestoreResult> 
   const result = await restoreBackup(dataFile);
   const wb = XLSX.read(xlsx, { type: "array" });
   const documentos = clean(sheetRows(wb, "Documentos")) as DocumentoBackup[];
-  if (documentos.length === 0) return { ...result, documentos: 0, documentosIgnorados: 0 };
+  const ocorrenciaArquivos = clean(sheetRows(wb, "OcorrenciaArquivosCompleto")) as OcorrenciaArquivoBackup[];
+  if (documentos.length === 0 && ocorrenciaArquivos.length === 0) return { ...result, documentos: 0, documentosIgnorados: 0 };
 
   const colaboradoresNoBackup = clean(sheetRows(wb, "Colaboradores"));
   const colaboradoresAtuais = await fetchAllRows<{ id: string; cpf: string | null }>(
@@ -516,7 +564,20 @@ export async function restoreFullBackup(file: File): Promise<FullRestoreResult> 
     documentosRestaurados++;
   }
 
-  return { ...result, documentos: documentosRestaurados, documentosIgnorados };
+  let arquivosOcorrenciasRestaurados = 0;
+  for (const arquivo of ocorrenciaArquivos) {
+    const backupPath = text(arquivo.arquivo_backup);
+    const contents = backupPath ? entries[backupPath] : undefined;
+    if (!text(arquivo.ocorrencia_id) || !contents) { documentosIgnorados++; continue; }
+    const storagePath = text(arquivo.storage_path) || `${arquivo.ocorrencia_id}/${arquivo.id}.bin`;
+    const upload = await supabase.storage.from("ocorrencia-evidencias").upload(storagePath, new File([contents], `${arquivo.id}.bin`, { type: "application/octet-stream" }));
+    if (upload.error) throw new Error(`Arquivo protegido: ${upload.error.message}`);
+    const { error } = await supabase.from("ocorrencia_arquivos" as never).upsert([{ ...arquivo, storage_path: storagePath, arquivo_backup: undefined }] as never, { onConflict: "id" });
+    if (error) throw new Error(`Arquivo protegido: ${error.message}`);
+    arquivosOcorrenciasRestaurados++;
+  }
+
+  return { ...result, documentos: documentosRestaurados + arquivosOcorrenciasRestaurados, documentosIgnorados };
 }
 
 /** Descriptografa localmente e restaura o backup protegido por senha. */

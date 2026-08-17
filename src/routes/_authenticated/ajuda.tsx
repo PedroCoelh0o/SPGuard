@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircleHelp, Database, FileKey, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users } from "lucide-react";
+import { CircleHelp, Database, FileKey, FileSpreadsheet, History, RotateCcw, Save, Search, Settings, Smartphone, Trash2, Users, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajuda")({ component: Ajuda });
 
@@ -20,6 +20,7 @@ const guias: Guia[] = [
       "Na aba Observações, registre informações importantes que devem acompanhar o colaborador.",
       "O CPF informado é conferido antes de salvar. O sistema avisa se estiver inválido ou se já pertencer a outro colaborador.",
       "Abra o ícone de olho para consultar a ficha, anexar documentos, visualizar anexos e conferir eletrônicos vinculados.",
+      "Na ficha, clique na foto do colaborador para ampliá-la. Use Enviar foto ou Trocar foto para atualizar a imagem.",
       "Na ficha, use Exportar ficha PDF para gerar um documento individual com os dados, observações, eletrônicos e relação de documentos anexados.",
       "Use os botões CSV, XLSX ou PDF para exportar somente os colaboradores que aparecem na pesquisa atual.",
     ],
@@ -70,6 +71,21 @@ const guias: Guia[] = [
       "Colaboradores restaurados mantêm seus documentos vinculados. Os itens ficam na lixeira por 15 dias e depois são excluídos definitivamente; você também pode excluir permanentemente um item a qualquer momento.",
     ],
   },
+  {
+    icon: ShieldAlert,
+    titulo: "Ocorrências e Apurações",
+    descricao: "Registre fatos, pessoas vinculadas e evidências em uma área local protegida por senha exclusiva.",
+    passos: [
+      "Abra Ocorrências e Apurações no menu. Na primeira utilização, crie uma senha de pelo menos 12 caracteres; ela não cria login para o restante do SPGuard e não é armazenada pelo sistema.",
+      "Os registros, fotos e evidências são criptografados antes de serem gravados no computador. Sem a senha, esta área não pode ser lida; guarde-a em local seguro.",
+      "Clique em Nova ocorrência e informe protocolo, data, local, categoria, relato factual e encaminhamentos. Use termos objetivos e registre fatos observados.",
+      "Na ficha da ocorrência, vincule uma ou mais pessoas, identifique o tipo de vínculo e inclua a foto quando necessário. Clique na foto para ampliá-la.",
+      "Anexe imagens e outros arquivos como evidência. Imagens podem ser visualizadas; os demais arquivos podem ser baixados localmente após o desbloqueio da área.",
+      "Use o status Em análise, Encaminhada, Encerrada ou Arquivada. Arquivar preserva o registro, apenas o remove da lista ativa; escolha Arquivadas ou Todas no filtro para encontrá-lo e reabri-lo.",
+      "Use Exportar PDF para gerar a ficha da ocorrência. Antes de gerar, escolha se deseja incluir fotos das pessoas e/ou imagens de evidências; documentos não visuais continuam relacionados no PDF.",
+      "Os gráficos mostram somente contagens de ocorrências por categoria e situação. Nenhum dado desta aba é enviado à internet, GitHub ou nuvem pelo SPGuard.",
+    ],
+  },
 ];
 
 const configuracoes: Guia[] = [
@@ -81,7 +97,7 @@ const configuracoes: Guia[] = [
       "Abra Configurações pelo ícone de engrenagem no canto superior direito.",
       "Clique em Selecionar pasta e escolha uma pasta de sua preferência no computador ou em um disco externo.",
       "Clique em Salvar dados agora. O SPGuard cria a pasta SPGuard e o arquivo spguard-dados.xlsx.",
-      "Esse arquivo contém empresas, colaboradores, observações, eletrônicos, histórico e itens da lixeira; ele não inclui os documentos anexados.",
+      "Esse arquivo contém empresas, colaboradores, observações, eletrônicos, histórico, itens da lixeira e os registros protegidos de Ocorrências e Apurações; ele não inclui documentos ou evidências anexadas.",
     ],
   },
   {
@@ -90,7 +106,7 @@ const configuracoes: Guia[] = [
     descricao: "É a cópia mais completa do sistema e a mais indicada antes de atualizações importantes.",
     passos: [
       "Depois de selecionar a pasta, clique em Criar backup completo (.zip).",
-      "O arquivo spguard-backup-completo.zip reúne os dados em planilha, histórico, itens da lixeira e todos os documentos anexados nas fichas.",
+      "O arquivo spguard-backup-completo.zip reúne os dados em planilha, histórico, itens da lixeira, documentos das fichas e os arquivos cifrados de Ocorrências e Apurações.",
       "Os documentos são organizados em subpastas pelo nome de cada colaborador.",
       "Guarde esse ZIP em local seguro, como um pendrive ou disco externo. Ele é criado localmente e não é enviado ao GitHub ou à nuvem pelo SPGuard.",
     ],
