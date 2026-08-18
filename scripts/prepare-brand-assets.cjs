@@ -18,6 +18,9 @@ writeFileSync(sourcePng, Buffer.from(match[1], "base64"));
 // ícone do executável, atalho e barra de tarefas do Windows.
 execFileSync("magick", [
   sourcePng,
+  "-alpha", "on",
+  "-fuzz", "3%",
+  "-transparent", "white",
   "-crop", "620x720+0+140",
   "+repage",
   "-trim",
