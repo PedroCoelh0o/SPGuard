@@ -182,6 +182,7 @@
 }
 
 .welcome-splash__wordmark {
+  filter: brightness(0) invert(78%) drop-shadow(0 2px 7px rgb(0 0 0 / 35%));
   height: auto;
   max-height: 5.2rem;
   max-width: min(30rem, 58vw);
