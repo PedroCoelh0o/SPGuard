@@ -27,6 +27,7 @@ build/spguard-logo-source.png
 build/spguard-logo-clean.png
 build/spguard-icon.ico
 public/spguard-shield.png
+public/spguard-wordmark.png
 
 # Wrangler / Cloudflare
 .wrangler/

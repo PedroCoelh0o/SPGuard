@@ -12,6 +12,7 @@ const buildDir = path.join(root, "build");
 const sourcePng = path.join(buildDir, "spguard-logo-source.png");
 const cleanLogo = path.join(buildDir, "spguard-logo-clean.png");
 const shieldPng = path.join(root, "public", "spguard-shield.png");
+const wordmarkPng = path.join(root, "public", "spguard-wordmark.png");
 const targetIco = path.join(buildDir, "spguard-icon.ico");
 mkdirSync(buildDir, { recursive: true });
 writeFileSync(sourcePng, Buffer.from(match[1], "base64"));
@@ -43,6 +44,17 @@ execFileSync("magick", [
   "-background", "none",
   "-extent", "512x512",
   shieldPng,
+], { stdio: "inherit" });
+
+// O nome usa a tipografia original da marca, preservando a cor e o desenho
+// das letras escolhidos para a abertura do SPGuard.
+execFileSync("magick", [
+  cleanLogo,
+  "-crop", "1180x360+540+280",
+  "+repage",
+  "-trim",
+  "+repage",
+  wordmarkPng,
 ], { stdio: "inherit" });
 
 execFileSync("magick", [
