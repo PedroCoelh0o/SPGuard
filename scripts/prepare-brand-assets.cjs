@@ -10,7 +10,7 @@ if (!match) throw new Error("A imagem da marca SPGuard não foi encontrada.");
 
 const buildDir = path.join(root, "build");
 const sourcePng = path.join(buildDir, "spguard-logo-source.png");
-const transparentLogo = path.join(root, "public", "spguard-logo-transparent.png");
+const cleanLogo = path.join(buildDir, "spguard-logo-clean.png");
 const shieldPng = path.join(root, "public", "spguard-shield.png");
 const targetIco = path.join(buildDir, "spguard-icon.ico");
 mkdirSync(buildDir, { recursive: true });
@@ -27,14 +27,14 @@ execFileSync("magick", [
   "-fill", "none",
   "-draw", "color 0,0 floodfill",
   "-shave", "1x1",
-  transparentLogo,
+  cleanLogo,
 ], { stdio: "inherit" });
 
 // Recorta somente o escudo para o ícone exibido no cabeçalho, nos atalhos e
 // na barra de tarefas do Windows.
 execFileSync("magick", [
-  transparentLogo,
-  "-crop", "620x720+0+140",
+  cleanLogo,
+  "-crop", "540x720+20+140",
   "+repage",
   "-trim",
   "+repage",

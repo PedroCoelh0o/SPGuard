@@ -67,7 +67,10 @@ function AuthenticatedLayout() {
     return (
       <div className={`welcome-splash ${leavingWelcome ? "welcome-splash--leaving" : ""}`}>
         <div className="welcome-splash__content">
-          <img src="/spguard-logo-transparent.png" alt="SPGuard" className="welcome-splash__logo" />
+          <div className="welcome-splash__brand">
+            <img src="/spguard-shield.png" alt="SPGuard" className="welcome-splash__shield" />
+            <div className="welcome-splash__wordmark">SPGuard</div>
+          </div>
           <div className="welcome-splash__subtitle">Sistema de Gestão da Segurança Patrimonial</div>
         </div>
       </div>
