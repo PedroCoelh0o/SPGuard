@@ -54,6 +54,9 @@ execFileSync("magick", [
   "+repage",
   "-trim",
   "+repage",
+  "-alpha", "on",
+  "-fuzz", "2%",
+  "-transparent", "white",
   wordmarkPng,
 ], { stdio: "inherit" });
 
