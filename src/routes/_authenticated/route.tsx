@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { maybeAutoSync } from "@/lib/entrada-sync";
@@ -19,6 +19,17 @@ function AuthenticatedLayout() {
   const { loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const qc = useQueryClient();
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [leavingWelcome, setLeavingWelcome] = useState(false);
+
+  useEffect(() => {
+    const leaveTimer = window.setTimeout(() => setLeavingWelcome(true), 700);
+    const closeTimer = window.setTimeout(() => setShowWelcome(false), 1080);
+    return () => {
+      window.clearTimeout(leaveTimer);
+      window.clearTimeout(closeTimer);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +63,16 @@ function AuthenticatedLayout() {
   }, [qc]);
 
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Carregando...</div>;
+  if (showWelcome) {
+    return (
+      <div className={`welcome-splash ${leavingWelcome ? "welcome-splash--leaving" : ""}`}>
+        <div className="welcome-splash__content">
+          <img src="/spguard-logo.svg" alt="SPGuard" className="welcome-splash__logo" />
+          <div className="welcome-splash__subtitle">Sistema de Gestão da Segurança Patrimonial</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
