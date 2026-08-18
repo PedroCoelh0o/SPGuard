@@ -23,8 +23,8 @@ function AuthenticatedLayout() {
   const [leavingWelcome, setLeavingWelcome] = useState(false);
 
   useEffect(() => {
-    const leaveTimer = window.setTimeout(() => setLeavingWelcome(true), 700);
-    const closeTimer = window.setTimeout(() => setShowWelcome(false), 1080);
+    const leaveTimer = window.setTimeout(() => setLeavingWelcome(true), 2000);
+    const closeTimer = window.setTimeout(() => setShowWelcome(false), 2600);
     return () => {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(closeTimer);
@@ -81,7 +81,8 @@ function AuthenticatedLayout() {
           <header className="h-14 flex items-center justify-between gap-2 border-b bg-card px-4 sticky top-0 z-10">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
-              <div className="text-sm font-medium">SPGuard — Sistema de Gestão da Segurança Patrimonial</div>
+              <img src="/spguard-logo.svg" alt="SPGuard" className="h-9 w-28 shrink-0 object-contain" />
+              <div className="text-sm font-medium">Sistema de Gestão da Segurança Patrimonial</div>
             </div>
             <div className="flex items-center gap-1">
               <ConfiguracoesDialog />
