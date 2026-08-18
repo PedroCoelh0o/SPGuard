@@ -10,17 +10,30 @@ if (!match) throw new Error("A imagem da marca SPGuard não foi encontrada.");
 
 const buildDir = path.join(root, "build");
 const sourcePng = path.join(buildDir, "spguard-logo-source.png");
+const transparentLogo = path.join(root, "public", "spguard-logo-transparent.png");
+const shieldPng = path.join(root, "public", "spguard-shield.png");
 const targetIco = path.join(buildDir, "spguard-icon.ico");
 mkdirSync(buildDir, { recursive: true });
 writeFileSync(sourcePng, Buffer.from(match[1], "base64"));
 
-// Recorta somente o escudo da marca e cria tamanhos adequados para o
-// ícone do executável, atalho e barra de tarefas do Windows.
+// A arte original possui um fundo claro. O preenchimento começa no canto
+// externo e remove somente esse fundo, preservando os tons prateados da marca.
 execFileSync("magick", [
   sourcePng,
   "-alpha", "on",
-  "-fuzz", "3%",
-  "-transparent", "white",
+  "-bordercolor", "white",
+  "-border", "1",
+  "-fuzz", "5%",
+  "-fill", "none",
+  "-draw", "color 0,0 floodfill",
+  "-shave", "1x1",
+  transparentLogo,
+], { stdio: "inherit" });
+
+// Recorta somente o escudo para o ícone exibido no cabeçalho, nos atalhos e
+// na barra de tarefas do Windows.
+execFileSync("magick", [
+  transparentLogo,
   "-crop", "620x720+0+140",
   "+repage",
   "-trim",
@@ -29,6 +42,11 @@ execFileSync("magick", [
   "-gravity", "center",
   "-background", "none",
   "-extent", "512x512",
+  shieldPng,
+], { stdio: "inherit" });
+
+execFileSync("magick", [
+  shieldPng,
   "-define", "icon:auto-resize=256,128,64,48,32,16",
   targetIco,
 ], { stdio: "inherit" });

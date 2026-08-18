@@ -144,11 +144,11 @@ jobs:
           & .\node_modules\.bin\electron.cmd .\electron\verify-sqlite.cjs --disable-gpu
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Build do app web (gera .output com o servidor Node)
-        run: npm run build
-
       - name: Preparar ícone da nova marca SPGuard
         run: node scripts/prepare-brand-assets.cjs
+
+      - name: Build do app web (gera .output com o servidor Node)
+        run: npm run build
 
       - name: Empacotar instalador Windows (NSIS)
         run: npx electron-builder --win nsis --publish never

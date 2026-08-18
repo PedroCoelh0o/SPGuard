@@ -23,6 +23,10 @@ local-data/
 
 # Instalador Windows gerado localmente
 dist_electron/
+build/spguard-logo-source.png
+build/spguard-icon.ico
+public/spguard-logo-transparent.png
+public/spguard-shield.png
 
 # Wrangler / Cloudflare
 .wrangler/

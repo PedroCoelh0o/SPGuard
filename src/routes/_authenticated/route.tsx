@@ -67,7 +67,7 @@ function AuthenticatedLayout() {
     return (
       <div className={`welcome-splash ${leavingWelcome ? "welcome-splash--leaving" : ""}`}>
         <div className="welcome-splash__content">
-          <img src="/spguard-logo-clean.svg" alt="SPGuard" className="welcome-splash__logo" />
+          <img src="/spguard-logo-transparent.png" alt="SPGuard" className="welcome-splash__logo" />
           <div className="welcome-splash__subtitle">Sistema de Gestão da Segurança Patrimonial</div>
         </div>
       </div>
@@ -81,7 +81,7 @@ function AuthenticatedLayout() {
           <header className="h-14 flex items-center justify-between gap-2 border-b bg-card px-4 sticky top-0 z-10">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
-              <img src="/spguard-logo-clean.svg" alt="SPGuard" className="h-9 w-28 shrink-0 object-contain" />
+              <img src="/spguard-shield.png" alt="SPGuard" className="h-8 w-8 shrink-0 object-contain" />
               <div className="text-sm font-medium">Sistema de Gestão da Segurança Patrimonial</div>
             </div>
             <div className="flex items-center gap-1">
