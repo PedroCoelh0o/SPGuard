@@ -182,12 +182,16 @@
 }
 
 .welcome-splash__wordmark {
-  filter: brightness(0) invert(78%) drop-shadow(0 2px 7px rgb(0 0 0 / 35%));
-  height: auto;
-  max-height: 5.2rem;
-  max-width: min(30rem, 58vw);
-  object-fit: contain;
-  width: auto;
+  background: linear-gradient(180deg, #ffffff 0%, #b8c0c8 42%, #eef2f5 54%, #68737d 100%);
+  background-clip: text;
+  color: transparent;
+  font-family: Bahnschrift, "Segoe UI", sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  font-stretch: expanded;
+  font-weight: 700;
+  letter-spacing: -0.075em;
+  line-height: 0.9;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 35%);
 }
 
 .welcome-splash__subtitle {

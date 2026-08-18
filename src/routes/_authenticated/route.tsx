@@ -69,7 +69,7 @@ function AuthenticatedLayout() {
         <div className="welcome-splash__content">
           <div className="welcome-splash__brand">
             <img src="/spguard-shield.png" alt="SPGuard" className="welcome-splash__shield" />
-            <img src="/spguard-wordmark.png" alt="SPGuard" className="welcome-splash__wordmark" />
+            <div className="welcome-splash__wordmark">SPGuard</div>
           </div>
           <div className="welcome-splash__subtitle">Sistema de Gestão da Segurança Patrimonial</div>
         </div>
