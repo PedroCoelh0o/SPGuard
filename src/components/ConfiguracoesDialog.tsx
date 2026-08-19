@@ -52,6 +52,14 @@ import {
   type SyncResult,
   type EntidadeStat,
 } from "@/lib/entrada-sync";
+import {
+  getNetworkConflicts,
+  isNetworkAutoSyncEnabled,
+  resolveNetworkConflict,
+  setNetworkAutoSyncEnabled,
+  syncLocalNetwork,
+  type NetworkConflict,
+} from "@/lib/rede-local-sync";
 
 const STATUS_LABEL: Record<SyncLog["status"], string> = {
   ok: "Sucesso",
@@ -111,6 +119,9 @@ export function ConfiguracoesDialog() {
   const [auto, setAuto] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [history, setHistory] = useState<SyncLog[]>([]);
+  const [networking, setNetworking] = useState(false);
+  const [networkAuto, setNetworkAuto] = useState(false);
+  const [networkConflicts, setNetworkConflicts] = useState<NetworkConflict[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const fullFileRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
@@ -122,7 +133,43 @@ export function ConfiguracoesDialog() {
     setAuto(isAutoSyncEnabled());
     setLastSync(getLastSync());
     setHistory(getSyncHistory());
+    setNetworkAuto(isNetworkAutoSyncEnabled());
+    setNetworkConflicts(getNetworkConflicts());
   }, [open]);
+
+  async function doNetworkSync() {
+    setNetworking(true);
+    try {
+      const result = await syncLocalNetwork();
+      setNetworkConflicts(result.conflicts);
+      if (result.conflicts.length) {
+        toast.warning("Sincronização concluída com divergências preservadas", {
+          description: "Escolha qual versão manter nos itens mostrados abaixo. Nenhuma informação foi substituída automaticamente.",
+          duration: 12000,
+        });
+      } else {
+        toast.success(result.created ? "Pasta de sincronização criada e dados enviados" : "Sincronização concluída", {
+          description: `${result.sent} alteração(ões) enviada(s), ${result.received} recebida(s) e ${result.files} arquivo(s) sincronizado(s).`,
+        });
+      }
+      if (result.warnings.length) toast.warning("Alguns registros exigem conferência", { description: result.warnings.slice(0, 2).join(" | ") });
+      setTimeout(() => window.location.reload(), 900);
+    } catch (e) {
+      toast.error("Não foi possível sincronizar", { description: (e as Error).message, duration: 10000 });
+    } finally { setNetworking(false); }
+  }
+
+  async function chooseConflict(conflict: NetworkConflict, choice: "local" | "network") {
+    setNetworking(true);
+    try {
+      await resolveNetworkConflict(conflict, choice);
+      setNetworkConflicts(getNetworkConflicts());
+      toast.success(choice === "local" ? "Mantidos os dados deste notebook" : "Mantidos os dados da pasta compartilhada");
+      setTimeout(() => window.location.reload(), 700);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setNetworking(false); }
+  }
 
   async function doCreateEntrada() {
     setCreating(true);
@@ -464,6 +511,49 @@ export function ConfiguracoesDialog() {
                     selecionada. Ao restaurar, registros com o mesmo ID são atualizados pelo
                     conteúdo da planilha.
                   </p>
+                </div>
+
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">Sincronização local entre notebooks</div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Usa a pasta compartilhada selecionada para unir os dados, documentos, fotos e evidências quando o notebook estiver na rede da empresa. Não utiliza internet.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Switch
+                        checked={networkAuto}
+                        onCheckedChange={(checked) => { setNetworkAuto(checked); setNetworkAutoSyncEnabled(checked); }}
+                        disabled={!dirName || networking}
+                      />
+                      Atualizar ao abrir
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={doNetworkSync} disabled={!dirName || networking || saving || restoring}>
+                      <RefreshCw className={`h-4 w-4 ${networking ? "animate-spin" : ""}`} />
+                      {networking ? "Sincronizando..." : "Sincronizar agora"}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">Todos os notebooks devem selecionar a mesma pasta da Segurança.</span>
+                  </div>
+                  {networkConflicts.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs space-y-2">
+                      <div className="font-medium text-amber-700 dark:text-amber-300">Divergências aguardando decisão ({networkConflicts.length})</div>
+                      <p>As duas versões foram preservadas. Escolha a que deverá ser distribuída aos demais notebooks.</p>
+                      <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                        {networkConflicts.map((conflict) => (
+                          <div key={conflict.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-500/30 p-2">
+                            <span><strong>{conflict.table.replaceAll("_", " ")}</strong> — registro {conflict.recordId.slice(0, 8)}</span>
+                            <span className="flex gap-1">
+                              <Button size="sm" variant="outline" disabled={networking} onClick={() => chooseConflict(conflict, "local")}>Manter deste notebook</Button>
+                              <Button size="sm" variant="secondary" disabled={networking} onClick={() => chooseConflict(conflict, "network")}>Manter da rede</Button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

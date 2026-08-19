@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { maybeAutoSync } from "@/lib/entrada-sync";
+import { maybeAutoNetworkSync } from "@/lib/rede-local-sync";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,25 +36,36 @@ function AuthenticatedLayout() {
     let cancelled = false;
     const run = async () => {
       const o = await maybeAutoSync();
-      if (cancelled || !o.ran) return;
-      if (!o.ok) {
-        toast.error("Falha na leitura automática da planilha", { description: o.mensagem, duration: 10000 });
-        return;
-      }
-      const r = o.result;
-      qc.invalidateQueries();
-      const d = r.detalhe;
-      toast.success(
-        `Atualização automática concluída: ${d.colaboradores.inseridos + d.eletronicos.inseridos} inserido(s), ` +
-        `${d.colaboradores.atualizados + d.eletronicos.atualizados} atualizado(s), ` +
-        `${d.colaboradores.ignorados + d.eletronicos.ignorados} ignorado(s)`,
-        { duration: 8000 },
-      );
+      if (!cancelled && o.ran) {
+        if (!o.ok) {
+          toast.error("Falha na leitura automática da planilha", { description: o.mensagem, duration: 10000 });
+        } else {
+          const r = o.result;
+          qc.invalidateQueries();
+          const d = r.detalhe;
+          toast.success(
+            `Atualização automática concluída: ${d.colaboradores.inseridos + d.eletronicos.inseridos} inserido(s), ` +
+            `${d.colaboradores.atualizados + d.eletronicos.atualizados} atualizado(s), ` +
+            `${d.colaboradores.ignorados + d.eletronicos.ignorados} ignorado(s)`,
+            { duration: 8000 },
+          );
 
-      if (r.erros.length) {
-        toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
-          description: r.erros.slice(0, 3).join(" | "),
-          duration: 12000,
+          if (r.erros.length) {
+            toast.warning(`${r.erros.length} inconsistência(s) na planilha`, {
+              description: r.erros.slice(0, 3).join(" | "),
+              duration: 12000,
+            });
+          }
+        }
+      }
+
+      const network = await maybeAutoNetworkSync();
+      if (!network || cancelled) return;
+      qc.invalidateQueries();
+      if (network.conflicts.length) {
+        toast.warning("A sincronização local encontrou divergências", {
+          description: "Abra Configurações para escolher qual versão manter. Nenhuma informação foi perdida.",
+          duration: 10000,
         });
       }
     };

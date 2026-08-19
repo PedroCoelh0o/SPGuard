@@ -730,3 +730,62 @@ export function storageRemove(bucket: string, relPaths: string[]): void {
     if (fs.existsSync(abs)) fs.unlinkSync(abs);
   }
 }
+// ---------------------------------------------------------------------------
+// Sincronização por pasta de rede
+// ---------------------------------------------------------------------------
+// Estas funções são deliberadamente separadas do adaptador comum de consultas.
+// A sincronização precisa preservar created_at/updated_at recebidos de outro
+// notebook; o upsert normal atualiza essas datas para o horário local.
+export const NETWORK_SYNC_TABLES = [
+  "empresas",
+  "colaboradores",
+  "eletronicos",
+  "colaborador_documentos",
+  "historico_alteracoes",
+  "ocorrencias",
+  "ocorrencia_arquivos",
+  "ocorrencias_protecao",
+] as const;
+
+export type NetworkSyncTable = (typeof NETWORK_SYNC_TABLES)[number];
+export type NetworkSnapshot = { tables: Record<NetworkSyncTable, Record<string, unknown>[]> };
+
+export function readNetworkSnapshot(): NetworkSnapshot {
+  const db = getDb();
+  const tables = {} as Record<NetworkSyncTable, Record<string, unknown>[]>;
+  for (const table of NETWORK_SYNC_TABLES) {
+    const rows = db.prepare(`SELECT * FROM ${table} ORDER BY id`).all() as Record<string, unknown>[];
+    tables[table] = rows.map((row) => fromSqlRow(table, row));
+  }
+  return { tables };
+}
+
+export function applyNetworkSnapshot(snapshot: NetworkSnapshot): { applied: number; errors: string[] } {
+  const db = getDb();
+  let applied = 0;
+  const errors: string[] = [];
+  const save = db.transaction((table: NetworkSyncTable, rows: Record<string, unknown>[]) => {
+    for (const item of rows) {
+      try {
+        if (!item.id) throw new Error("registro sem identificação");
+        const cols = Object.keys(item).filter((column) => TABLE_COLUMNS[table].includes(column));
+        if (!cols.length) continue;
+        const exists = db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(item.id);
+        if (exists) {
+          const editable = cols.filter((column) => column !== "id");
+          if (!editable.length) continue;
+          db.prepare(`UPDATE ${table} SET ${editable.map((column) => `${column} = ?`).join(", ")} WHERE id = ?`)
+            .run(...editable.map((column) => toSqlValue(column, item[column])), item.id);
+        } else {
+          db.prepare(`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`)
+            .run(...cols.map((column) => toSqlValue(column, item[column])));
+        }
+        applied++;
+      } catch (e) {
+        errors.push(`${table}/${String(item.id ?? "sem-id")}: ${(e as Error).message}`);
+      }
+    }
+  });
+  for (const table of NETWORK_SYNC_TABLES) save(table, snapshot.tables[table] ?? []);
+  return { applied, errors };
+}

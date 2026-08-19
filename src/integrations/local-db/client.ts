@@ -7,8 +7,8 @@
 // Por baixo dos panos, cada chamada vira uma RPC para o servidor Node local
 // (rodando dentro do próprio app Electron), que executa a consulta num banco
 // SQLite gravado no disco do usuário. Nada trafega pela internet.
-import { dbQuery, storageUploadFn, storageReadFn, storageRemoveFn } from "@/integrations/local-db/server-fns";
-import type { Filter, QueryDescriptor } from "@/server/local-db";
+import { dbQuery, storageUploadFn, storageReadFn, storageRemoveFn, networkSnapshotReadFn, networkSnapshotApplyFn } from "@/integrations/local-db/server-fns";
+import type { Filter, QueryDescriptor, NetworkSnapshot } from "@/server/local-db";
 
 type PgError = { message: string } | null;
 type PgResult<T> = { data: T | null; error: PgError };
@@ -25,6 +25,17 @@ function getLocalToken() {
       : Promise.resolve(undefined);
   }
   return localTokenPromise;
+}
+
+/** Operações restritas usadas exclusivamente pela sincronização offline entre notebooks. */
+export async function readLocalNetworkSnapshot(): Promise<NetworkSnapshot> {
+  const _localToken = await getLocalToken();
+  return networkSnapshotReadFn({ data: { _localToken } }) as Promise<NetworkSnapshot>;
+}
+
+export async function applyLocalNetworkSnapshot(snapshot: NetworkSnapshot): Promise<{ applied: number; errors: string[] }> {
+  const _localToken = await getLocalToken();
+  return networkSnapshotApplyFn({ data: { snapshot, _localToken } }) as Promise<{ applied: number; errors: string[] }>;
 }
 
 class QueryBuilder<T = unknown> implements PromiseLike<PgResult<T>> {

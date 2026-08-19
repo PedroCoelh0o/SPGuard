@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld("spguardFiles", {
   readFile: (name) => ipcRenderer.invoke("spguard-files:read-file", name),
 });
 
+contextBridge.exposeInMainWorld("spguardNetwork", {
+  read: (relative) => ipcRenderer.invoke("spguard-network:read", relative),
+  exists: (relative) => ipcRenderer.invoke("spguard-network:exists", relative),
+  write: (relative, contents) => ipcRenderer.invoke("spguard-network:write", relative, contents),
+  acquireLock: () => ipcRenderer.invoke("spguard-network:acquire-lock"),
+  releaseLock: () => ipcRenderer.invoke("spguard-network:release-lock"),
+});
+
 contextBridge.exposeInMainWorld("spguardRuntime", {
   getRpcToken: () => ipcRenderer.invoke("spguard-runtime:get-rpc-token"),
 });

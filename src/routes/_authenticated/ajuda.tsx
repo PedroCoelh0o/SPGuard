@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   History,
   Save,
+  RefreshCw,
   Search,
   Settings,
   Smartphone,
@@ -153,6 +154,21 @@ const configuracoes: Guia[] = [
       "Use Validar planilha para conferir erros antes de gravar qualquer alteração.",
       "Quando a validação estiver correta, clique em Atualizar agora. Registros existentes podem ser atualizados pelo CPF, matrícula ou identificadores do eletrônico.",
       "A atualização automática pode ser ativada nessa mesma área; ainda assim, é recomendável manter um backup antes de mudanças grandes.",
+    ],
+  },
+  {
+    icon: RefreshCw,
+    titulo: "Sincronização local entre notebooks",
+    descricao:
+      "Compartilha alterações pela pasta interna da Segurança, sem internet, nuvem ou instalação de serviço no servidor da empresa.",
+    passos: [
+      "Nos notebooks que usarão o SPGuard, abra Configurações e selecione exatamente a mesma pasta compartilhada da Segurança.",
+      "No primeiro notebook, clique em Sincronizar agora. O SPGuard cria a pasta SPGuard/rede-local e envia uma cópia inicial dos registros e arquivos anexados.",
+      "Nos outros notebooks, selecione a mesma pasta e clique em Sincronizar agora para receber os dados. Os notebooks continuam funcionando fora da empresa com sua cópia local.",
+      "Ao retornar à rede da empresa, clique em Sincronizar agora ou ative Atualizar ao abrir. A sincronização só ocorre quando a pasta compartilhada estiver acessível.",
+      "Não é necessário e não é recomendado colocar o arquivo database.sqlite3 na pasta de rede. O SPGuard troca apenas alterações e arquivos necessários.",
+      "Se duas pessoas mudarem o mesmo registro em notebooks diferentes, o SPGuard preserva as duas versões e pede, em Configurações, que seja escolhida a versão deste notebook ou a versão da rede. Nenhuma versão é sobrescrita sem aviso.",
+      "Mantenha o backup completo periódico: sincronização não substitui backup.",
     ],
   },
 ];

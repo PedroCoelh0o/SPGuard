@@ -54,3 +54,19 @@ export const storageRemoveFn = createServerFn({ method: "POST" })
       return { data: null, error: { message: (e as Error).message } };
     }
   });
+
+export const networkSnapshotReadFn = createServerFn({ method: "POST" })
+  .validator((d: LocalRequest<Record<string, never>>) => d)
+  .handler(async ({ data }) => {
+    assertLocalToken(data);
+    const { readNetworkSnapshot } = await import("@/server/local-db");
+    return readNetworkSnapshot();
+  });
+
+export const networkSnapshotApplyFn = createServerFn({ method: "POST" })
+  .validator((d: LocalRequest<{ snapshot: unknown }>) => d)
+  .handler(async ({ data }) => {
+    assertLocalToken(data);
+    const { applyNetworkSnapshot } = await import("@/server/local-db");
+    return applyNetworkSnapshot(data.snapshot as Parameters<typeof applyNetworkSnapshot>[0]);
+  });

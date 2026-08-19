@@ -70,6 +70,32 @@ const ARQUIVOS_PERMITIDOS = new Set([
   "spguard-backup-criptografado.spguard",
 ]);
 const DIRETORIO_CONFIG = "spguard-planilhas.json";
+const REDE_LOCAL_DIR = "rede-local";
+
+function caminhoRede(relativo = "") {
+  if (typeof relativo !== "string" || relativo.includes("\0"))
+    throw new Error("Caminho de sincronização inválido");
+  const parts = relativo.split(/[\\/]+/).filter(Boolean);
+  if (parts.some((part) => part === "." || part === ".." || !/^[a-zA-Z0-9._-]+$/.test(part)))
+    throw new Error("Caminho de sincronização inválido");
+  return parts;
+}
+
+async function raizRedeLocal() {
+  const directory = await diretorioPlanilhas();
+  if (!directory) throw new Error("Selecione a pasta compartilhada da Segurança primeiro");
+  const root = path.join(directory, "SPGuard", REDE_LOCAL_DIR);
+  await fs.mkdir(root, { recursive: true });
+  return root;
+}
+
+async function arquivoRede(relativo) {
+  const root = await raizRedeLocal();
+  const file = path.join(root, ...caminhoRede(relativo));
+  const relative = path.relative(root, file);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Caminho de sincronização inválido");
+  return file;
+}
 
 function caminhoConfigPlanilhas() {
   return path.join(app.getPath("userData"), DIRETORIO_CONFIG);
@@ -144,6 +170,65 @@ ipcMain.handle("spguard-files:read-file", async (_event, name) => {
   exigirSenderConfiavel(_event);
   const { file } = await caminhoPlanilha(name);
   return new Uint8Array(await fs.readFile(file));
+});
+
+// Ponte limitada para a sincronização entre notebooks. Todos os arquivos são
+// mantidos dentro de SPGuard/rede-local na pasta escolhida pelo usuário; o
+// renderer nunca recebe acesso livre ao disco ou à rede.
+ipcMain.handle("spguard-network:read", async (event, relative) => {
+  exigirSenderConfiavel(event);
+  const file = await arquivoRede(relative);
+  try { return new Uint8Array(await fs.readFile(file)); } catch (e) {
+    if (e && e.code === "ENOENT") return null;
+    throw e;
+  }
+});
+
+ipcMain.handle("spguard-network:exists", async (event, relative) => {
+  exigirSenderConfiavel(event);
+  const file = await arquivoRede(relative);
+  try { await fs.access(file); return true; } catch { return false; }
+});
+
+ipcMain.handle("spguard-network:write", async (event, relative, contents) => {
+  exigirSenderConfiavel(event);
+  const file = await arquivoRede(relative);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const temp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  await fs.writeFile(temp, Buffer.from(contents));
+  await fs.rename(temp, file);
+});
+
+ipcMain.handle("spguard-network:acquire-lock", async (event) => {
+  exigirSenderConfiavel(event);
+  const file = await arquivoRede("sync.lock");
+  try {
+    const handle = await fs.open(file, "wx");
+    await handle.writeFile(JSON.stringify({ pid: process.pid, createdAt: Date.now() }), "utf8");
+    await handle.close();
+    return true;
+  } catch (e) {
+    if (!e || e.code !== "EEXIST") throw e;
+    try {
+      const raw = JSON.parse(await fs.readFile(file, "utf8"));
+      if (Date.now() - Number(raw?.createdAt || 0) > 2 * 60 * 1000) {
+        await fs.unlink(file);
+        try {
+          const handle = await fs.open(file, "wx");
+          await handle.writeFile(JSON.stringify({ pid: process.pid, createdAt: Date.now() }), "utf8");
+          await handle.close();
+          return true;
+        } catch { return false; }
+      }
+    } catch { /* lock existente ou ilegível: aguarda outra sincronização */ }
+    return false;
+  }
+});
+
+ipcMain.handle("spguard-network:release-lock", async (event) => {
+  exigirSenderConfiavel(event);
+  const file = await arquivoRede("sync.lock");
+  try { await fs.unlink(file); } catch (e) { if (!e || e.code !== "ENOENT") throw e; }
 });
 
 ipcMain.handle("spguard-runtime:get-rpc-token", async (event) => {
