@@ -544,7 +544,10 @@ export function ConfiguracoesDialog() {
                       <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
                         {networkConflicts.map((conflict) => (
                           <div key={conflict.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-500/30 p-2">
-                            <span><strong>{conflict.table.replaceAll("_", " ")}</strong> — registro {conflict.recordId.slice(0, 8)}</span>
+                            <span>
+                              <strong>{conflict.table.replaceAll("_", " ")}</strong> — registro {conflict.recordId.slice(0, 8)}
+                              {conflict.fields?.length ? ` · campo(s): ${conflict.fields.join(", ")}` : ""}
+                            </span>
                             <span className="flex gap-1">
                               <Button size="sm" variant="outline" disabled={networking} onClick={() => chooseConflict(conflict, "local")}>Manter deste notebook</Button>
                               <Button size="sm" variant="secondary" disabled={networking} onClick={() => chooseConflict(conflict, "network")}>Manter da rede</Button>

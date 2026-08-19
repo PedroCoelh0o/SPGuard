@@ -5,7 +5,7 @@ type Row = Record<string, unknown> & { id: string };
 type Tables = Record<Table, Row[]>;
 type Snapshot = { tables: Tables };
 type SharedState = { version: 1; updatedAt: string; tables: Tables };
-export type NetworkConflict = { id: string; table: Table; recordId: string; local: Row; remote: Row; detectedAt: string };
+export type NetworkConflict = { id: string; table: Table; recordId: string; local: Row; remote: Row; fields?: string[]; detectedAt: string };
 export type NetworkSyncResult = { created: boolean; sent: number; received: number; files: number; conflicts: NetworkConflict[]; warnings: string[] };
 
 declare global {
@@ -58,7 +58,11 @@ function network() {
   return window.spguardNetwork;
 }
 
-type Baseline = Partial<Record<Table, Record<string, string>>>;
+type FieldHashes = Record<string, string>;
+// A primeira versão armazenava uma assinatura única por registro. A nova
+// estrutura armazena uma assinatura por campo e permite unir edições que não
+// se sobrepõem. Valores antigos continuam sendo tratados com cautela.
+type Baseline = Partial<Record<Table, Record<string, FieldHashes | string>>>;
 function baseline(): Baseline {
   try { return JSON.parse(localStorage.getItem(BASELINE_KEY) || "{}") as Baseline; } catch { return {}; }
 }
@@ -87,6 +91,42 @@ function normalizeState(input: unknown): SharedState | null {
     tables[table] = Array.isArray(rows) ? rows.filter((row): row is Row => !!row && typeof row === "object" && !!(row as Row).id) : [];
   }
   return { version: 1, updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now(), tables };
+}
+
+const BASELINE_IGNORED_FIELDS = new Set(["id", "created_at", "updated_at"]);
+function valueHash(value: unknown) { return stable(value) ?? "__undefined__"; }
+function fieldHashes(row: Row): FieldHashes {
+  return Object.fromEntries(
+    Object.keys(row)
+      .filter((field) => !BASELINE_IGNORED_FIELDS.has(field))
+      .map((field) => [field, valueHash(row[field])]),
+  );
+}
+function changedFields(row: Row, base: FieldHashes | string | undefined): Set<string> | null {
+  // Sem a base por campo não há como saber com segurança qual parte mudou.
+  // Nesse caso o comportamento continua conservador e mostra a divergência.
+  if (!base || typeof base === "string") return null;
+  const keys = new Set([...Object.keys(base), ...Object.keys(row)]);
+  const changed = new Set<string>();
+  for (const field of keys) {
+    if (BASELINE_IGNORED_FIELDS.has(field)) continue;
+    if (base[field] !== valueHash(row[field])) changed.add(field);
+  }
+  return changed;
+}
+function latestTimestamp(left: unknown, right: unknown) {
+  const a = typeof left === "string" ? left : "";
+  const b = typeof right === "string" ? right : "";
+  return a > b ? a : b;
+}
+function mergeObservations(local: unknown, remote: unknown) {
+  const left = String(local ?? "").trim();
+  const right = String(remote ?? "").trim();
+  if (!left) return right || null;
+  if (!right || left === right) return left;
+  if (left.includes(right)) return left;
+  if (right.includes(left)) return right;
+  return `${right}\n\n[Anotação preservada de outro notebook]\n${left}`;
 }
 
 function assetReferences(snapshot: Snapshot) {
@@ -123,27 +163,52 @@ function merge(local: Snapshot, remote: SharedState, previous: Baseline) {
     const remoteRows = new Map(remote.tables[table].map((row) => [row.id, row]));
     const base = previous[table] || {};
     const ids = new Set([...localRows.keys(), ...remoteRows.keys()]);
-    const next: Record<string, string> = {};
+    const next: Record<string, FieldHashes> = {};
     for (const id of ids) {
       const left = localRows.get(id);
       const right = remoteRows.get(id);
-      if (!left && right) { master[table].push(right); forLocal[table].push(right); next[id] = fingerprint(right); received++; continue; }
-      if (left && !right) { master[table].push(left); forLocal[table].push(left); next[id] = fingerprint(left); sent++; continue; }
+      if (!left && right) { master[table].push(right); forLocal[table].push(right); next[id] = fieldHashes(right); received++; continue; }
+      if (left && !right) { master[table].push(left); forLocal[table].push(left); next[id] = fieldHashes(left); sent++; continue; }
       if (!left || !right) continue;
       const leftHash = fingerprint(left);
       const rightHash = fingerprint(right);
-      if (leftHash === rightHash) { master[table].push(right); forLocal[table].push(right); next[id] = rightHash; continue; }
+      if (leftHash === rightHash) { master[table].push(right); forLocal[table].push(right); next[id] = fieldHashes(right); continue; }
       const prior = base[id];
-      const localChanged = !prior || prior !== leftHash;
-      const remoteChanged = !prior || prior !== rightHash;
-      if (localChanged && remoteChanged) {
+      const localChanged = changedFields(left, prior);
+      const remoteChanged = changedFields(right, prior);
+      if (!localChanged || !remoteChanged) {
         master[table].push(right);
         forLocal[table].push(left);
         conflicts.push({ id: crypto.randomUUID(), table, recordId: id, local: left, remote: right, detectedAt: now() });
         continue;
       }
-      if (localChanged) { master[table].push(left); forLocal[table].push(left); next[id] = leftHash; sent++; }
-      else { master[table].push(right); forLocal[table].push(right); next[id] = rightHash; received++; }
+      if (localChanged.size === 0) { master[table].push(right); forLocal[table].push(right); next[id] = fieldHashes(right); received++; continue; }
+      if (remoteChanged.size === 0) { master[table].push(left); forLocal[table].push(left); next[id] = fieldHashes(left); sent++; continue; }
+
+      const overlapping = [...localChanged].filter((field) => remoteChanged.has(field));
+      const deletionChanged = localChanged.has("excluido_em") || remoteChanged.has("excluido_em");
+      const unresolved = overlapping.filter((field) => field !== "observacoes");
+      if (deletionChanged || unresolved.length > 0) {
+        master[table].push(right);
+        forLocal[table].push(left);
+        conflicts.push({ id: crypto.randomUUID(), table, recordId: id, local: left, remote: right, fields: deletionChanged ? ["excluido_em"] : unresolved, detectedAt: now() });
+        continue;
+      }
+
+      // Mudanças em campos diferentes são unidas. Quando ambas as pessoas
+      // escreveram observações, as duas anotações ficam registradas.
+      const combined: Row = { ...right };
+      for (const field of localChanged) {
+        if (field === "observacoes" && remoteChanged.has(field)) continue;
+        combined[field] = left[field];
+      }
+      if (overlapping.includes("observacoes")) combined.observacoes = mergeObservations(left.observacoes, right.observacoes);
+      if ("updated_at" in left || "updated_at" in right) combined.updated_at = latestTimestamp(left.updated_at, right.updated_at) || now();
+      master[table].push(combined);
+      forLocal[table].push(combined);
+      next[id] = fieldHashes(combined);
+      sent++;
+      received++;
     }
     nextBase[table] = next;
   }
@@ -182,7 +247,7 @@ export async function syncLocalNetwork(): Promise<NetworkSyncResult> {
       await bridge.write(STATE_FILE, textBytes(JSON.stringify(first)));
       const files = await syncAssets(local, local);
       const firstBaseline: Baseline = {};
-      for (const table of TABLES) firstBaseline[table] = Object.fromEntries(local.tables[table].map((row) => [row.id, fingerprint(row)]));
+      for (const table of TABLES) firstBaseline[table] = Object.fromEntries(local.tables[table].map((row) => [row.id, fieldHashes(row)]));
       setBaseline(firstBaseline);
       setConflicts([]);
       localStorage.setItem(LAST_KEY, String(Date.now()));
@@ -223,7 +288,7 @@ export async function resolveNetworkConflict(conflict: NetworkConflict, choice: 
     setConflicts(remaining);
     await bridge.write(CONFLICT_FILE, textBytes(JSON.stringify(remaining)));
     const base = baseline();
-    base[conflict.table] = { ...(base[conflict.table] || {}), [conflict.recordId]: fingerprint(chosen) };
+    base[conflict.table] = { ...(base[conflict.table] || {}), [conflict.recordId]: fieldHashes(chosen) };
     setBaseline(base);
   } finally { await bridge.releaseLock(); }
 }
