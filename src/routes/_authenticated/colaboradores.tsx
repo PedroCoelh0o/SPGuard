@@ -59,11 +59,14 @@ function ColabPage() {
   const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [empresaFiltro, setEmpresaFiltro] = useState("all");
   const [pendenciaFiltro, setPendenciaFiltro] = useState("all");
+  const [larguraTabela, setLarguraTabela] = useState(1080);
   
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
   const pendenciasVerificadas = useRef("");
+  const tabelaRef = useRef<HTMLTableElement>(null);
+  const barraTabelaRef = useRef<HTMLDivElement>(null);
 
 
   const { data: empresas = [] } = useQuery({
@@ -207,6 +210,31 @@ function ColabPage() {
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
 
+  useEffect(() => {
+    const table = tabelaRef.current;
+    const tabelaRolavel = table?.parentElement;
+    const barraRolagem = barraTabelaRef.current;
+    if (!table || !tabelaRolavel || !barraRolagem) return;
+
+    const atualizarLargura = () => {
+      setLarguraTabela(Math.max(1080, table.scrollWidth));
+      barraRolagem.scrollLeft = tabelaRolavel.scrollLeft;
+    };
+    const sincronizarTabela = () => { barraRolagem.scrollLeft = tabelaRolavel.scrollLeft; };
+    const sincronizarBarra = () => { tabelaRolavel.scrollLeft = barraRolagem.scrollLeft; };
+    const observer = new ResizeObserver(atualizarLargura);
+    observer.observe(table);
+    observer.observe(tabelaRolavel);
+    atualizarLargura();
+    tabelaRolavel.addEventListener("scroll", sincronizarTabela);
+    barraRolagem.addEventListener("scroll", sincronizarBarra);
+    return () => {
+      observer.disconnect();
+      tabelaRolavel.removeEventListener("scroll", sincronizarTabela);
+      barraRolagem.removeEventListener("scroll", sincronizarBarra);
+    };
+  }, [shown, isLoading]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -281,8 +309,8 @@ function ColabPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <Table className="min-w-[1080px] whitespace-nowrap">
+          <div className="rounded-t-md border border-b-0 overflow-hidden">
+            <Table ref={tabelaRef} className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -293,7 +321,7 @@ function ColabPage() {
                   <TableHead>CPF</TableHead>
                   <TableHead>Admissão</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="sticky right-0 z-20 border-l bg-card text-right shadow-[-8px_0_10px_-10px_rgba(0,0,0,0.45)]">Ações</TableHead>
+                  <TableHead className="sticky right-0 z-30 w-44 min-w-44 border-l bg-card text-center shadow-[-10px_0_14px_-12px_rgba(0,0,0,0.8)]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -316,7 +344,8 @@ function ColabPage() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
-                    <TableCell className={`sticky right-0 z-10 border-l text-right shadow-[-8px_0_10px_-10px_rgba(0,0,0,0.45)] ${pendenciasPorColaborador.has(c.id) ? "bg-amber-500/5 group-hover:bg-amber-500/10" : "bg-card group-hover:bg-muted/50"}`}>
+                    <TableCell className="sticky right-0 z-20 w-44 min-w-44 overflow-hidden border-l bg-card text-right shadow-[-10px_0_14px_-12px_rgba(0,0,0,0.8)]">
+                      <div className="flex items-center justify-center gap-1">
                       <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar dados" onClick={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
@@ -337,15 +366,19 @@ function ColabPage() {
                               <AlertDialogAction onClick={() => del.mutate(c.id)}>Mover para lixeira</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
-                        </AlertDialog>
+                          </AlertDialog>
                       )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">Em telas menores, use a barra no fim da tabela para visualizar os demais dados. As ações permanecem fixas à direita.</p>
+          <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70">
+            <div className="h-px" style={{ width: larguraTabela }} />
+          </div>
+          <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. As ações permanecem disponíveis à direita.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
             {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
