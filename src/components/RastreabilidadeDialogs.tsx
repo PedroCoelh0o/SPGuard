@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { History, RotateCcw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -86,6 +87,7 @@ export function HistoricoAlteracoesDialog() {
 
 export function LixeiraDialog() {
   const qc = useQueryClient();
+  const [limpando, setLimpando] = useState(false);
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["lixeira-colaboradores"],
     queryFn: () => fetchAllRows<Excluido>(() => supabase.from("colaboradores").select("id, nome, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
@@ -115,6 +117,26 @@ export function LixeiraDialog() {
     ["lixeira-colaboradores", "lixeira-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
   }
 
+  async function emptyTrash() {
+    setLimpando(true);
+    try {
+      // A exclusão em lote usa a mesma rotina segura da exclusão individual,
+      // removendo também documentos e fotos dos colaboradores excluídos.
+      const [colaboradoresResult, eletronicosResult] = await Promise.all([
+        supabase.from("colaboradores").delete().permanently().onlyDeleted(),
+        supabase.from("eletronicos").delete().permanently().onlyDeleted(),
+      ]);
+      const error = colaboradoresResult.error ?? eletronicosResult.error;
+      if (error) throw error;
+      toast.success(`Lixeira limpa: ${all.length} item(ns) removido(s) permanentemente`);
+      ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores", "colaboradores-eletr", "consulta-eletronicos", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setLimpando(false);
+    }
+  }
+
   return (
     <Dialog>
       <DialogTrigger asChild><Button variant="outline" size="sm"><Trash2 className="h-4 w-4" /> Lixeira</Button></DialogTrigger>
@@ -123,6 +145,23 @@ export function LixeiraDialog() {
           <DialogTitle>Lixeira de segurança</DialogTitle>
           <DialogDescription>Os itens ficam disponíveis para restauração por 15 dias. Depois desse prazo, são removidos definitivamente.</DialogDescription>
         </DialogHeader>
+        {all.length > 0 && (
+          <div className="flex justify-end">
+            <AlertDialog>
+              <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={limpando}><Trash2 className="h-4 w-4" /> Limpar lixeira</Button></AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Limpar toda a lixeira?</AlertDialogTitle>
+                  <AlertDialogDescription>Os {all.length} item(ns) da lixeira, incluindo documentos e fotos vinculados, serão excluídos permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={limpando}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction disabled={limpando} onClick={(event) => { event.preventDefault(); void emptyTrash(); }}>{limpando ? "Limpando..." : "Limpar lixeira"}</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
         <div className="rounded-md border overflow-auto">
           <Table>
             <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Registro</TableHead><TableHead>Excluído em</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>

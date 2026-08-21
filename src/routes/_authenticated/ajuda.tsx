@@ -83,6 +83,7 @@ const guias: Guia[] = [
       "Ao excluir um colaborador ou eletrônico, o item vai para a Lixeira em vez de ser apagado imediatamente.",
       "Na tela Colaboradores ou Eletrônicos, clique em Lixeira para localizar o item e usar Restaurar.",
       "Colaboradores restaurados mantêm seus documentos vinculados. Os itens ficam na lixeira por 15 dias e depois são excluídos definitivamente; você também pode excluir permanentemente um item a qualquer momento.",
+      "Para remover todos os itens antes do prazo, use Limpar lixeira e confirme a operação. Ela exclui definitivamente todos os itens, documentos e fotos que estiverem na lixeira; os cadastros ativos não são afetados.",
     ],
   },
   {
