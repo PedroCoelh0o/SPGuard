@@ -165,7 +165,7 @@ export async function ensurePermission(handle: DirHandle) {
 }
 
 async function fetchAllData() {
-  const [emp, col, ele, docs, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao] = await Promise.all([
+  const [emp, col, ele, docs, pendencias, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao] = await Promise.all([
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("empresas").select("*").order("id") as never,
     ),
@@ -177,6 +177,9 @@ async function fetchAllData() {
     ),
     fetchAllRows<DocumentoBackup>(
       () => supabase.from("colaborador_documentos" as never).select("*").order("id") as never,
+    ),
+    fetchAllRows<Record<string, unknown>>(
+      () => supabase.from("pendencias_cadastro").select("*").order("id") as never,
     ),
     fetchAllRows<Record<string, unknown>>(
       () => supabase.from("historico_alteracoes").select("*").order("created_at", { ascending: false }) as never,
@@ -196,6 +199,7 @@ async function fetchAllData() {
     colaboradores: col,
     eletronicos: ele,
     documentos: docs,
+    pendencias,
     historico,
     ocorrencias,
     ocorrenciaArquivos,
@@ -203,12 +207,13 @@ async function fetchAllData() {
   };
 }
 
-function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[], historico: Record<string, unknown>[], ocorrencias: Record<string, unknown>[] = [], ocorrenciaArquivos: Record<string, unknown>[] = [], ocorrenciasProtecao: Record<string, unknown>[] = []) {
+function createBackupWorkbook(empresas: Record<string, unknown>[], colaboradores: Record<string, unknown>[], eletronicos: Record<string, unknown>[], historico: Record<string, unknown>[], pendencias: Record<string, unknown>[] = [], ocorrencias: Record<string, unknown>[] = [], ocorrenciaArquivos: Record<string, unknown>[] = [], ocorrenciasProtecao: Record<string, unknown>[] = []) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(empresas), "Empresas");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(colaboradores), "Colaboradores");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eletronicos), "Eletronicos");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historico), "Historico");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pendencias), "PendenciasCadastro");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrencias), "Ocorrencias");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrenciaArquivos), "OcorrenciaArquivos");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ocorrenciasProtecao), "OcorrenciasProtecao");
@@ -236,8 +241,8 @@ async function writeToBackupDirectory(name: string, contents: Uint8Array): Promi
 }
 
 export async function saveBackupNow(): Promise<{ path: string; total: number }> {
-  const { empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
+  const { empresas, colaboradores, eletronicos, historico, pendencias, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, pendencias, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
   const path = await writeToBackupDirectory(BACKUP_XLSX, new Uint8Array(buf));
   return { path, total: empresas.length + colaboradores.length + eletronicos.length + ocorrencias.length };
@@ -287,8 +292,8 @@ async function decryptBackup(file: File, password: string) {
 }
 
 async function createFullBackupZip(onProgress?: (done: number, total: number) => void): Promise<{ contents: Uint8Array; total: number; documentos: number }> {
-  const { empresas, colaboradores, eletronicos, documentos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
-  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
+  const { empresas, colaboradores, eletronicos, documentos, historico, pendencias, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao } = await fetchAllData();
+  const wb = createBackupWorkbook(empresas, colaboradores, eletronicos, historico, pendencias, ocorrencias, ocorrenciaArquivos, ocorrenciasProtecao);
   const entries: Record<string, Uint8Array> = {
     [BACKUP_XLSX]: new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer),
   };
@@ -416,6 +421,7 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   const colaboradores = clean(sheetRows(wb, "Colaboradores"));
   const eletronicos = clean(sheetRows(wb, "Eletronicos"));
   const historico = clean(sheetRows(wb, "Historico"));
+  const pendencias = clean(sheetRows(wb, "PendenciasCadastro"));
   const ocorrencias = clean(sheetRows(wb, "Ocorrencias"));
   const ocorrenciasProtecao = clean(sheetRows(wb, "OcorrenciasProtecao"));
 
@@ -487,6 +493,10 @@ export async function restoreBackup(fileOverride?: File): Promise<RestoreResult>
   }
 
   const historicoRestaurado = await upsertAll("historico_alteracoes", historico);
+  const pendenciasValidas = pendencias
+    .map((pendencia) => ({ ...pendencia, colaborador_id: idOriginalParaRestaurado.get(text(pendencia.colaborador_id)) ?? text(pendencia.colaborador_id) }))
+    .filter((pendencia) => !!pendencia.colaborador_id && idsColaboradores.has(String(pendencia.colaborador_id)));
+  await upsertAll("pendencias_cadastro", pendenciasValidas);
   const ocorrenciasRestauradas = await upsertAll("ocorrencias", ocorrencias);
   await upsertAll("ocorrencias_protecao", ocorrenciasProtecao);
 

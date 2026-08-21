@@ -50,17 +50,19 @@ function sexoLabel(s: string | null) {
   return "-";
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+type PendenciaCadastro = { campo: "cpf" | "matricula"; valor_original: string | null; motivo: string };
+
+function Field({ label, value, pendente }: { label: string; value: React.ReactNode; pendente?: boolean }) {
   return (
-    <div>
+    <div className={pendente ? "rounded-md border border-amber-500/70 bg-amber-500/10 p-2 -m-2" : undefined}>
       <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="text-sm">{value ?? "-"}</dd>
     </div>
   );
 }
 
-export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, defaultTab = "pessoal" }: {
-  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; defaultTab?: "pessoal" | "eletr";
+export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, defaultTab = "pessoal", pendencias = [] }: {
+  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; defaultTab?: "pessoal" | "eletr"; pendencias?: PendenciaCadastro[];
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();
@@ -103,6 +105,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
   }, [colab?.id, colab?.foto_url]);
 
   if (!colab) return null;
+  const pendencia = (campo: PendenciaCadastro["campo"]) => pendencias.find((item) => item.campo === campo);
 
   async function uploadFoto(file: File) {
     if (!colab) return;
@@ -227,6 +230,15 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
           <DialogDescription>Dados completos, documentos e foto</DialogDescription>
         </DialogHeader>
 
+        {pendencias.length > 0 && (
+          <div className="rounded-md border border-amber-500/70 bg-amber-500/10 p-3 text-sm">
+            <p className="font-medium text-amber-700 dark:text-amber-300">Pendente de conferência</p>
+            <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+              {pendencias.map((item) => <li key={item.campo}><strong>{item.campo === "cpf" ? "CPF" : "Matrícula"}:</strong> {item.motivo}{item.valor_original ? ` (${item.valor_original})` : ""}. Edite o cadastro para corrigir.</li>)}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <div className="flex flex-col items-center gap-3">
             {fotoUrl ? (
@@ -297,9 +309,9 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
             <Card><CardContent className="p-4">
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Nome" value={colab.nome} />
-                <Field label="CPF" value={colab.cpf} />
+                <Field label="CPF" value={colab.cpf} pendente={!!pendencia("cpf")} />
                 <Field label="RG" value={colab.rg} />
-                <Field label="Matrícula" value={colab.matricula} />
+                <Field label="Matrícula" value={colab.matricula} pendente={!!pendencia("matricula")} />
                 <Field label="Data de Nascimento" value={formatDate(colab.data_nascimento)} />
                 <Field label="Sexo" value={sexoLabel(colab.sexo)} />
                 <Field label="Escolaridade" value={colab.escolaridade} />

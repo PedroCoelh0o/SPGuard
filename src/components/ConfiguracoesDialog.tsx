@@ -78,6 +78,7 @@ function StatLinha({ titulo, s }: { titulo: string; s?: EntidadeStat }) {
     ...s.exemplosInseridos.map((e) => `+ ${e}`),
     ...s.exemplosAtualizados.map((e) => `~ ${e}`),
     ...s.exemplosIgnorados.map((e) => `! ${e}`),
+    ...(s.exemplosPendentes ?? []).map((e) => `? ${e}`),
   ].slice(0, 5);
   return (
     <div className="mt-1">
@@ -86,6 +87,7 @@ function StatLinha({ titulo, s }: { titulo: string; s?: EntidadeStat }) {
         <Badge className="bg-emerald-600">Inseridos {s.inseridos}</Badge>
         <Badge className="bg-blue-600">Atualizados {s.atualizados}</Badge>
         {s.ignorados > 0 && <Badge variant="destructive">Ignorados {s.ignorados}</Badge>}
+        {(s.pendentes ?? 0) > 0 && <Badge className="bg-amber-500 text-black">Pendências {s.pendentes}</Badge>}
       </div>
       {exemplos.length > 0 && (
         <ul className="mt-1 list-disc pl-4 text-muted-foreground">
@@ -719,7 +721,7 @@ export function ConfiguracoesDialog() {
                     )}
                     <p className="pt-1 text-muted-foreground">
                       Revise acima e clique em <strong>Confirmar atualização</strong> para aplicar
-                      no sistema. Linhas com inconsistência são ignoradas.
+                      no sistema. CPF ou matrícula com pendência são importados para conferência; somente linhas sem nome ou empresa válida são ignoradas.
                     </p>
                   </div>
                 )}

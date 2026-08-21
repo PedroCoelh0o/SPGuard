@@ -47,6 +47,7 @@ type Colab = {
   cep: string | null; rua: string | null; numero: string | null; bairro: string | null; cidade: string | null; estado: string | null;
   foto_url: string | null;
 };
+type PendenciaCadastro = { id: string; colaborador_id: string; campo: "cpf" | "matricula"; valor_original: string | null; motivo: string; resolvido_em: string | null };
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
 const TURNOS = ["Letra A", "Letra B", "Letra C", "Letra D", "Administrativo", "FIFO", "Híbrido", "Noturno", "Diurno"];
@@ -57,6 +58,7 @@ function ColabPage() {
   const [q, setQ] = useState("");
   const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [empresaFiltro, setEmpresaFiltro] = useState("all");
+  const [pendenciaFiltro, setPendenciaFiltro] = useState("all");
   
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
@@ -77,6 +79,16 @@ function ColabPage() {
       return await fetchAllRows<Colab>(() => supabase.from("colaboradores").select("*").order("nome") as never);
     },
   });
+  const { data: pendencias = [] } = useQuery({
+    queryKey: ["pendencias-cadastro"],
+    queryFn: async () => fetchAllRows<PendenciaCadastro>(() => supabase.from("pendencias_cadastro").select("*") as never),
+  });
+  const pendenciasAtivas = useMemo(() => pendencias.filter((p) => !p.resolvido_em), [pendencias]);
+  const pendenciasPorColaborador = useMemo(() => {
+    const result = new Map<string, PendenciaCadastro[]>();
+    for (const item of pendenciasAtivas) result.set(item.colaborador_id, [...(result.get(item.colaborador_id) ?? []), item]);
+    return result;
+  }, [pendenciasAtivas]);
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
   const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
@@ -98,6 +110,9 @@ function ColabPage() {
       if (id) {
         const { error } = await supabase.from("colaboradores").update(clean as unknown as { nome?: string }).eq("id", id);
         if (error) throw error;
+        const resolvidoEm = new Date().toISOString();
+        if (cpf) await supabase.from("pendencias_cadastro").update({ resolvido_em: resolvidoEm } as never).eq("colaborador_id", id).eq("campo", "cpf");
+        if (String(clean.matricula ?? "").trim()) await supabase.from("pendencias_cadastro").update({ resolvido_em: resolvidoEm } as never).eq("colaborador_id", id).eq("campo", "matricula");
       } else {
         const { error } = await supabase.from("colaboradores").insert(clean as unknown as { nome: string; empresa_id: string });
         if (error) throw error;
@@ -109,6 +124,7 @@ function ColabPage() {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
+      qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
       setOpen(false);
       setEditing(null);
     },
@@ -138,13 +154,16 @@ function ColabPage() {
     const list = colabs.filter((c) => {
       if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
       if (empresaFiltro !== "all" && c.empresa_id !== empresaFiltro) return false;
+      const temPendencia = pendenciasPorColaborador.has(c.id);
+      if (pendenciaFiltro === "pendentes" && !temPendencia) return false;
+      if (pendenciaFiltro === "sem-pendencias" && temPendencia) return false;
       if (!s) return true;
       return (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s) || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
     });
     const sorted = [...list];
     sorted.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     return sorted;
-  }, [colabs, qd, turnoFiltro, empresaFiltro, empresaMap]);
+  }, [colabs, qd, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
 
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
@@ -191,6 +210,8 @@ function ColabPage() {
         <Card><CardContent className="p-4 text-sm text-muted-foreground">Cadastre uma empresa antes de adicionar colaboradores.</CardContent></Card>
       )}
 
+      {pendenciasAtivas.length > 0 && <div className="flex"><Badge className="bg-amber-500 text-black">Pendências de conferência: {pendenciasAtivas.length}</Badge></div>}
+
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -210,6 +231,14 @@ function ColabPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os turnos</SelectItem>
                 {turnosDisponiveis.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={pendenciaFiltro} onValueChange={setPendenciaFiltro}>
+              <SelectTrigger className="w-56" aria-label="Filtrar pendências"><SelectValue placeholder="Pendências" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os cadastros</SelectItem>
+                <SelectItem value="pendentes">Pendentes de conferência</SelectItem>
+                <SelectItem value="sem-pendencias">Sem pendências</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -234,8 +263,8 @@ function ColabPage() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
                 ) : visible.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.nome}</TableCell>
+                  <TableRow key={c.id} className={pendenciasPorColaborador.has(c.id) ? "bg-amber-500/5 hover:bg-amber-500/10" : undefined}>
+                    <TableCell className="font-medium"><div className="flex items-center gap-2">{c.nome}{pendenciasPorColaborador.has(c.id) && <Badge title={pendenciasPorColaborador.get(c.id)?.map((p) => p.motivo).join(" · ")} className="bg-amber-500 text-black">Pendente de conferência</Badge>}</div></TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
                     <TableCell>{c.turno ?? "-"}</TableCell>
@@ -285,7 +314,7 @@ function ColabPage() {
           <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
-      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
+      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
     </div>
   );
 }

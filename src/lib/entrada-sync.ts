@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { isValidCPF } from "@/lib/format";
 import { getDirHandle, ensurePermission, getSavedDirName, hasDesktopFileBridge, desktopFileExists, readDesktopFile, writeDesktopFile } from "@/lib/local-backup";
 
 export const ENTRADA_FILE = "spguard-eletronicos.xlsx";
@@ -95,9 +96,11 @@ export type EntidadeStat = {
   inseridos: number;
   atualizados: number;
   ignorados: number;
+  pendentes: number;
   exemplosInseridos: string[];
   exemplosAtualizados: string[];
   exemplosIgnorados: string[];
+  exemplosPendentes: string[];
 };
 export type SyncDetalhe = { colaboradores: EntidadeStat; eletronicos: EntidadeStat };
 export type SyncResult = { colaboradores: number; eletronicos: number; erros: string[]; detalhe: SyncDetalhe; dryRun?: boolean };
@@ -111,7 +114,7 @@ export type SyncProgress = {
 
 const EXEMPLOS_MAX = 5;
 function novoStat(): EntidadeStat {
-  return { inseridos: 0, atualizados: 0, ignorados: 0, exemplosInseridos: [], exemplosAtualizados: [], exemplosIgnorados: [] };
+  return { inseridos: 0, atualizados: 0, ignorados: 0, pendentes: 0, exemplosInseridos: [], exemplosAtualizados: [], exemplosIgnorados: [], exemplosPendentes: [] };
 }
 function addInserido(s: EntidadeStat, ref: string) {
   s.inseridos++;
@@ -124,6 +127,10 @@ function addAtualizado(s: EntidadeStat, ref: string) {
 function addIgnorado(s: EntidadeStat, ref: string) {
   s.ignorados++;
   if (s.exemplosIgnorados.length < EXEMPLOS_MAX) s.exemplosIgnorados.push(ref);
+}
+function addPendente(s: EntidadeStat, ref: string) {
+  s.pendentes++;
+  if (s.exemplosPendentes.length < EXEMPLOS_MAX) s.exemplosPendentes.push(ref);
 }
 
 
@@ -184,6 +191,27 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
   let colabs = await fetchAllRows<{ id: string; nome: string; cpf: string | null; matricula: string | null; empresa_id: string }>(
     () => supabase.from("colaboradores").select("id, nome, cpf, matricula, empresa_id").includeDeleted() as never,
   );
+  type Pendencia = { id: string; colaborador_id: string; campo: "cpf" | "matricula"; valor_original: string | null; motivo: string; resolvido_em: string | null };
+  const pendencias = await fetchAllRows<Pendencia>(
+    () => supabase.from("pendencias_cadastro").select("*") as never,
+  );
+  const pendenciaPorCampo = new Map(pendencias.map((p) => [`${p.colaborador_id}:${p.campo}`, p]));
+  const pendenciasDaLinha = (colaboradorId: string, itens: { campo: "cpf" | "matricula"; valor: string | null; motivo: string }[]) =>
+    Promise.all(itens.map(async (item) => {
+      const key = `${colaboradorId}:${item.campo}`;
+      const atual = pendenciaPorCampo.get(key);
+      const payload = { valor_original: item.valor, motivo: item.motivo, resolvido_em: null };
+      const { error } = atual
+        ? await supabase.from("pendencias_cadastro").update(payload as never).eq("id", atual.id)
+        : await supabase.from("pendencias_cadastro").insert({ colaborador_id: colaboradorId, campo: item.campo, ...payload } as never);
+      if (error) throw error;
+    }));
+  const resolverPendencia = (colaboradorId: string, campo: "cpf" | "matricula") => {
+    const atual = pendenciaPorCampo.get(`${colaboradorId}:${campo}`);
+    return atual && !atual.resolvido_em
+      ? supabase.from("pendencias_cadastro").update({ resolvido_em: new Date().toISOString() } as never).eq("id", atual.id)
+      : Promise.resolve({ error: null });
+  };
 
   // --- Colaboradores ---
   let colabCount = 0;
@@ -202,17 +230,43 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
     }
 
 
-    const cpfDigits = onlyDigits(get("cpf"));
-    const matricula = str(get("matricula"));
-    const existing = colabs.find((c) =>
-      (cpfDigits && onlyDigits(c.cpf) === cpfDigits) ||
-      (!!matricula && norm(c.matricula) === norm(matricula) && c.empresa_id === empresa_id),
-    );
+    const cpfOriginal = str(get("cpf"));
+    const cpfDigits = onlyDigits(cpfOriginal);
+    const matriculaOriginal = str(get("matricula"));
+    const pendentes: { campo: "cpf" | "matricula"; valor: string | null; motivo: string }[] = [];
+    let cpf: string | null = cpfOriginal;
+    let matricula: string | null = matriculaOriginal;
+    const mesmoNomeEmpresa = (c: typeof colabs[number]) => c.empresa_id === empresa_id && norm(c.nome) === norm(nome);
+    // Mantém o comportamento já adotado pelo SPGuard: mesmo nome e mesma
+    // empresa representam o mesmo cadastro, mesmo quando um identificador
+    // chegou incompleto na planilha.
+    let existing: typeof colabs[number] | undefined = colabs.find(mesmoNomeEmpresa);
+
+    if (cpfOriginal && !isValidCPF(cpfDigits)) {
+      cpf = null;
+      pendentes.push({ campo: "cpf", valor: cpfOriginal, motivo: "CPF inválido ou incompleto" });
+    } else if (cpfDigits) {
+      const donoCpf = colabs.find((c) => onlyDigits(c.cpf) === cpfDigits);
+      if (donoCpf && mesmoNomeEmpresa(donoCpf)) existing = donoCpf;
+      else if (donoCpf) {
+        cpf = null;
+        pendentes.push({ campo: "cpf", valor: cpfOriginal, motivo: `CPF já vinculado a ${donoCpf.nome}` });
+      }
+    }
+
+    if (matriculaOriginal) {
+      const donoMatricula = colabs.find((c) => norm(c.matricula) === norm(matriculaOriginal) && c.empresa_id === empresa_id);
+      if (donoMatricula && mesmoNomeEmpresa(donoMatricula) && (!existing || existing.id === donoMatricula.id)) existing = donoMatricula;
+      else if (donoMatricula) {
+        matricula = null;
+        pendentes.push({ campo: "matricula", valor: matriculaOriginal, motivo: `Matrícula já vinculada a ${donoMatricula.nome}` });
+      }
+    }
 
     const data_desligamento = parseDate(get("data_desligamento"));
     const payload: Record<string, unknown> = {
       nome, empresa_id,
-      cpf: str(get("cpf")), rg: str(get("rg")), matricula,
+      cpf, rg: str(get("rg")), matricula,
       setor: str(get("setor")), cargo: str(get("cargo")), turno: str(get("turno")),
       escolaridade: str(get("escolaridade")),
       data_nascimento: parseDate(get("data_nascimento")),
@@ -228,6 +282,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
     };
 
     const ref = `linha ${i + 2}: ${nome}`;
+    let colaboradorId = existing?.id;
     if (existing) {
       if (!dryRun) {
         const { error } = await supabase.from("colaboradores").update({ ...payload, excluido_em: null } as never).includeDeleted().eq("id", existing.id);
@@ -236,10 +291,19 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
       addAtualizado(detalhe.colaboradores, ref);
     } else {
       if (!dryRun) {
-        const { error } = await supabase.from("colaboradores").insert(payload as never);
+        const { data, error } = await supabase.from("colaboradores").insert(payload as never);
         if (error) { erros.push(`Colaboradores linha ${i + 2}: ${error.message}`); addIgnorado(detalhe.colaboradores, `${ref} — ${error.message}`); continue; }
+        colaboradorId = (data as unknown as { id: string }[] | null)?.[0]?.id;
+        if (!colaboradorId) { erros.push(`Colaboradores linha ${i + 2}: não foi possível identificar o cadastro criado`); addIgnorado(detalhe.colaboradores, `${ref} — sem identificador`); continue; }
       }
       addInserido(detalhe.colaboradores, ref);
+    }
+    if (pendentes.length) {
+      for (const pendente of pendentes) addPendente(detalhe.colaboradores, `${ref} — ${pendente.motivo}`);
+      if (!dryRun && colaboradorId) await pendenciasDaLinha(colaboradorId, pendentes);
+    } else if (!dryRun && colaboradorId) {
+      if (cpfDigits) await resolverPendencia(colaboradorId, "cpf");
+      if (matriculaOriginal) await resolverPendencia(colaboradorId, "matricula");
     }
     colabCount++;
   }

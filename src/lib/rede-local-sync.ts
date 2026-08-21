@@ -1,6 +1,6 @@
 import { applyLocalNetworkSnapshot, readLocalNetworkSnapshot, supabase } from "@/integrations/local-db/client";
 
-type Table = "empresas" | "colaboradores" | "eletronicos" | "colaborador_documentos" | "historico_alteracoes" | "ocorrencias" | "ocorrencia_arquivos" | "ocorrencias_protecao";
+type Table = "empresas" | "colaboradores" | "eletronicos" | "colaborador_documentos" | "pendencias_cadastro" | "historico_alteracoes" | "ocorrencias" | "ocorrencia_arquivos" | "ocorrencias_protecao";
 type Row = Record<string, unknown> & { id: string };
 type Tables = Record<Table, Row[]>;
 type Snapshot = { tables: Tables };
@@ -21,7 +21,7 @@ declare global {
 }
 
 const TABLES: Table[] = [
-  "empresas", "colaboradores", "eletronicos", "colaborador_documentos",
+  "empresas", "colaboradores", "eletronicos", "colaborador_documentos", "pendencias_cadastro",
   "historico_alteracoes", "ocorrencias", "ocorrencia_arquivos", "ocorrencias_protecao",
 ];
 const STATE_FILE = "estado.json";

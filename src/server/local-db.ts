@@ -109,6 +109,21 @@ CREATE TABLE IF NOT EXISTS colaborador_documentos (
 );
 CREATE INDEX IF NOT EXISTS idx_doc_colab ON colaborador_documentos(colaborador_id);
 
+-- Registra dados que foram importados, mas precisam de conferência antes de
+-- virarem o identificador oficial do colaborador (CPF ou matrícula).
+CREATE TABLE IF NOT EXISTS pendencias_cadastro (
+  id TEXT PRIMARY KEY,
+  colaborador_id TEXT NOT NULL REFERENCES colaboradores(id) ON DELETE CASCADE,
+  campo TEXT NOT NULL CHECK (campo IN ('cpf', 'matricula')),
+  valor_original TEXT,
+  motivo TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  resolvido_em TEXT,
+  UNIQUE(colaborador_id, campo)
+);
+CREATE INDEX IF NOT EXISTS idx_pendencias_colaborador ON pendencias_cadastro(colaborador_id);
+
 CREATE TABLE IF NOT EXISTS eletronicos (
   id TEXT PRIMARY KEY,
   colaborador_id TEXT NOT NULL REFERENCES colaboradores(id) ON DELETE CASCADE,
@@ -314,6 +329,9 @@ function normalizeAndMergeDuplicateCollaborators(db: Database.Database) {
     const fields = Object.keys(merged).filter((column) => TABLE_COLUMNS.colaboradores.includes(column) && !["id", "created_at", "excluido_em"].includes(column));
     db.prepare(`UPDATE colaboradores SET ${fields.map((column) => `${column} = ?`).join(", ")} WHERE id = ?`).run(...fields.map((column) => toSqlValue(column, merged[column])), keeper.id);
     db.prepare("UPDATE colaborador_documentos SET colaborador_id = ?, updated_at = ? WHERE colaborador_id = ?").run(keeper.id, nowIso(), duplicate.id);
+    // Não pode haver duas pendências do mesmo campo para o cadastro unificado.
+    db.prepare("DELETE FROM pendencias_cadastro WHERE colaborador_id = ? AND campo IN (SELECT campo FROM pendencias_cadastro WHERE colaborador_id = ?)").run(duplicate.id, keeper.id);
+    db.prepare("UPDATE pendencias_cadastro SET colaborador_id = ?, updated_at = ? WHERE colaborador_id = ?").run(keeper.id, nowIso(), duplicate.id);
     db.prepare("UPDATE eletronicos SET colaborador_id = ?, updated_at = ? WHERE colaborador_id = ?").run(keeper.id, nowIso(), duplicate.id);
     const deletedAt = nowIso();
     db.prepare("UPDATE colaboradores SET excluido_em = ?, updated_at = ? WHERE id = ?").run(deletedAt, deletedAt, duplicate.id);
@@ -340,6 +358,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   empresas: ["id", "razao_social", "nome_fantasia", "cnpj", "responsavel", "telefone", "email", "endereco", "cidade", "estado", "status", "created_at", "updated_at"],
   colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "excluido_em", "created_at", "updated_at"],
   colaborador_documentos: ["id", "colaborador_id", "nome", "tipo", "storage_path", "tamanho", "uploaded_by", "created_at", "updated_at"],
+  pendencias_cadastro: ["id", "colaborador_id", "campo", "valor_original", "motivo", "created_at", "updated_at", "resolvido_em"],
   eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "justificativa", "excluido_em", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],
   historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
@@ -741,6 +760,7 @@ export const NETWORK_SYNC_TABLES = [
   "colaboradores",
   "eletronicos",
   "colaborador_documentos",
+  "pendencias_cadastro",
   "historico_alteracoes",
   "ocorrencias",
   "ocorrencia_arquivos",
