@@ -179,7 +179,7 @@ function ColabPage() {
       qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
+      qc.invalidateQueries({ queryKey: ["eletronicos-paginados"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
       qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
       setOpen(false);

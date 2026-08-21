@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/local-db/client";
-import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +34,18 @@ export const Route = createFileRoute("/_authenticated/eletronicos")({
   component: EletronicosPage,
 });
 
+type ColaboradorEletronicos = {
+  id: string; nome: string; empresa_id: string; cargo: string | null;
+  setor: string | null; eletronicos_autorizado: boolean;
+};
+type EletronicoResumido = {
+  id: string; tipo: "celular" | "notebook" | "tablet"; descricao: string | null;
+  modelo: string | null; colaborador_id: string;
+};
+type PaginaEletronicos = { colaboradores: ColaboradorEletronicos[]; eletronicos: EletronicoResumido[] };
+
+const COLABORADORES_POR_PAGINA = 200;
+
 function EletronicosPage() {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
@@ -47,6 +58,7 @@ function EletronicosPage() {
   const [larguraTabela, setLarguraTabela] = useState(980);
   const tabelaRef = useRef<HTMLTableElement>(null);
   const barraTabelaRef = useRef<HTMLDivElement>(null);
+  const listaTabelaRef = useRef<HTMLDivElement>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -56,13 +68,40 @@ function EletronicosPage() {
     },
   });
 
-  const { data: colabs = [] } = useQuery({
-    queryKey: ["colaboradores-eletr"],
-    queryFn: async () =>
-      await fetchAllRows<{ id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; eletronicos_autorizado: boolean }>(
-        () => supabase.from("colaboradores").select("id, nome, empresa_id, cargo, setor, eletronicos_autorizado").order("nome") as never,
-      ),
+  const { data: paginasEletronicos, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    // Mantém um cache próprio pois cada página traz o colaborador e apenas os
+    // eletrônicos dele. Assim a tela não precisa carregar toda a base ao abrir.
+    queryKey: ["eletronicos-paginados"],
+    staleTime: 5 * 60 * 1000,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }): Promise<PaginaEletronicos> => {
+      const inicio = pageParam as number;
+      const { data: colaboradoresData, error: colaboradoresError } = await supabase
+        .from("colaboradores")
+        .select("id, nome, empresa_id, cargo, setor, eletronicos_autorizado")
+        .order("nome")
+        .range(inicio, inicio + COLABORADORES_POR_PAGINA - 1);
+      if (colaboradoresError) throw colaboradoresError;
+
+      const colaboradores = (colaboradoresData ?? []) as ColaboradorEletronicos[];
+      const ids = colaboradores.map((colaborador) => colaborador.id);
+      if (ids.length === 0) return { colaboradores, eletronicos: [] };
+
+      const { data: eletronicosData, error: eletronicosError } = await supabase
+        .from("eletronicos" as never)
+        .select("id, tipo, descricao, modelo, colaborador_id")
+        .in("colaborador_id", ids)
+        .order("created_at");
+      if (eletronicosError) throw eletronicosError;
+      return { colaboradores, eletronicos: (eletronicosData ?? []) as EletronicoResumido[] };
+    },
+    getNextPageParam: (ultimaPagina, paginas) =>
+      ultimaPagina.colaboradores.length === COLABORADORES_POR_PAGINA
+        ? paginas.length * COLABORADORES_POR_PAGINA
+        : undefined,
   });
+  const colabs = useMemo(() => paginasEletronicos?.pages.flatMap((pagina) => pagina.colaboradores) ?? [], [paginasEletronicos]);
+  const eletronicos = useMemo(() => paginasEletronicos?.pages.flatMap((pagina) => pagina.eletronicos) ?? [], [paginasEletronicos]);
 
   const toggleStatus = useMutation({
     mutationFn: async (c: { id: string; autorizado: boolean }) => {
@@ -73,20 +112,11 @@ function EletronicosPage() {
     },
     onSuccess: (novo) => {
       toast.success(novo ? "Colaborador autorizado a portar eletrônicos" : "Autorização de eletrônicos removida");
-      const keys = [["colaboradores-eletr"], ["colaboradores-paginados"], ["colaboradores-consulta"], ["dashboard"], ["dashboard-eletronicos"]];
+      const keys = [["eletronicos-paginados"], ["colaboradores-paginados"], ["colaboradores-consulta"], ["dashboard"], ["dashboard-eletronicos"]];
       keys.forEach((queryKey) => qc.invalidateQueries({ queryKey, refetchType: "all" }));
     },
 
     onError: (e: Error) => toast.error(e.message),
-  });
-
-
-  const { data: eletronicos = [] } = useQuery({
-    queryKey: ["consulta-eletronicos"],
-    queryFn: async () =>
-      await fetchAllRows<{ id: string; tipo: "celular" | "notebook" | "tablet"; descricao: string | null; modelo: string | null; colaborador_id: string }>(
-        () => supabase.from("eletronicos" as never).select("id, tipo, descricao, modelo, colaborador_id").order("created_at") as never,
-      ),
   });
 
 
@@ -123,8 +153,23 @@ function EletronicosPage() {
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [eletronicos, colabs, empresaSel, empresaMap, qd]);
 
-  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
+  const filtroAtivo = Boolean(qd || empresaSel !== "all");
+  const chaveFiltro = `${qd}|${empresaSel}`;
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, COLABORADORES_POR_PAGINA, {
+    hasMoreRemote: !!hasNextPage,
+    loadingRemote: isFetchingNextPage,
+    onReachEnd: () => { void fetchNextPage(); },
+    scrollRootRef: listaTabelaRef,
+    resetKey: chaveFiltro,
+  });
   const itensParaExcluir = excluindo ? eletronicos.filter((e) => e.colaborador_id === excluindo.id) : [];
+
+  // A pesquisa e o filtro precisam considerar toda a base. A complementação é
+  // gradual e ocorre fora da digitação, sem bloquear a tela.
+  useEffect(() => {
+    if (!filtroAtivo || !hasNextPage || isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [filtroAtivo, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
     const table = tabelaRef.current;
@@ -158,7 +203,7 @@ function EletronicosPage() {
     },
     onSuccess: () => {
       toast.success(`${selecionados.length} eletrônico(s) movido(s) para a lixeira. Restauração disponível por 15 dias.`);
-      qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] });
+      qc.invalidateQueries({ queryKey: ["eletronicos-paginados"] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["lixeira-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
@@ -194,7 +239,7 @@ function EletronicosPage() {
             <FileText className="h-4 w-4" /> {exporting ? "Gerando..." : "Exportar PDF"}
           </Button>
           {canWrite && (
-            <ImportarEletronicos onDone={() => { qc.invalidateQueries({ queryKey: ["consulta-eletronicos"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
+            <ImportarEletronicos onDone={() => { qc.invalidateQueries({ queryKey: ["eletronicos-paginados"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
           )}
         </div>
       </div>
@@ -223,7 +268,7 @@ function EletronicosPage() {
               ? "Exibindo colaboradores com pelo menos um eletrônico autorizado (todas as empresas)."
               : `Colaboradores da empresa "${empresaLabel(empresaSel)}" e seus eletrônicos autorizados.`}
           </p>
-          <div className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
+          <div ref={listaTabelaRef} className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
             <Table ref={tabelaRef} className="min-w-[980px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
@@ -240,8 +285,10 @@ function EletronicosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.length === 0 ? (
-                  <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">Nenhum colaborador com eletrônicos.</TableCell></TableRow>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">Carregando colaboradores...</TableCell></TableRow>
+                ) : stats.length === 0 ? (
+                  <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">{hasNextPage ? "Carregando colaboradores com eletrônicos..." : "Nenhum colaborador com eletrônicos."}</TableCell></TableRow>
                 ) : visible.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
@@ -277,6 +324,7 @@ function EletronicosPage() {
 
                   </TableRow>
                 ))}
+                {!isLoading && <TableRow ref={sentinelRef}><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="h-px p-0" /></TableRow>}
               </TableBody>
             </Table>
           </div>
@@ -285,10 +333,9 @@ function EletronicosPage() {
           </div>
           <p className="text-xs text-muted-foreground">Use a barra abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>{`Exibindo ${shown} de ${total} colaborador(es)`}</span>
-            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es) carregado(s)`}</span>
+            {hasMore && <Button variant="outline" size="sm" disabled={isFetchingNextPage} onClick={loadMore}>{isFetchingNextPage ? "Carregando..." : "Carregar mais"}</Button>}
           </div>
-          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
       <Dialog open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }}>

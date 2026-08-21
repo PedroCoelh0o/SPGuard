@@ -106,7 +106,7 @@ export function LixeiraDialog() {
     const { error } = await supabase.from(table).update({ excluido_em: null }).onlyDeleted().eq("id", item.id);
     if (error) { toast.error(error.message); return; }
     toast.success(`${item.entidade === "colaborador" ? "Colaborador" : "Eletrônico"} restaurado`);
-    ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores-paginados", "colaboradores-consulta", "colaboradores-eletr", "consulta-eletronicos", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+    ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores-paginados", "colaboradores-consulta", "eletronicos-paginados", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
   }
 
   async function permanentlyDelete(item: typeof all[number]) {
@@ -129,7 +129,7 @@ export function LixeiraDialog() {
       const error = colaboradoresResult.error ?? eletronicosResult.error;
       if (error) throw error;
       toast.success(`Lixeira limpa: ${all.length} item(ns) removido(s) permanentemente`);
-      ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores-paginados", "colaboradores-consulta", "colaboradores-eletr", "consulta-eletronicos", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+      ["lixeira-colaboradores", "lixeira-eletronicos", "colaboradores-paginados", "colaboradores-consulta", "eletronicos-paginados", "dashboard", "dashboard-eletronicos", "historico-alteracoes"].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
