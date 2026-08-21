@@ -16,13 +16,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, FileDown, FileText, FileSpreadsheet, Copy, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone, formatCEP, isValidCPF, UFS, formatDate } from "@/lib/format";
 import { ImportarColaboradores } from "@/components/ImportarColaboradores";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
 import { HistoricoAlteracoesDialog, LixeiraDialog } from "@/components/RastreabilidadeDialogs";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/colaboradores")({
   head: () => ({
@@ -321,7 +322,7 @@ function ColabPage() {
                   <TableHead>CPF</TableHead>
                   <TableHead>Admissão</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="sticky right-0 z-30 w-44 min-w-44 border-l bg-card text-center shadow-[-10px_0_14px_-12px_rgba(0,0,0,0.8)]">Ações</TableHead>
+                  <TableHead className="w-16 min-w-16 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -344,18 +345,26 @@ function ColabPage() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="sticky right-0 z-20 w-44 min-w-44 overflow-hidden border-l bg-card text-right shadow-[-10px_0_14px_-12px_rgba(0,0,0,0.8)]">
-                      <div className="flex items-center justify-center gap-1">
-                      <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar dados" onClick={async () => {
+                    <TableCell className="w-16 min-w-16 text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label={`Abrir ações de ${c.nome}`} title="Ações"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuLabel>Ações do colaborador</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
                         catch { toast.error("Falha ao copiar"); }
-                      }}><Copy className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" aria-label={`Ver detalhes de ${c.nome}`} title="Ver detalhes" onClick={() => setDetalhes(c)}><Eye className="h-4 w-4" /></Button>
-                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${c.nome}`} title="Editar" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                      {isAdmin && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><Button size="icon" variant="ghost" aria-label={`Excluir ${c.nome}`} title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
+                          }}><Copy className="h-4 w-4" /> Copiar dados</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setDetalhes(c)}><Eye className="h-4 w-4" /> Visualizar ficha</DropdownMenuItem>
+                          {canWrite && <DropdownMenuItem onSelect={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /> Editar</DropdownMenuItem>}
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}><Trash2 className="h-4 w-4" /> Mover para lixeira</DropdownMenuItem>
+                              </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Mover colaborador para a lixeira?</AlertDialogTitle>
@@ -366,9 +375,10 @@ function ColabPage() {
                               <AlertDialogAction onClick={() => del.mutate(c.id)}>Mover para lixeira</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
-                          </AlertDialog>
-                      )}
-                      </div>
+                            </AlertDialog>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -378,7 +388,7 @@ function ColabPage() {
           <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70">
             <div className="h-px" style={{ width: larguraTabela }} />
           </div>
-          <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. As ações permanecem disponíveis à direita.</p>
+          <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
             {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
