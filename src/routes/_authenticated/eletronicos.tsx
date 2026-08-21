@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Search, Eye, UserX, UserCheck, FileText, Trash2 } from "lucide-react";
+import { Smartphone, Search, Eye, UserX, UserCheck, FileText, Trash2, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
@@ -19,6 +19,7 @@ import { EletronicosTab } from "@/components/EletronicosTab";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportEletronicosPDF } from "@/lib/export-colaboradores";
 import { HistoricoAlteracoesDialog, LixeiraDialog } from "@/components/RastreabilidadeDialogs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/eletronicos")({
   head: () => ({
@@ -209,7 +210,7 @@ function EletronicosPage() {
                   <TableHead className="text-right">Tablets</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                    <TableHead>Autorização</TableHead>
-                   <TableHead className="text-right">Ações</TableHead>
+                   <TableHead className="w-16 min-w-16 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -228,27 +229,24 @@ function EletronicosPage() {
                     <TableCell>
                       <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Revogado"}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" aria-label={`Visualizar eletrônicos de ${s.nome}`} title="Visualizar eletrônicos" onClick={() => setDetalhes({ id: s.id, nome: s.nome })}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canWrite && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={s.autorizado ? `Marcar ${s.nome} como revogado` : `Autorizar ${s.nome}`}
-                          title={s.autorizado ? "Mudar para Revogado" : "Mudar para Autorizado"}
-                          disabled={toggleStatus.isPending}
-                          onClick={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}
-                        >
-                          {s.autorizado ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
-                        </Button>
-                      )}
-                      {isAdmin && (
-                        <Button size="icon" variant="ghost" aria-label={`Excluir eletrônicos de ${s.nome}`} title="Excluir eletrônicos" onClick={() => { setExcluindo({ id: s.id, nome: s.nome }); setSelecionados([]); }}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
+                    <TableCell className="w-16 min-w-16 text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label={`Abrir ações de ${s.nome}`} title="Ações"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuLabel>Ações dos eletrônicos</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={() => setDetalhes({ id: s.id, nome: s.nome })}><Eye className="h-4 w-4" /> Visualizar eletrônicos</DropdownMenuItem>
+                          {canWrite && (
+                            <DropdownMenuItem disabled={toggleStatus.isPending} onSelect={() => toggleStatus.mutate({ id: s.id, autorizado: s.autorizado })}>
+                              {s.autorizado ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                              {s.autorizado ? "Mudar para revogado" : "Autorizar eletrônicos"}
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setExcluindo({ id: s.id, nome: s.nome }); setSelecionados([]); }}><Trash2 className="h-4 w-4" /> Excluir eletrônicos</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
 
                   </TableRow>
