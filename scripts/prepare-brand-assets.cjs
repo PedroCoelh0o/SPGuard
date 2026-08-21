@@ -13,6 +13,7 @@ const sourcePng = path.join(buildDir, "spguard-logo-source.png");
 const cleanLogo = path.join(buildDir, "spguard-logo-clean.png");
 const shieldPng = path.join(root, "public", "spguard-shield.png");
 const targetIco = path.join(buildDir, "spguard-icon.ico");
+const installerSidebar = path.join(buildDir, "spguard-installer-sidebar.bmp");
 mkdirSync(buildDir, { recursive: true });
 writeFileSync(sourcePng, Buffer.from(match[1], "base64"));
 
@@ -51,4 +52,16 @@ execFileSync("magick", [
   targetIco,
 ], { stdio: "inherit" });
 
-console.log(`Ícone do SPGuard preparado: ${targetIco}`);
+// Faixa lateral exibida pelo instalador NSIS. O formato BMP de 164 x 314 é
+// exigido pelo Windows; o escudo mantém a identidade visual durante a instalação.
+execFileSync("magick", [
+  "-size", "164x314",
+  "gradient:#061525-#0d3655",
+  "(", shieldPng, "-resize", "94x94", ")",
+  "-gravity", "north",
+  "-geometry", "+0+42",
+  "-composite",
+  installerSidebar,
+], { stdio: "inherit" });
+
+console.log(`Identidade visual do SPGuard preparada: ${targetIco}`);

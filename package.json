@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "description": "SPGuard - Sistema de Gestão da Segurança Patrimonial",
   "author": "Pedro Coelho",
   "private": true,
@@ -60,7 +60,9 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerSidebar": "build/spguard-installer-sidebar.bmp",
+      "uninstallerSidebar": "build/spguard-installer-sidebar.bmp"
     }
   },
   "dependencies": {
