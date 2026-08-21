@@ -61,7 +61,21 @@ execFileSync("magick", [
   "-gravity", "north",
   "-geometry", "+0+42",
   "-composite",
-  installerSidebar,
+  // O NSIS não aceita transparência nessa área: precisa ser um BMP RGB
+  // de 24 bits. BMP3 força o formato clássico aceito pelo instalador.
+  "-alpha", "off",
+  "-type", "TrueColor",
+  `BMP3:${installerSidebar}`,
 ], { stdio: "inherit" });
+
+const sidebarInfo = execFileSync("magick", [
+  "identify",
+  "-format", "%w x %h | %[channels]",
+  installerSidebar,
+], { encoding: "utf8" }).trim();
+
+if (sidebarInfo !== "164 x 314 | srgb") {
+  throw new Error(`Imagem lateral do instalador inválida: ${sidebarInfo}`);
+}
 
 console.log(`Identidade visual do SPGuard preparada: ${targetIco}`);
