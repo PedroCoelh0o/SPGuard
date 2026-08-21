@@ -133,23 +133,21 @@ function EletronicosPage() {
     if (!table || !tabelaRolavel || !barraRolagem) return;
 
     const atualizarLargura = () => {
-      setLarguraTabela(Math.max(980, table.scrollWidth));
+      const largura = Math.max(980, table.scrollWidth);
+      setLarguraTabela((atual) => atual === largura ? atual : largura);
       barraRolagem.scrollLeft = tabelaRolavel.scrollLeft;
     };
     const sincronizarTabela = () => { barraRolagem.scrollLeft = tabelaRolavel.scrollLeft; };
     const sincronizarBarra = () => { tabelaRolavel.scrollLeft = barraRolagem.scrollLeft; };
-    const observer = new ResizeObserver(atualizarLargura);
-    observer.observe(table);
-    observer.observe(tabelaRolavel);
-    atualizarLargura();
+    const quadro = requestAnimationFrame(atualizarLargura);
     tabelaRolavel.addEventListener("scroll", sincronizarTabela);
     barraRolagem.addEventListener("scroll", sincronizarBarra);
     return () => {
-      observer.disconnect();
+      cancelAnimationFrame(quadro);
       tabelaRolavel.removeEventListener("scroll", sincronizarTabela);
       barraRolagem.removeEventListener("scroll", sincronizarBarra);
     };
-  }, [shown]);
+  }, [shown, empresaSel]);
 
   const excluirSelecionados = useMutation({
     mutationFn: async () => {
