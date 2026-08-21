@@ -80,12 +80,14 @@ function ColabPage() {
 
   const { data: colabs = [], isLoading } = useQuery({
     queryKey: ["colaboradores"],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       return await fetchAllRows<Colab>(() => supabase.from("colaboradores").select("*").order("nome") as never);
     },
   });
   const { data: pendencias = [] } = useQuery({
     queryKey: ["pendencias-cadastro"],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => fetchAllRows<PendenciaCadastro>(() => supabase.from("pendencias_cadastro").select("*") as never),
   });
   const pendenciasAtivas = useMemo(() => pendencias.filter((p) => !p.resolvido_em), [pendencias]);
@@ -98,6 +100,7 @@ function ColabPage() {
   // Atualiza somente a sinalização: nenhum campo do cadastro antigo é alterado.
   useEffect(() => {
     if (!colabs.length) return;
+    const timer = window.setTimeout(() => {
     const conhecidas = new Set(pendencias.map((p) => `${p.colaborador_id}:${p.campo}`));
     const candidatos: { colaborador_id: string; campo: "cpf" | "matricula"; valor_original: string | null; motivo: string }[] = [];
     const cpfs = new Map<string, Colab[]>();
@@ -131,6 +134,8 @@ function ColabPage() {
     void Promise.all(candidatos.map((item) => supabase.from("pendencias_cadastro").insert(item as never))).then(() => {
       qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
     });
+    }, 350);
+    return () => window.clearTimeout(timer);
   }, [colabs, pendencias, qc]);
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
