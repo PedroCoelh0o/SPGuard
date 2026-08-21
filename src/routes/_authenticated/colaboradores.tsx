@@ -310,7 +310,7 @@ function ColabPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="rounded-t-md border border-b-0 overflow-hidden">
+          <div className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
             <Table ref={tabelaRef} className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
@@ -385,7 +385,7 @@ function ColabPage() {
               </TableBody>
             </Table>
           </div>
-          <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70">
+          <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
             <div className="h-px" style={{ width: larguraTabela }} />
           </div>
           <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +44,9 @@ function EletronicosPage() {
   const [detalhes, setDetalhes] = useState<{ id: string; nome: string } | null>(null);
   const [excluindo, setExcluindo] = useState<{ id: string; nome: string } | null>(null);
   const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [larguraTabela, setLarguraTabela] = useState(980);
+  const tabelaRef = useRef<HTMLTableElement>(null);
+  const barraTabelaRef = useRef<HTMLDivElement>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["empresas-lite"],
@@ -123,6 +126,31 @@ function EletronicosPage() {
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, 50);
   const itensParaExcluir = excluindo ? eletronicos.filter((e) => e.colaborador_id === excluindo.id) : [];
 
+  useEffect(() => {
+    const table = tabelaRef.current;
+    const tabelaRolavel = table?.parentElement;
+    const barraRolagem = barraTabelaRef.current;
+    if (!table || !tabelaRolavel || !barraRolagem) return;
+
+    const atualizarLargura = () => {
+      setLarguraTabela(Math.max(980, table.scrollWidth));
+      barraRolagem.scrollLeft = tabelaRolavel.scrollLeft;
+    };
+    const sincronizarTabela = () => { barraRolagem.scrollLeft = tabelaRolavel.scrollLeft; };
+    const sincronizarBarra = () => { tabelaRolavel.scrollLeft = barraRolagem.scrollLeft; };
+    const observer = new ResizeObserver(atualizarLargura);
+    observer.observe(table);
+    observer.observe(tabelaRolavel);
+    atualizarLargura();
+    tabelaRolavel.addEventListener("scroll", sincronizarTabela);
+    barraRolagem.addEventListener("scroll", sincronizarBarra);
+    return () => {
+      observer.disconnect();
+      tabelaRolavel.removeEventListener("scroll", sincronizarTabela);
+      barraRolagem.removeEventListener("scroll", sincronizarBarra);
+    };
+  }, [shown]);
+
   const excluirSelecionados = useMutation({
     mutationFn: async () => {
       for (const id of selecionados) {
@@ -197,8 +225,8 @@ function EletronicosPage() {
               ? "Exibindo colaboradores com pelo menos um eletrônico autorizado (todas as empresas)."
               : `Colaboradores da empresa "${empresaLabel(empresaSel)}" e seus eletrônicos autorizados.`}
           </p>
-          <div className="rounded-md border overflow-x-auto">
-            <Table className="min-w-[980px] whitespace-nowrap">
+          <div className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
+            <Table ref={tabelaRef} className="min-w-[980px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -254,7 +282,10 @@ function EletronicosPage() {
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">Em telas menores, deslize horizontalmente para visualizar todos os dados sem alterar a altura das linhas.</p>
+          <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de eletrônicos" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
+            <div className="h-px" style={{ width: larguraTabela }} />
+          </div>
+          <p className="text-xs text-muted-foreground">Use a barra abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{`Exibindo ${shown} de ${total} colaborador(es)`}</span>
             {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
