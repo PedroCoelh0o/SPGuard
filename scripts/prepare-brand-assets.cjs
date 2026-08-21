@@ -57,9 +57,9 @@ execFileSync("magick", [
 execFileSync("magick", [
   "-size", "164x314",
   "gradient:#061525-#0d3655",
-  "(", shieldPng, "-resize", "94x94", ")",
+  "(", shieldPng, "-resize", "132x132", ")",
   "-gravity", "north",
-  "-geometry", "+0+42",
+  "-geometry", "+0+38",
   "-composite",
   // O NSIS não aceita transparência nessa área: precisa ser um BMP RGB
   // de 24 bits. BMP3 força o formato clássico aceito pelo instalador.
