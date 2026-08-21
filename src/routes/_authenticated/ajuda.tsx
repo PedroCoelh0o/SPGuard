@@ -154,6 +154,7 @@ const configuracoes: Guia[] = [
       "Use Validar planilha para conferir erros antes de gravar qualquer alteração.",
       "Quando a validação estiver correta, clique em Atualizar agora. Registros existentes podem ser atualizados pelo CPF, matrícula ou identificadores do eletrônico.",
       "Se um CPF estiver inválido ou já pertencer a outra pessoa, ou se uma matrícula já estiver em uso, o colaborador ainda será importado como Pendente de conferência. Corrija o dado na ficha depois; use o filtro Pendentes de conferência na aba Colaboradores para localizá-los.",
+      "Ao abrir esta versão, o SPGuard também sinaliza os cadastros antigos que já estavam sem CPF, sem matrícula, com CPF inválido ou com matrícula duplicada. Nenhum dado existente é alterado por essa verificação.",
       "A atualização automática pode ser ativada nessa mesma área; ainda assim, é recomendável manter um backup antes de mudanças grandes.",
     ],
   },

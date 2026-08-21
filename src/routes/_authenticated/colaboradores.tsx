@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -63,6 +63,7 @@ function ColabPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
+  const pendenciasVerificadas = useRef("");
 
 
   const { data: empresas = [] } = useQuery({
@@ -89,6 +90,44 @@ function ColabPage() {
     for (const item of pendenciasAtivas) result.set(item.colaborador_id, [...(result.get(item.colaborador_id) ?? []), item]);
     return result;
   }, [pendenciasAtivas]);
+
+  // Atualiza somente a sinalização: nenhum campo do cadastro antigo é alterado.
+  useEffect(() => {
+    if (!colabs.length) return;
+    const conhecidas = new Set(pendencias.map((p) => `${p.colaborador_id}:${p.campo}`));
+    const candidatos: { colaborador_id: string; campo: "cpf" | "matricula"; valor_original: string | null; motivo: string }[] = [];
+    const cpfs = new Map<string, Colab[]>();
+    const matriculas = new Map<string, Colab[]>();
+    for (const colab of colabs) {
+      const cpf = String(colab.cpf ?? "").trim();
+      const matricula = String(colab.matricula ?? "").trim();
+      if (!cpf && !conhecidas.has(`${colab.id}:cpf`)) candidatos.push({ colaborador_id: colab.id, campo: "cpf", valor_original: null, motivo: "CPF não informado" });
+      else if (cpf && !isValidCPF(cpf) && !conhecidas.has(`${colab.id}:cpf`)) candidatos.push({ colaborador_id: colab.id, campo: "cpf", valor_original: cpf, motivo: "CPF inválido ou incompleto" });
+      if (cpf) {
+        const key = cpf.replace(/\D/g, "");
+        cpfs.set(key, [...(cpfs.get(key) ?? []), colab]);
+      }
+      if (!matricula && !conhecidas.has(`${colab.id}:matricula`)) candidatos.push({ colaborador_id: colab.id, campo: "matricula", valor_original: null, motivo: "Matrícula não informada" });
+      if (matricula) {
+        const key = `${colab.empresa_id}:${matricula.toLocaleLowerCase("pt-BR")}`;
+        matriculas.set(key, [...(matriculas.get(key) ?? []), colab]);
+      }
+    }
+    for (const grupo of matriculas.values()) {
+      if (grupo.length < 2) continue;
+      for (const colab of grupo) if (!conhecidas.has(`${colab.id}:matricula`)) candidatos.push({ colaborador_id: colab.id, campo: "matricula", valor_original: colab.matricula, motivo: "Matrícula duplicada na empresa" });
+    }
+    for (const grupo of cpfs.values()) {
+      if (grupo.length < 2) continue;
+      for (const colab of grupo) if (!conhecidas.has(`${colab.id}:cpf`)) candidatos.push({ colaborador_id: colab.id, campo: "cpf", valor_original: colab.cpf, motivo: "CPF duplicado" });
+    }
+    const assinatura = candidatos.map((item) => `${item.colaborador_id}:${item.campo}`).sort().join("|");
+    if (!assinatura || assinatura === pendenciasVerificadas.current) return;
+    pendenciasVerificadas.current = assinatura;
+    void Promise.all(candidatos.map((item) => supabase.from("pendencias_cadastro").insert(item as never))).then(() => {
+      qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
+    });
+  }, [colabs, pendencias, qc]);
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
   const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
