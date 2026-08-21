@@ -20,7 +20,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-3 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-2">
-          <img src="/cmoc-logo.svg" alt="CMOC" className="h-12 w-28 shrink-0 object-contain transition-[width,height] duration-200 ease-linear group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9" />
+          <img src="/cmoc-logo.svg" alt="CMOC" className="h-12 w-28 shrink-0 object-contain transition-[width,height] duration-200 ease-linear group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-12" />
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <div className="text-sm font-semibold truncate">SPGuard</div>
             <div className="text-xs text-sidebar-foreground/60 truncate">Segurança Patrimonial</div>
