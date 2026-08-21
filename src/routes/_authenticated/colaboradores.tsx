@@ -293,7 +293,7 @@ function ColabPage() {
                   <TableHead>CPF</TableHead>
                   <TableHead>Admissão</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="sticky right-0 z-20 border-l bg-card text-right shadow-[-8px_0_10px_-10px_rgba(0,0,0,0.45)]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -302,7 +302,7 @@ function ColabPage() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
                 ) : visible.map((c) => (
-                  <TableRow key={c.id} className={pendenciasPorColaborador.has(c.id) ? "bg-amber-500/5 hover:bg-amber-500/10" : undefined}>
+                  <TableRow key={c.id} className={pendenciasPorColaborador.has(c.id) ? "group bg-amber-500/5 hover:bg-amber-500/10" : "group"}>
                     <TableCell className="font-medium"><div className="flex items-center gap-2">{c.nome}{pendenciasPorColaborador.has(c.id) && <Badge title={pendenciasPorColaborador.get(c.id)?.map((p) => p.motivo).join(" · ")} className="bg-amber-500 text-black">Pendente de conferência</Badge>}</div></TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
@@ -316,7 +316,7 @@ function ColabPage() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className={`sticky right-0 z-10 border-l text-right shadow-[-8px_0_10px_-10px_rgba(0,0,0,0.45)] ${pendenciasPorColaborador.has(c.id) ? "bg-amber-500/5 group-hover:bg-amber-500/10" : "bg-card group-hover:bg-muted/50"}`}>
                       <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar dados" onClick={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
@@ -345,7 +345,7 @@ function ColabPage() {
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">Em telas menores, deslize horizontalmente para visualizar todos os dados sem alterar a altura das linhas.</p>
+          <p className="text-xs text-muted-foreground">Em telas menores, use a barra no fim da tabela para visualizar os demais dados. As ações permanecem fixas à direita.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
             {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
