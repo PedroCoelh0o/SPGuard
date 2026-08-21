@@ -68,14 +68,17 @@ execFileSync("magick", [
   `BMP3:${installerSidebar}`,
 ], { stdio: "inherit" });
 
-const sidebarInfo = execFileSync("magick", [
-  "identify",
-  "-format", "%w x %h | %[channels]",
-  installerSidebar,
-], { encoding: "utf8" }).trim();
+// Confere diretamente o cabeçalho BMP. Essa validação não depende do texto
+// retornado pelo ImageMagick e garante os três requisitos do NSIS: BMP, 164 x
+// 314 px e 24 bits sem canal alfa.
+const sidebarBitmap = readFileSync(installerSidebar);
+const isValidSidebar = sidebarBitmap.subarray(0, 2).toString("ascii") === "BM"
+  && sidebarBitmap.readInt32LE(18) === 164
+  && Math.abs(sidebarBitmap.readInt32LE(22)) === 314
+  && sidebarBitmap.readUInt16LE(28) === 24;
 
-if (sidebarInfo !== "164 x 314 | srgb") {
-  throw new Error(`Imagem lateral do instalador inválida: ${sidebarInfo}`);
+if (!isValidSidebar) {
+  throw new Error("Imagem lateral do instalador não está no padrão BMP RGB de 24 bits.");
 }
 
 console.log(`Identidade visual do SPGuard preparada: ${targetIco}`);
