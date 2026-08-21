@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 /** Valor com atraso — evita refiltrar 2000 registros a cada tecla. */
 export function useDebounced<T>(value: T, delay = 250): T {
@@ -14,20 +14,32 @@ export function useDebounced<T>(value: T, delay = 250): T {
  * Renderização incremental (infinite scroll) de uma lista já carregada.
  * Retorna apenas a fatia visível e um `sentinelRef` para colocar no fim da lista.
  */
-export function useInfiniteSlice<T>(items: T[], pageSize = 50) {
+type InfiniteSliceOptions = {
+  hasMoreRemote?: boolean;
+  loadingRemote?: boolean;
+  onReachEnd?: () => void;
+  scrollRootRef?: RefObject<HTMLElement | null>;
+  resetKey?: string;
+};
+
+export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: InfiniteSliceOptions = {}) {
   const [count, setCount] = useState(pageSize);
   const node = useRef<HTMLElement | null>(null);
 
   // reinicia quando a lista muda (nova busca/filtro)
   useEffect(() => {
     setCount(pageSize);
-  }, [items, pageSize]);
+  }, [options.resetKey ?? items, pageSize]);
 
-  const hasMore = count < items.length;
+  const hasMore = count < items.length || !!options.hasMoreRemote;
 
   const loadMore = useCallback(() => {
-    setCount((c) => Math.min(c + pageSize, items.length));
-  }, [items.length, pageSize]);
+    if (count < items.length) {
+      setCount((c) => Math.min(c + pageSize, items.length));
+    } else if (options.hasMoreRemote && !options.loadingRemote) {
+      options.onReachEnd?.();
+    }
+  }, [count, items.length, options.hasMoreRemote, options.loadingRemote, options.onReachEnd, pageSize]);
 
   const sentinelRef = useCallback(
     (el: HTMLElement | null) => {
@@ -43,11 +55,11 @@ export function useInfiniteSlice<T>(items: T[], pageSize = 50) {
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) loadMore();
       },
-      { rootMargin: "300px" },
+      { root: options.scrollRootRef?.current ?? null, rootMargin: "300px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, loadMore, count, items]);
+  }, [hasMore, loadMore, count, items, options.scrollRootRef]);
 
   const visible = useMemo(() => items.slice(0, count), [items, count]);
   return { visible, hasMore, loadMore, sentinelRef, shown: visible.length, total: items.length };

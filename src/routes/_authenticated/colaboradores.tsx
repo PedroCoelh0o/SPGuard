@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { supabase } from "@/integrations/local-db/client";
@@ -52,6 +52,7 @@ type PendenciaCadastro = { id: string; colaborador_id: string; campo: "cpf" | "m
 
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
 const TURNOS = ["Letra A", "Letra B", "Letra C", "Letra D", "Administrativo", "FIFO", "Híbrido", "Noturno", "Diurno"];
+const COLABORADORES_POR_PAGINA = 200;
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
@@ -68,6 +69,7 @@ function ColabPage() {
   const pendenciasVerificadas = useRef("");
   const tabelaRef = useRef<HTMLTableElement>(null);
   const barraTabelaRef = useRef<HTMLDivElement>(null);
+  const listaTabelaRef = useRef<HTMLDivElement>(null);
 
 
   const { data: empresas = [] } = useQuery({
@@ -78,13 +80,19 @@ function ColabPage() {
     },
   });
 
-  const { data: colabs = [], isLoading } = useQuery({
+  const { data: paginasColaboradores, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ["colaboradores"],
     staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      return await fetchAllRows<Colab>(() => supabase.from("colaboradores").select("*").order("nome") as never);
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const inicio = pageParam as number;
+      const { data, error } = await supabase.from("colaboradores").select("*").order("nome").range(inicio, inicio + COLABORADORES_POR_PAGINA - 1);
+      if (error) throw error;
+      return (data ?? []) as Colab[];
     },
+    getNextPageParam: (ultimaPagina, paginas) => ultimaPagina.length === COLABORADORES_POR_PAGINA ? paginas.length * COLABORADORES_POR_PAGINA : undefined,
   });
+  const colabs = useMemo(() => paginasColaboradores?.pages.flat() ?? [], [paginasColaboradores]);
   const { data: pendencias = [] } = useQuery({
     queryKey: ["pendencias-cadastro"],
     staleTime: 5 * 60 * 1000,
@@ -214,7 +222,21 @@ function ColabPage() {
   }, [colabs, qd, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
 
 
-  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
+  const filtroAtivo = Boolean(qd || turnoFiltro !== "all" || empresaFiltro !== "all" || pendenciaFiltro !== "all");
+  const chaveFiltro = `${qd}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, COLABORADORES_POR_PAGINA, {
+    hasMoreRemote: !!hasNextPage,
+    loadingRemote: isFetchingNextPage,
+    onReachEnd: () => { void fetchNextPage(); },
+    scrollRootRef: listaTabelaRef,
+    resetKey: chaveFiltro,
+  });
+
+  // Quando houver busca ou filtro, a base é completada em segundo plano para a consulta considerar todos os cadastros.
+  useEffect(() => {
+    if (!filtroAtivo || !hasNextPage || isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [filtroAtivo, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
     const table = tabelaRef.current;
@@ -313,7 +335,7 @@ function ColabPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
+          <div ref={listaTabelaRef} className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
             <Table ref={tabelaRef} className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
@@ -385,6 +407,7 @@ function ColabPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {!isLoading && <TableRow ref={sentinelRef}><TableCell colSpan={9} className="h-px p-0" /></TableRow>}
               </TableBody>
             </Table>
           </div>
@@ -393,10 +416,9 @@ function ColabPage() {
           </div>
           <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es)`}</span>
-            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es) carregado(s)`}</span>
+            {hasMore && <Button variant="outline" size="sm" disabled={isFetchingNextPage} onClick={loadMore}>{isFetchingNextPage ? "Carregando..." : "Carregar mais"}</Button>}
           </div>
-          <div ref={sentinelRef} aria-hidden className="h-px" />
         </CardContent>
       </Card>
       <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
