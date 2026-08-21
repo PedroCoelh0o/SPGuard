@@ -121,7 +121,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
       const { error: upErr } = await supabase.from("colaboradores").update({ foto_url: path }).eq("id", colab.id);
       if (upErr) throw upErr;
       toast.success("Foto atualizada");
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 3600);
       setFotoUrl(data?.signedUrl ?? null);
     } catch (e) {

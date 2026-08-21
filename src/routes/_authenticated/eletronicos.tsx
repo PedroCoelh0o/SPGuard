@@ -73,7 +73,7 @@ function EletronicosPage() {
     },
     onSuccess: (novo) => {
       toast.success(novo ? "Colaborador autorizado a portar eletrônicos" : "Autorização de eletrônicos removida");
-      const keys = [["colaboradores-eletr"], ["colaboradores"], ["dashboard"], ["dashboard-eletronicos"]];
+      const keys = [["colaboradores-eletr"], ["colaboradores-paginados"], ["colaboradores-consulta"], ["dashboard"], ["dashboard-eletronicos"]];
       keys.forEach((queryKey) => qc.invalidateQueries({ queryKey, refetchType: "all" }));
     },
 

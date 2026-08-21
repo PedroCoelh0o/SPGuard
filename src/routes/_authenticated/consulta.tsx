@@ -51,7 +51,9 @@ function Consulta() {
   });
 
   const { data: colabs = [], isLoading } = useQuery({
-    queryKey: ["colaboradores"],
+    // A Consulta usa a lista completa para combinar filtros. Não pode dividir
+    // o mesmo cache com a tela de Colaboradores, que traz páginas de 200 itens.
+    queryKey: ["colaboradores-consulta"],
     queryFn: async () => {
       return await fetchAllRows<{
         id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; matricula: string | null;

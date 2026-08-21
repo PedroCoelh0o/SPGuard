@@ -81,7 +81,7 @@ function ColabPage() {
   });
 
   const { data: paginasColaboradores, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
-    queryKey: ["colaboradores"],
+    queryKey: ["colaboradores-paginados"],
     staleTime: 5 * 60 * 1000,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
@@ -176,7 +176,8 @@ function ColabPage() {
     },
     onSuccess: () => {
       toast.success("Colaborador salvo");
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-eletr"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
@@ -192,7 +193,8 @@ function ColabPage() {
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => {
       toast.success("Colaborador movido para a lixeira. Você pode restaurá-lo em até 15 dias.");
-      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       qc.invalidateQueries({ queryKey: ["lixeira-colaboradores"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
     },
@@ -285,7 +287,7 @@ function ColabPage() {
           }}><FileText className="h-4 w-4" /> PDF</Button>
           {canWrite && (
             <>
-              <ImportarColaboradores empresas={empresas} onDone={() => { qc.invalidateQueries({ queryKey: ["colaboradores"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
+              <ImportarColaboradores empresas={empresas} onDone={() => { qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] }); qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
               <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
                 <DialogTrigger asChild>
                   <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
