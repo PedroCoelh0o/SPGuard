@@ -156,7 +156,7 @@ export function LixeiraDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild><Button variant="outline" size="sm"><Trash2 className="h-4 w-4" /> Lixeira</Button></DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Lixeira de segurança</DialogTitle>
           <DialogDescription>Os itens ficam disponíveis para restauração por 15 dias. Depois desse prazo, são removidos definitivamente.</DialogDescription>
@@ -195,7 +195,7 @@ export function LixeiraDialog() {
                 <TableRow key={`${item.entidade}-${item.id}`}>
                   <TableCell><Badge variant="secondary">{item.entidade === "colaborador" ? "Colaborador" : "Eletrônico"}</Badge></TableCell>
                   <TableCell className="font-medium">{item.label}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{item.empresa || "—"}</TableCell>
+                  <TableCell className="font-medium">{item.empresa || "—"}</TableCell>
                   <TableCell>{formatDateTime(item.excluido_em)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
