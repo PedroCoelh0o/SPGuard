@@ -176,6 +176,20 @@ const configuracoes: Guia[] = [
       "Mantenha o backup completo periódico: sincronização não substitui backup.",
     ],
   },
+  {
+    icon: Trash2,
+    titulo: "Exclusão definitiva de registros",
+    descricao:
+      "Permite remover em lote registros que não devem permanecer no SPGuard, com confirmação reforçada.",
+    passos: [
+      "Antes de excluir, crie um Backup completo com documentos ou um Backup criptografado com senha. A exclusão definitiva não pode ser desfeita.",
+      "Em Configurações, role até Exclusão definitiva de registros e clique em Gerenciar exclusão definitiva.",
+      "Marque Empresas, Colaboradores e/ou Eletrônicos. Ao marcar Colaboradores, escolha Todos os colaboradores ou selecione apenas uma empresa.",
+      "A remoção de uma empresa inclui os colaboradores, documentos, fotos e eletrônicos vinculados a ela para evitar dados sem vínculo.",
+      "Confira a prévia com as quantidades encontradas. Os itens que já estiverem na lixeira dentro da seleção também serão removidos definitivamente.",
+      "Digite EXCLUIR na confirmação final. Registros fora da seleção não serão modificados.",
+    ],
+  },
 ];
 
 function GuiaCard({ guia }: { guia: Guia }) {

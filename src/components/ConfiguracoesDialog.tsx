@@ -10,6 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -25,6 +33,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/local-db/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import {
   getSavedDirName,
   isFsSupported,
@@ -71,6 +81,33 @@ const STATUS_CLASS: Record<SyncLog["status"], string> = {
   parcial: "text-amber-600 dark:text-amber-400",
   erro: "text-destructive",
 };
+
+type EmpresaParaExclusao = { id: string; razao_social: string; nome_fantasia?: string | null };
+type ColaboradorParaExclusao = { id: string; empresa_id: string };
+type EletronicoParaExclusao = { id: string; colaborador_id: string };
+type DocumentoParaExclusao = { id: string; colaborador_id: string };
+
+type ResumoExclusao = {
+  empresas: number;
+  colaboradores: number;
+  eletronicos: number;
+  documentos: number;
+  empresaIds: string[];
+  colaboradorIds: string[];
+  eletronicoIds: string[];
+};
+
+function textoQuantidade(total: number, singular: string, plural: string) {
+  return `${total} ${total === 1 ? singular : plural}`;
+}
+
+function emLotes<T>(items: T[], tamanho = 400) {
+  const lotes: T[][] = [];
+  for (let inicio = 0; inicio < items.length; inicio += tamanho) {
+    lotes.push(items.slice(inicio, inicio + tamanho));
+  }
+  return lotes;
+}
 
 function StatLinha({ titulo, s }: { titulo: string; s?: EntidadeStat }) {
   if (!s) return null;
@@ -124,6 +161,15 @@ export function ConfiguracoesDialog() {
   const [networking, setNetworking] = useState(false);
   const [networkAuto, setNetworkAuto] = useState(false);
   const [networkConflicts, setNetworkConflicts] = useState<NetworkConflict[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteCompanies, setDeleteCompanies] = useState<EmpresaParaExclusao[]>([]);
+  const [deleteEmpresas, setDeleteEmpresas] = useState(false);
+  const [deleteColaboradores, setDeleteColaboradores] = useState(false);
+  const [deleteEletronicos, setDeleteEletronicos] = useState(false);
+  const [deleteCollaboratorScope, setDeleteCollaboratorScope] = useState("todos");
+  const [deleteSummary, setDeleteSummary] = useState<ResumoExclusao | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingRecords, setDeletingRecords] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const fullFileRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
@@ -138,6 +184,16 @@ export function ConfiguracoesDialog() {
     setNetworkAuto(isNetworkAutoSyncEnabled());
     setNetworkConflicts(getNetworkConflicts());
   }, [open]);
+
+  useEffect(() => {
+    if (!deleteDialogOpen) return;
+    fetchAllRows<EmpresaParaExclusao>(
+      () => supabase.from("empresas").select("id, razao_social, nome_fantasia").order("razao_social") as never,
+      { max: 100000 },
+    )
+      .then(setDeleteCompanies)
+      .catch((error) => toast.error("Não foi possível carregar as empresas", { description: (error as Error).message }));
+  }, [deleteDialogOpen]);
 
   async function doNetworkSync() {
     setNetworking(true);
@@ -432,6 +488,116 @@ export function ConfiguracoesDialog() {
       return;
     }
     await doRestoreEncrypted(encryptedFile, encryptedPassword);
+  }
+
+  function openDeleteDialog() {
+    setDeleteEmpresas(false);
+    setDeleteColaboradores(false);
+    setDeleteEletronicos(false);
+    setDeleteCollaboratorScope("todos");
+    setDeleteSummary(null);
+    setDeleteConfirmation("");
+    setDeleteDialogOpen(true);
+  }
+
+  async function prepareDeletion() {
+    if (!deleteEmpresas && !deleteColaboradores && !deleteEletronicos) {
+      toast.error("Selecione pelo menos um tipo de registro");
+      return;
+    }
+
+    try {
+      const [empresas, colaboradores, eletronicos, documentos] = await Promise.all([
+        fetchAllRows<EmpresaParaExclusao>(
+          () => supabase.from("empresas").select("id, razao_social, nome_fantasia") as never,
+          { max: 100000 },
+        ),
+        fetchAllRows<ColaboradorParaExclusao>(
+          () => supabase.from("colaboradores").select("id, empresa_id").includeDeleted() as never,
+          { max: 100000 },
+        ),
+        fetchAllRows<EletronicoParaExclusao>(
+          () => supabase.from("eletronicos").select("id, colaborador_id").includeDeleted() as never,
+          { max: 100000 },
+        ),
+        fetchAllRows<DocumentoParaExclusao>(
+          () => supabase.from("colaborador_documentos").select("id, colaborador_id") as never,
+          { max: 100000 },
+        ),
+      ]);
+
+      const empresaIds = deleteEmpresas
+        ? empresas.map((empresa) => empresa.id)
+        : deleteColaboradores && deleteCollaboratorScope !== "todos"
+          ? [deleteCollaboratorScope]
+          : [];
+      const colaboradoresSelecionados = deleteEmpresas || deleteColaboradores
+        ? colaboradores.filter((colaborador) =>
+            deleteColaboradores && !deleteEmpresas && deleteCollaboratorScope === "todos"
+              ? true
+              : empresaIds.includes(colaborador.empresa_id),
+          )
+        : [];
+      const colaboradorIds = colaboradoresSelecionados.map((colaborador) => colaborador.id);
+      const colaboradorIdSet = new Set(colaboradorIds);
+      const eletronicosSelecionados = deleteEletronicos
+        ? eletronicos
+        : eletronicos.filter((eletronico) => colaboradorIdSet.has(eletronico.colaborador_id));
+      const documentosSelecionados = documentos.filter((documento) =>
+        colaboradorIdSet.has(documento.colaborador_id),
+      );
+
+      setDeleteConfirmation("");
+      setDeleteSummary({
+        empresas: deleteEmpresas ? empresaIds.length : 0,
+        colaboradores: colaboradorIds.length,
+        eletronicos: eletronicosSelecionados.length,
+        documentos: documentosSelecionados.length,
+        empresaIds: deleteEmpresas ? empresaIds : [],
+        colaboradorIds,
+        eletronicoIds: eletronicosSelecionados.map((eletronico) => eletronico.id),
+      });
+    } catch (error) {
+      toast.error("Não foi possível preparar a exclusão", { description: (error as Error).message });
+    }
+  }
+
+  async function deletePermanently(table: "colaboradores" | "eletronicos", ids: string[]) {
+    for (const lote of emLotes(ids)) {
+      const { error } = await supabase.from(table).delete().permanently().includeDeleted().in("id", lote);
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  async function confirmDeletion() {
+    if (!deleteSummary || deleteConfirmation.trim().toUpperCase() !== "EXCLUIR") return;
+    setDeletingRecords(true);
+    try {
+      // Eletrônicos são removidos primeiro. Os que pertencem aos colaboradores
+      // selecionados também seriam removidos pelo vínculo do banco, mas esta ordem
+      // mantém a operação clara e evita deixar registros avulsos.
+      await deletePermanently("eletronicos", deleteSummary.eletronicoIds);
+      await deletePermanently("colaboradores", deleteSummary.colaboradorIds);
+      for (const lote of emLotes(deleteSummary.empresaIds)) {
+        const { error } = await supabase.from("empresas").delete().in("id", lote);
+        if (error) throw new Error(error.message);
+      }
+
+      toast.success("Exclusão definitiva concluída", {
+        description: [
+          deleteSummary.empresas && textoQuantidade(deleteSummary.empresas, "empresa", "empresas"),
+          deleteSummary.colaboradores && textoQuantidade(deleteSummary.colaboradores, "colaborador", "colaboradores"),
+          deleteSummary.eletronicos && textoQuantidade(deleteSummary.eletronicos, "eletrônico", "eletrônicos"),
+        ].filter(Boolean).join(" · "),
+      });
+      setDeleteSummary(null);
+      setDeleteDialogOpen(false);
+      setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      toast.error("Não foi possível concluir a exclusão", { description: (error as Error).message, duration: 10000 });
+    } finally {
+      setDeletingRecords(false);
+    }
   }
 
   return (
@@ -810,11 +976,180 @@ export function ConfiguracoesDialog() {
                 </ul>
               )}
             </div>
+
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+              <div className="text-sm font-medium">Exclusão definitiva de registros</div>
+              <p className="text-xs text-muted-foreground">
+                Remova empresas, colaboradores ou eletrônicos de forma permanente. Esta opção não
+                usa a lixeira e não pode ser desfeita. Antes de continuar, faça um backup completo.
+              </p>
+              <Button variant="outline" className="border-destructive/50 text-destructive hover:text-destructive" onClick={openDeleteDialog}>
+                <Trash2 className="h-4 w-4" /> Gerenciar exclusão definitiva
+              </Button>
+            </div>
           </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(isOpen) => {
+          if (!deletingRecords) setDeleteDialogOpen(isOpen);
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Exclusão definitiva de registros</DialogTitle>
+            <DialogDescription>
+              Escolha o que deseja remover. Esta operação não envia dados à internet e não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-3 rounded-md border p-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteEmpresas}
+                  onCheckedChange={(checked) => setDeleteEmpresas(checked === true)}
+                  disabled={deletingRecords}
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium">Empresas</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Exclui todas as empresas e, para preservar a integridade dos dados, também todos os colaboradores, documentos, fotos e eletrônicos vinculados a elas.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteColaboradores}
+                  onCheckedChange={(checked) => setDeleteColaboradores(checked === true)}
+                  disabled={deletingRecords}
+                />
+                <span className="space-y-1 flex-1">
+                  <span className="block text-sm font-medium">Colaboradores</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Exclui os colaboradores escolhidos, incluindo foto, documentos e eletrônicos vinculados.
+                  </span>
+                </span>
+              </label>
+
+              {deleteColaboradores && !deleteEmpresas && (
+                <div className="ml-7 space-y-2">
+                  <label className="text-xs font-medium" htmlFor="delete-collaborator-company">
+                    Escopo dos colaboradores
+                  </label>
+                  <Select value={deleteCollaboratorScope} onValueChange={setDeleteCollaboratorScope} disabled={deletingRecords}>
+                    <SelectTrigger id="delete-collaborator-company">
+                      <SelectValue placeholder="Escolha o escopo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os colaboradores</SelectItem>
+                      {deleteCompanies.map((empresa) => (
+                        <SelectItem key={empresa.id} value={empresa.id}>
+                          {empresa.nome_fantasia || empresa.razao_social}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Escolha uma empresa para excluir apenas os colaboradores vinculados a ela.
+                  </p>
+                </div>
+              )}
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteEletronicos}
+                  onCheckedChange={(checked) => setDeleteEletronicos(checked === true)}
+                  disabled={deletingRecords}
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium">Eletrônicos</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Exclui permanentemente todos os eletrônicos cadastrados. Eletrônicos de colaboradores selecionados já entram na exclusão automaticamente.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-muted-foreground">
+              Os itens que já estejam na lixeira dentro do escopo selecionado também serão removidos definitivamente. Os registros fora do escopo não serão alterados.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deletingRecords}>Cancelar</Button>
+            <Button variant="destructive" onClick={prepareDeletion} disabled={deletingRecords}>
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteSummary !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !deletingRecords) {
+            setDeleteSummary(null);
+            setDeleteConfirmation("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão definitiva</DialogTitle>
+            <DialogDescription>
+              Confira a quantidade abaixo. Esta ação é permanente e não poderá ser restaurada pela lixeira.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteSummary && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-1">
+                {deleteSummary.empresas > 0 && <div>{textoQuantidade(deleteSummary.empresas, "empresa", "empresas")}</div>}
+                {deleteSummary.colaboradores > 0 && <div>{textoQuantidade(deleteSummary.colaboradores, "colaborador", "colaboradores")}</div>}
+                {deleteSummary.eletronicos > 0 && <div>{textoQuantidade(deleteSummary.eletronicos, "eletrônico", "eletrônicos")}</div>}
+                {deleteSummary.documentos > 0 && <div>{textoQuantidade(deleteSummary.documentos, "documento", "documentos")} e as fotos vinculadas</div>}
+                {deleteSummary.empresas + deleteSummary.colaboradores + deleteSummary.eletronicos === 0 && <div>Nenhum registro foi localizado para a seleção atual.</div>}
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="permanent-delete-confirmation" className="text-sm font-medium">
+                  Digite <strong>EXCLUIR</strong> para confirmar
+                </label>
+                <Input
+                  id="permanent-delete-confirmation"
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  placeholder="EXCLUIR"
+                  autoComplete="off"
+                  disabled={deletingRecords}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteSummary(null)} disabled={deletingRecords}>Voltar</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeletion}
+              disabled={
+                deletingRecords ||
+                !deleteSummary ||
+                deleteSummary.empresas + deleteSummary.colaboradores + deleteSummary.eletronicos === 0 ||
+                deleteConfirmation.trim().toUpperCase() !== "EXCLUIR"
+              }
+            >
+              {deletingRecords ? "Excluindo..." : "Excluir definitivamente"}
             </Button>
           </DialogFooter>
         </DialogContent>

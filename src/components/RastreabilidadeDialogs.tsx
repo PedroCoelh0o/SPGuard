@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { History, RotateCcw, Trash2 } from "lucide-react";
+import { History, RotateCcw, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 type Historico = {
@@ -21,7 +22,12 @@ type Historico = {
   created_at: string;
 };
 
-type Excluido = { id: string; nome?: string | null; tipo?: string; descricao?: string | null; modelo?: string | null; excluido_em: string };
+type Excluido = { id: string; nome?: string | null; empresa_id?: string | null; tipo?: string; descricao?: string | null; modelo?: string | null; excluido_em: string };
+type EmpresaLixeira = { id: string; razao_social: string; nome_fantasia?: string | null };
+
+function normalizarPesquisa(texto: string) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
 
 const fieldLabels: Record<string, string> = {
   empresa_id: "Empresa", nome: "Nome", cpf: "CPF", rg: "RG", matricula: "Matrícula", cargo: "Cargo", setor: "Setor",
@@ -88,18 +94,28 @@ export function HistoricoAlteracoesDialog() {
 export function LixeiraDialog() {
   const qc = useQueryClient();
   const [limpando, setLimpando] = useState(false);
+  const [pesquisa, setPesquisa] = useState("");
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["lixeira-colaboradores"],
-    queryFn: () => fetchAllRows<Excluido>(() => supabase.from("colaboradores").select("id, nome, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
+    queryFn: () => fetchAllRows<Excluido>(() => supabase.from("colaboradores").select("id, nome, empresa_id, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
   });
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["lixeira-eletronicos"],
     queryFn: () => fetchAllRows<Excluido>(() => supabase.from("eletronicos").select("id, tipo, descricao, modelo, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
   });
+  const { data: empresas = [] } = useQuery({
+    queryKey: ["lixeira-empresas"],
+    queryFn: () => fetchAllRows<EmpresaLixeira>(() => supabase.from("empresas").select("id, razao_social, nome_fantasia") as never),
+  });
+  const empresasPorId = new Map(empresas.map((empresa) => [empresa.id, empresa.nome_fantasia || empresa.razao_social]));
   const all = [
-    ...colaboradores.map((item) => ({ ...item, entidade: "colaborador" as const, label: item.nome ?? "Colaborador sem nome" })),
-    ...eletronicos.map((item) => ({ ...item, entidade: "eletronico" as const, label: [item.tipo, item.descricao, item.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação" })),
+    ...colaboradores.map((item) => ({ ...item, entidade: "colaborador" as const, label: item.nome ?? "Colaborador sem nome", empresa: empresasPorId.get(item.empresa_id ?? "") ?? "Empresa não localizada" })),
+    ...eletronicos.map((item) => ({ ...item, entidade: "eletronico" as const, label: [item.tipo, item.descricao, item.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação", empresa: "" })),
   ].sort((a, b) => b.excluido_em.localeCompare(a.excluido_em));
+  const termoPesquisa = normalizarPesquisa(pesquisa.trim());
+  const filtrados = termoPesquisa
+    ? all.filter((item) => normalizarPesquisa(`${item.label} ${item.empresa}`).includes(termoPesquisa))
+    : all;
 
   async function restore(item: typeof all[number]) {
     const table = item.entidade === "colaborador" ? "colaboradores" : "eletronicos";
@@ -162,14 +178,24 @@ export function LixeiraDialog() {
             </AlertDialog>
           </div>
         )}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={pesquisa}
+            onChange={(event) => setPesquisa(event.target.value)}
+            placeholder="Pesquisar por nome ou empresa..."
+            className="pl-9"
+          />
+        </div>
         <div className="rounded-md border overflow-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Registro</TableHead><TableHead>Excluído em</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Registro</TableHead><TableHead>Empresa</TableHead><TableHead>Excluído em</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
             <TableBody>
-              {all.length === 0 ? <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">A lixeira está vazia.</TableCell></TableRow> : all.map((item) => (
+              {all.length === 0 ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">A lixeira está vazia.</TableCell></TableRow> : filtrados.length === 0 ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Nenhum item encontrado para a pesquisa.</TableCell></TableRow> : filtrados.map((item) => (
                 <TableRow key={`${item.entidade}-${item.id}`}>
                   <TableCell><Badge variant="secondary">{item.entidade === "colaborador" ? "Colaborador" : "Eletrônico"}</Badge></TableCell>
                   <TableCell className="font-medium">{item.label}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{item.empresa || "—"}</TableCell>
                   <TableCell>{formatDateTime(item.excluido_em)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
