@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { ConfiguracoesDialog } from "@/components/ConfiguracoesDialog";
+import { SobreSPGuardDialog } from "@/components/SobreSPGuardDialog";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -100,6 +101,7 @@ function AuthenticatedLayout() {
               <div className="text-sm font-medium">Sistema de Gestão da Segurança Patrimonial</div>
             </div>
             <div className="flex items-center gap-1">
+              <SobreSPGuardDialog />
               <ConfiguracoesDialog />
               <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
                 {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

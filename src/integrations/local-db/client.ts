@@ -14,7 +14,18 @@ type PgError = { message: string } | null;
 type PgResult<T> = { data: T | null; error: PgError };
 
 declare global {
-  interface Window { spguardRuntime?: { getRpcToken: () => Promise<string> }; }
+  interface Window {
+    spguardRuntime?: {
+      getRpcToken: () => Promise<string>;
+      getAppInfo?: () => Promise<{
+        productName: string;
+        version: string;
+        author: string;
+        appId: string;
+        copyright: string;
+      }>;
+    };
+  }
 }
 
 let localTokenPromise: Promise<string | undefined> | undefined;

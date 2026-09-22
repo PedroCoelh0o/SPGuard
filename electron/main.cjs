@@ -236,6 +236,17 @@ ipcMain.handle("spguard-runtime:get-rpc-token", async (event) => {
   return LOCAL_RPC_TOKEN;
 });
 
+ipcMain.handle("spguard-runtime:get-app-info", async (event) => {
+  exigirSenderConfiavel(event);
+  return {
+    productName: app.getName(),
+    version: app.getVersion(),
+    author: "Pedro Coelho",
+    appId: "com.spguard.app",
+    copyright: "Copyright © 2026 Pedro Coelho. Todos os direitos reservados.",
+  };
+});
+
 // O servidor roda DENTRO do próprio processo principal do Electron (não
 // como um processo filho separado via child_process.fork). É um padrão
 // comum para esse tipo de app e evita a complexidade de gerenciar um

@@ -61,6 +61,11 @@ execFileSync("magick", [
   "-gravity", "north",
   "-geometry", "+0+38",
   "-composite",
+  "-font", "Arial",
+  "-fill", "#d5e3ef",
+  "-pointsize", "11",
+  "-gravity", "south",
+  "-annotate", "+0+28", "SPGuard\nCriado por Pedro Coelho\n2026",
   // O NSIS não aceita transparência nessa área: precisa ser um BMP RGB
   // de 24 bits. BMP3 força o formato clássico aceito pelo instalador.
   "-alpha", "off",

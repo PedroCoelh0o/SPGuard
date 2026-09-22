@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "1.8.10",
+  "version": "1.8.11",
   "description": "SPGuard - Sistema de Gestão da Segurança Patrimonial",
   "author": "Pedro Coelho",
   "private": true,
@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.spguard.app",
     "productName": "SPGuard",
+    "copyright": "Copyright © 2026 Pedro Coelho. Todos os direitos reservados.",
     "asar": true,
     "npmRebuild": false,
     "directories": {
@@ -46,6 +47,7 @@
       }
     ],
     "win": {
+      "publisherName": "Pedro Coelho",
       "target": [
         {
           "target": "nsis",

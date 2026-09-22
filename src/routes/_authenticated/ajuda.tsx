@@ -7,6 +7,7 @@ import {
   FileKey,
   FileSpreadsheet,
   History,
+  Info,
   Save,
   RefreshCw,
   Search,
@@ -106,6 +107,16 @@ const guias: Guia[] = [
 ];
 
 const configuracoes: Guia[] = [
+  {
+    icon: Info,
+    titulo: "Sobre o SPGuard",
+    descricao: "Mostra a identificação do software, autoria, versão instalada e informações técnicas principais.",
+    passos: [
+      "Clique no ícone de informação no canto superior direito, ao lado de Configurações.",
+      "Confira o nome do sistema, versão instalada, autor, identificador técnico e direitos autorais.",
+      "A mesma autoria também é registrada nas propriedades do instalador e exibida na faixa lateral durante a instalação.",
+    ],
+  },
   {
     icon: Database,
     titulo: "Armazenamento local dos dados em planilha .xlsx",

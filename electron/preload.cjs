@@ -20,4 +20,5 @@ contextBridge.exposeInMainWorld("spguardNetwork", {
 
 contextBridge.exposeInMainWorld("spguardRuntime", {
   getRpcToken: () => ipcRenderer.invoke("spguard-runtime:get-rpc-token"),
+  getAppInfo: () => ipcRenderer.invoke("spguard-runtime:get-app-info"),
 });
