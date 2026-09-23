@@ -113,7 +113,8 @@ const configuracoes: Guia[] = [
     descricao: "Mostra a identificação do software, autoria, versão instalada e informações técnicas principais.",
     passos: [
       "Clique no ícone de informação no canto superior direito, ao lado de Configurações.",
-      "Confira o nome do sistema, versão instalada, autor, identificador técnico e direitos autorais.",
+      "Confira o nome do sistema, versão instalada, data de compilação, autor, identificador técnico e direitos autorais.",
+      "A tela também resume a finalidade do SPGuard, o funcionamento offline e a responsabilidade de manutenção.",
       "A mesma autoria também é registrada nas propriedades do instalador e exibida na faixa lateral durante a instalação.",
     ],
   },

@@ -243,6 +243,7 @@ ipcMain.handle("spguard-runtime:get-app-info", async (event) => {
     version: app.getVersion(),
     author: "Pedro Coelho",
     appId: "com.spguard.app",
+    compiledAt: "22/09/2026",
     copyright: "Copyright © 2026 Pedro Coelho. Todos os direitos reservados.",
   };
 });

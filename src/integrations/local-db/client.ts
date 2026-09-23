@@ -22,6 +22,7 @@ declare global {
         version: string;
         author: string;
         appId: string;
+        compiledAt: string;
         copyright: string;
       }>;
     };
