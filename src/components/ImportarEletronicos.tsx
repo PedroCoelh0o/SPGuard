@@ -18,6 +18,7 @@ type Row = {
   tipo: string;
   descricao: string | null;
   imei: string | null;
+  marca: string | null;
   modelo: string | null;
   contato: string | null;
   numero_selo: string | null;
@@ -29,7 +30,7 @@ type Row = {
 };
 
 const HEADERS = [
-  "cpf", "matricula", "colaborador", "tipo", "descricao", "modelo",
+  "cpf", "matricula", "colaborador", "tipo", "descricao", "marca", "modelo",
   "imei", "numero_serie", "numero_selo", "contato", "acessorios",
 ];
 
@@ -63,7 +64,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([HEADERS, [
-      "123.456.789-00", "M001", "João da Silva", "celular", "Aparelho corporativo", "Samsung A54",
+      "123.456.789-00", "M001", "João da Silva", "celular", "Aparelho corporativo", "Samsung", "Galaxy A54",
       "356938035643809", "SN-00123", "SELO-001", "(11) 99999-0000", "Carregador, capa",
     ]]);
     const wb = XLSX.utils.book_new();
@@ -136,6 +137,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
         tipo,
         descricao: String(get("descricao") ?? "").trim() || null,
         imei,
+        marca: String(get("marca") ?? "").trim() || null,
         modelo: String(get("modelo") ?? "").trim() || null,
         contato: String(get("contato") ?? "").trim() || null,
         numero_selo: String(get("numero_selo") ?? "").trim() || null,
@@ -161,6 +163,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
         colaborador_id: r.colaborador_id!, tipo: r.tipo, descricao: r.descricao, imei: r.imei,
         modelo: r.modelo, contato: r.contato, numero_selo: r.numero_selo,
         numero_serie: r.numero_serie, acessorios: r.acessorios,
+        ...(r.marca ? { marca: r.marca } : {}),
       };
       try {
         if (r.existingId) {
@@ -267,6 +270,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
                     <TableHead>Ação</TableHead>
                     <TableHead>Colaborador</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>Marca</TableHead>
                     <TableHead>Modelo</TableHead>
                     <TableHead>IMEI / Série</TableHead>
                     <TableHead>Erros</TableHead>
@@ -283,6 +287,7 @@ export function ImportarEletronicos({ onDone }: { onDone: () => void }) {
                       </TableCell>
                       <TableCell>{r.colaboradorLabel || "-"}</TableCell>
                       <TableCell>{r.tipo || "-"}</TableCell>
+                      <TableCell>{r.marca ?? "-"}</TableCell>
                       <TableCell>{r.modelo ?? "-"}</TableCell>
                       <TableCell>{r.imei ?? r.numero_serie ?? "-"}</TableCell>
                       <TableCell className="text-xs text-destructive">{r.errors.join("; ")}</TableCell>

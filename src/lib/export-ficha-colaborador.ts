@@ -32,6 +32,7 @@ export type FichaColaborador = {
 export type FichaEletronico = {
   tipo: string;
   descricao: string | null;
+  marca: string | null;
   modelo: string | null;
   imei: string | null;
   numero_serie: string | null;
@@ -160,6 +161,7 @@ export function exportFichaColaboradorPDF(
         tipoLabel[item.tipo] ?? item.tipo,
         text(item.descricao),
         [
+          `Marca: ${text(item.marca)}`,
           `Modelo: ${text(item.modelo)}`,
           `IMEI: ${text(item.imei)}`,
           `Nº de série: ${text(item.numero_serie)}`,

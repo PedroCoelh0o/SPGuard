@@ -21,6 +21,7 @@ export type Eletronico = {
   tipo: "celular" | "notebook" | "tablet";
   descricao: string | null;
   imei: string | null;
+  marca: string | null;
   modelo: string | null;
   contato: string | null;
   numero_selo: string | null;
@@ -33,7 +34,7 @@ export type Eletronico = {
 const tipoLabel = { celular: "Celular", notebook: "Notebook", tablet: "Tablet" } as const;
 const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as const;
 
-const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
+const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", marca: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
 
 export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
   const { canWrite, isAdmin } = useAuth();
@@ -116,11 +117,12 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
           )}</div>
         </div>
         <div className="rounded-md border overflow-x-auto">
-          <Table className="min-w-[1180px] whitespace-nowrap">
+          <Table className="min-w-[1280px] whitespace-nowrap">
             <TableHeader>
               <TableRow>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
                 <TableHead>IMEI</TableHead>
                 <TableHead>Nº Série</TableHead>
@@ -133,15 +135,16 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Carregando...</TableCell></TableRow>
               ) : items.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Nenhum dispositivo cadastrado.</TableCell></TableRow>
               ) : items.map((e) => {
                 const Icon = tipoIcon[e.tipo];
                 return (
                   <TableRow key={e.id}>
                     <TableCell><Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{tipoLabel[e.tipo]}</Badge></TableCell>
                     <TableCell className="font-medium">{e.descricao ?? "-"}</TableCell>
+                    <TableCell>{e.marca ?? "-"}</TableCell>
                     <TableCell>{e.modelo ?? "-"}</TableCell>
                     <TableCell>{e.imei ?? "-"}</TableCell>
                     <TableCell>{e.numero_serie ?? "-"}</TableCell>
@@ -193,8 +196,12 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           <Input value={v.descricao ?? ""} onChange={(e) => set("descricao", e.target.value)} placeholder="Ex.: João Silva - Celular corporativo" />
         </div>
         <div>
+          <Label>Marca</Label>
+          <Input value={v.marca ?? ""} onChange={(e) => set("marca", e.target.value)} placeholder="Ex.: Samsung, Dell" />
+        </div>
+        <div>
           <Label>Modelo</Label>
-          <Input value={v.modelo ?? ""} onChange={(e) => set("modelo", e.target.value)} placeholder="Ex.: Dell Latitude 5420" />
+          <Input value={v.modelo ?? ""} onChange={(e) => set("modelo", e.target.value)} placeholder="Ex.: Galaxy A54, Latitude 5420" />
         </div>
         <div>
           <Label>IMEI</Label>

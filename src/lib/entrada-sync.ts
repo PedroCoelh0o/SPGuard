@@ -15,7 +15,7 @@ const COLAB_HEADERS = [
 ];
 
 const ELETR_HEADERS = [
-  "cpf", "matricula", "colaborador", "tipo", "descricao", "modelo",
+  "cpf", "matricula", "colaborador", "tipo", "descricao", "marca", "modelo",
   "imei", "numero_serie", "numero_selo", "contato", "acessorios",
 ];
 
@@ -368,6 +368,7 @@ export async function syncFromEntrada(opts: SyncOptions | File = {}): Promise<Sy
       descricao: str(get("descricao")), modelo: str(get("modelo")),
       imei, numero_serie, numero_selo: str(get("numero_selo")),
       contato: str(get("contato")), acessorios: str(get("acessorios")),
+      ...(str(get("marca")) ? { marca: str(get("marca")) } : {}),
     };
 
     const ref = `linha ${i + 2}: ${tipo}${nome ? ` — ${nome}` : ""}`;

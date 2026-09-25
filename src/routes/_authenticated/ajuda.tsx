@@ -58,7 +58,7 @@ const guias: Guia[] = [
     passos: [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
-      "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar para adicionar manualmente o tipo, descrição, modelo, IMEI, número de série, acessórios, justificativa e demais informações.",
+      "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar para adicionar manualmente o tipo, descrição, marca, modelo, IMEI, número de série, acessórios, justificativa e demais informações.",
       "O SPGuard bloqueia IMEI, número de série ou número de patrimônio/selo que já estejam vinculados a outro colaborador.",
       "Se quiser guardar o formulário de autorização, anexe o PDF normalmente na aba Documentos da ficha. O arquivo ficará vinculado ao colaborador, mas seus dados não serão preenchidos automaticamente.",
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",
@@ -164,6 +164,7 @@ const configuracoes: Guia[] = [
     passos: [
       "Clique em Criar planilha de entrada para gerar spguard-eletronicos.xlsx na pasta SPGuard.",
       "Preencha as abas Colaboradores e Eletronicos sem alterar os nomes das colunas.",
+      "Na aba Eletronicos, preencha marca e modelo em colunas separadas. Em planilhas antigas, você pode acrescentar a coluna marca; se ela estiver ausente ou vazia, uma marca já cadastrada não será apagada.",
       "Use Validar planilha para conferir erros antes de gravar qualquer alteração.",
       "Quando a validação estiver correta, clique em Atualizar agora. Registros existentes podem ser atualizados pelo CPF, matrícula ou identificadores do eletrônico.",
       "Se um CPF estiver inválido ou já pertencer a outra pessoa, ou se uma matrícula já estiver em uso, o colaborador ainda será importado como Pendente de conferência. Corrija o dado na ficha depois; use o filtro Pendentes de conferência na aba Colaboradores para localizá-los.",

@@ -40,7 +40,7 @@ type ColaboradorEletronicos = {
 };
 type EletronicoResumido = {
   id: string; tipo: "celular" | "notebook" | "tablet"; descricao: string | null;
-  modelo: string | null; colaborador_id: string;
+  marca: string | null; modelo: string | null; colaborador_id: string;
 };
 type PaginaEletronicos = { colaboradores: ColaboradorEletronicos[]; eletronicos: EletronicoResumido[] };
 
@@ -89,7 +89,7 @@ function EletronicosPage() {
 
       const { data: eletronicosData, error: eletronicosError } = await supabase
         .from("eletronicos" as never)
-        .select("id, tipo, descricao, modelo, colaborador_id")
+        .select("id, tipo, descricao, marca, modelo, colaborador_id")
         .in("colaborador_id", ids)
         .order("created_at");
       if (eletronicosError) throw eletronicosError;
@@ -127,10 +127,16 @@ function EletronicosPage() {
 
   const stats = useMemo(() => {
     const counts = new Map<string, { celular: number; notebook: number; tablet: number }>();
+    const brands = new Map<string, Set<string>>();
     eletronicos.forEach((e) => {
       const cur = counts.get(e.colaborador_id) ?? { celular: 0, notebook: 0, tablet: 0 };
       cur[e.tipo] += 1;
       counts.set(e.colaborador_id, cur);
+      if (e.marca?.trim()) {
+        const current = brands.get(e.colaborador_id) ?? new Set<string>();
+        current.add(e.marca.trim());
+        brands.set(e.colaborador_id, current);
+      }
     });
     const s = qd.trim().toLowerCase();
     const scope = colabs.filter((c) => {
@@ -146,6 +152,7 @@ function EletronicosPage() {
           id: c.id, nome: c.nome, setor: c.setor, cargo: c.cargo,
           autorizado: c.eletronicos_autorizado !== false,
           empresa: empresaMap.get(c.empresa_id) ?? "-",
+          marcas: [...(brands.get(c.id) ?? [])].join(", ") || "-",
           celulares: cnt.celular, notebooks: cnt.notebook, tablets: cnt.tablet, total,
         };
       })
@@ -352,7 +359,7 @@ function EletronicosPage() {
           <p className="text-sm text-muted-foreground">Selecione um ou mais eletrônicos para mover à lixeira. Eles poderão ser restaurados em até 15 dias.</p>
           <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
             {itensParaExcluir.map((e) => {
-              const label = [e.tipo === "celular" ? "Celular" : e.tipo === "notebook" ? "Notebook" : "Tablet", e.descricao, e.modelo].filter(Boolean).join(" — ");
+              const label = [e.tipo === "celular" ? "Celular" : e.tipo === "notebook" ? "Notebook" : "Tablet", e.descricao, e.marca, e.modelo].filter(Boolean).join(" — ");
               return <label key={e.id} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-muted"><Checkbox checked={selecionados.includes(e.id)} onCheckedChange={(v) => setSelecionados((old) => v ? [...old, e.id] : old.filter((id) => id !== e.id))} /><span className="text-sm">{label}</span></label>;
             })}
           </div>

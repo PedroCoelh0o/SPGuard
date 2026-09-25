@@ -22,7 +22,7 @@ type Historico = {
   created_at: string;
 };
 
-type Excluido = { id: string; nome?: string | null; empresa_id?: string | null; tipo?: string; descricao?: string | null; modelo?: string | null; excluido_em: string };
+type Excluido = { id: string; nome?: string | null; empresa_id?: string | null; tipo?: string; descricao?: string | null; marca?: string | null; modelo?: string | null; excluido_em: string };
 type EmpresaLixeira = { id: string; razao_social: string; nome_fantasia?: string | null };
 
 function normalizarPesquisa(texto: string) {
@@ -34,7 +34,7 @@ const fieldLabels: Record<string, string> = {
   escolaridade: "Escolaridade", turno: "Turno", data_admissao: "Data de admissão", data_desligamento: "Data de desligamento",
   motivo_desligamento: "Motivo do desligamento", observacoes: "Observação", status: "Status", telefone: "Telefone", celular: "Celular",
   email: "E-mail", cep: "CEP", rua: "Rua", numero: "Número", bairro: "Bairro", cidade: "Cidade", estado: "Estado",
-  eletronicos_autorizado: "Autorização de eletrônicos", tipo: "Tipo", descricao: "Descrição", imei: "IMEI", modelo: "Modelo",
+  eletronicos_autorizado: "Autorização de eletrônicos", tipo: "Tipo", descricao: "Descrição", imei: "IMEI", marca: "Marca", modelo: "Modelo",
   contato: "Contato", numero_selo: "Nº do selo", numero_serie: "Nº de série", acessorios: "Acessórios", justificativa: "Justificativa",
 };
 
@@ -101,7 +101,7 @@ export function LixeiraDialog() {
   });
   const { data: eletronicos = [] } = useQuery({
     queryKey: ["lixeira-eletronicos"],
-    queryFn: () => fetchAllRows<Excluido>(() => supabase.from("eletronicos").select("id, tipo, descricao, modelo, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
+    queryFn: () => fetchAllRows<Excluido>(() => supabase.from("eletronicos").select("id, tipo, descricao, marca, modelo, excluido_em").onlyDeleted().order("excluido_em", { ascending: false }) as never),
   });
   const { data: empresas = [] } = useQuery({
     queryKey: ["lixeira-empresas"],
@@ -110,7 +110,7 @@ export function LixeiraDialog() {
   const empresasPorId = new Map(empresas.map((empresa) => [empresa.id, empresa.nome_fantasia || empresa.razao_social]));
   const all = [
     ...colaboradores.map((item) => ({ ...item, entidade: "colaborador" as const, label: item.nome ?? "Colaborador sem nome", empresa: empresasPorId.get(item.empresa_id ?? "") ?? "Empresa não localizada" })),
-    ...eletronicos.map((item) => ({ ...item, entidade: "eletronico" as const, label: [item.tipo, item.descricao, item.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação", empresa: "" })),
+    ...eletronicos.map((item) => ({ ...item, entidade: "eletronico" as const, label: [item.tipo, item.descricao, item.marca, item.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação", empresa: "" })),
   ].sort((a, b) => b.excluido_em.localeCompare(a.excluido_em));
   const termoPesquisa = normalizarPesquisa(pesquisa.trim());
   const filtrados = termoPesquisa

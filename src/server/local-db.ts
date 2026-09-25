@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS eletronicos (
   tipo TEXT NOT NULL CHECK (tipo IN ('celular','notebook','tablet')),
   descricao TEXT,
   imei TEXT,
+  marca TEXT,
   modelo TEXT,
   contato TEXT,
   numero_selo TEXT,
@@ -215,6 +216,9 @@ function ensureSchemaMigrations(db: Database.Database) {
     db.exec("ALTER TABLE colaboradores ADD COLUMN excluido_em TEXT");
   }
   const eletrColumns = columns("eletronicos");
+  if (!eletrColumns.some((column) => column.name === "marca")) {
+    db.exec("ALTER TABLE eletronicos ADD COLUMN marca TEXT");
+  }
   if (!eletrColumns.some((column) => column.name === "excluido_em")) {
     db.exec("ALTER TABLE eletronicos ADD COLUMN excluido_em TEXT");
   }
@@ -359,7 +363,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   colaboradores: ["id", "empresa_id", "nome", "cpf", "rg", "matricula", "cargo", "setor", "escolaridade", "data_nascimento", "sexo", "turno", "data_admissao", "data_desligamento", "motivo_desligamento", "observacoes", "status", "telefone", "celular", "email", "cep", "rua", "numero", "bairro", "cidade", "estado", "foto_url", "eletronicos_autorizado", "excluido_em", "created_at", "updated_at"],
   colaborador_documentos: ["id", "colaborador_id", "nome", "tipo", "storage_path", "tamanho", "uploaded_by", "created_at", "updated_at"],
   pendencias_cadastro: ["id", "colaborador_id", "campo", "valor_original", "motivo", "created_at", "updated_at", "resolvido_em"],
-  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "justificativa", "excluido_em", "created_at", "updated_at"],
+  eletronicos: ["id", "colaborador_id", "tipo", "descricao", "imei", "marca", "modelo", "contato", "numero_selo", "numero_serie", "acessorios", "justificativa", "excluido_em", "created_at", "updated_at"],
   audit_exportacoes: ["id", "tipo", "modulo", "filtros", "total_registros", "created_at"],
   historico_alteracoes: ["id", "entidade", "registro_id", "registro_nome", "acao", "alteracoes", "autor", "created_at"],
   ocorrencias: ["id", "payload", "created_at", "updated_at"],
@@ -475,7 +479,7 @@ function runSelect(db: Database.Database, table: string, q: QueryDescriptor): un
 
 function historyName(table: string, row: Record<string, unknown>) {
   if (table === "colaboradores") return String(row.nome ?? "Colaborador sem nome");
-  return [row.tipo, row.descricao, row.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação";
+  return [row.tipo, row.descricao, row.marca, row.modelo].filter(Boolean).join(" — ") || "Eletrônico sem identificação";
 }
 
 function recordHistory(db: Database.Database, table: string, row: Record<string, unknown>, acao: "criado" | "editado" | "movido_para_lixeira" | "restaurado", alteracoes: Record<string, unknown>) {

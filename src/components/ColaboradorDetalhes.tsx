@@ -207,7 +207,7 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
     try {
       const { data, error } = await supabase
         .from("eletronicos" as never)
-        .select("tipo, descricao, modelo, imei, numero_serie, numero_selo, acessorios, justificativa")
+        .select("tipo, descricao, marca, modelo, imei, numero_serie, numero_selo, acessorios, justificativa")
         .eq("colaborador_id", colab.id);
       if (error) throw error;
       exportFichaColaboradorPDF(colab, empresaLabel || "-", (data ?? []) as FichaEletronico[], docs);

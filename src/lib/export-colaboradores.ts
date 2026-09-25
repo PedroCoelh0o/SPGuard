@@ -180,6 +180,7 @@ export type EletronicosExport = {
   empresa: string;
   setor: string | null;
   cargo: string | null;
+  marcas: string;
   celulares: number;
   notebooks: number;
   tablets: number;
@@ -203,19 +204,20 @@ export async function exportEletronicosPDF(registros: EletronicosExport[], filte
 
   autoTable(doc, {
     startY: 88 + filtroTxt.length * 11,
-    head: [["Nome", "Empresa", "Setor", "Função", "Celulares", "Notebooks", "Tablets", "Total", "Autorização"]],
+    head: [["Nome", "Empresa", "Setor", "Função", "Marcas", "Celulares", "Notebooks", "Tablets", "Total", "Autorização"]],
     body: registros.map((r) => [
       r.nome,
       r.empresa,
       r.setor ?? "-",
       r.cargo ?? "-",
+      r.marcas,
       String(r.celulares),
       String(r.notebooks),
       String(r.tablets),
       String(r.total),
       r.autorizado ? "Autorizado" : "Revogado",
     ]),
-    styles: { fontSize: 8, cellPadding: 4 },
+    styles: { fontSize: 7, cellPadding: 3 },
     headStyles: { fillColor: [30, 41, 59] },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     didDrawPage: () => {
