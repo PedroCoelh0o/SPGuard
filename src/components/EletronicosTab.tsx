@@ -33,6 +33,16 @@ export type Eletronico = {
 
 const tipoLabel = { celular: "Celular", notebook: "Notebook", tablet: "Tablet" } as const;
 const tipoIcon = { celular: Smartphone, notebook: Laptop, tablet: Tablet } as const;
+const marcasConhecidas = [
+  "Acer", "Apple", "Asus", "Avell", "Dell", "Google", "HP", "Huawei", "Lenovo", "LG",
+  "Microsoft", "Motorola", "Multilaser", "Nokia", "OnePlus", "Oppo", "Philco",
+  "Positivo", "Realme", "Samsung", "Sony", "TCL", "Vaio", "Vivo", "Xiaomi",
+] as const;
+const outraMarca = "__outra_marca__";
+
+function marcaDaLista(value: string | null | undefined) {
+  return marcasConhecidas.find((marca) => marca.toLocaleLowerCase("pt-BR") === value?.trim().toLocaleLowerCase("pt-BR"));
+}
 
 const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", marca: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
 
@@ -171,7 +181,9 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
   value: Partial<Eletronico>; onCancel: () => void; onSave: (v: Partial<Eletronico>) => void; saving: boolean;
 }) {
   const [v, setV] = useState<Partial<Eletronico>>(value);
+  const [marcaPersonalizada, setMarcaPersonalizada] = useState(() => Boolean(value.marca?.trim() && !marcaDaLista(value.marca)));
   const set = <K extends keyof Eletronico>(k: K, val: Eletronico[K]) => setV((p) => ({ ...p, [k]: val }));
+  const marcaSelecionada = marcaPersonalizada ? outraMarca : marcaDaLista(v.marca);
   return (
     <DialogContent className="max-w-2xl">
       <DialogHeader><DialogTitle>{v.id ? "Editar" : "Cadastrar"} dispositivo</DialogTitle></DialogHeader>
@@ -196,8 +208,20 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           <Input value={v.descricao ?? ""} onChange={(e) => set("descricao", e.target.value)} placeholder="Ex.: João Silva - Celular corporativo" />
         </div>
         <div>
-          <Label>Marca</Label>
-          <Input value={v.marca ?? ""} onChange={(e) => set("marca", e.target.value)} placeholder="Ex.: Samsung, Dell" />
+          <Label htmlFor="eletronico-marca">Marca</Label>
+          <Select value={marcaSelecionada} onValueChange={(marca) => {
+            setMarcaPersonalizada(marca === outraMarca);
+            set("marca", marca === outraMarca ? "" : marca);
+          }}>
+            <SelectTrigger id="eletronico-marca"><SelectValue placeholder="Selecione a marca" /></SelectTrigger>
+            <SelectContent className="max-h-64">
+              {marcasConhecidas.map((marca) => <SelectItem key={marca} value={marca}>{marca}</SelectItem>)}
+              <SelectItem value={outraMarca}>Outra marca...</SelectItem>
+            </SelectContent>
+          </Select>
+          {marcaPersonalizada && (
+            <Input className="mt-2" value={v.marca ?? ""} onChange={(e) => set("marca", e.target.value)} placeholder="Digite a marca" aria-label="Outra marca" />
+          )}
         </div>
         <div>
           <Label>Modelo</Label>

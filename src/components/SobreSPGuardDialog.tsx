@@ -23,7 +23,7 @@ type AppInfo = {
 
 const FALLBACK_INFO: AppInfo = {
   productName: "SPGuard",
-  version: "1.8.13",
+  version: "1.8.14",
   author: "Pedro Coelho",
   appId: "com.spguard.app",
   compiledAt: "25/09/2026",
