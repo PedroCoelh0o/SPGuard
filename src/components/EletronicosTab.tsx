@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatPhone } from "@/lib/format";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,12 +46,16 @@ function marcaDaLista(value: string | null | undefined) {
 }
 
 const empty: Partial<Eletronico> = { tipo: "celular", descricao: "", imei: "", marca: "", modelo: "", contato: "", numero_selo: "", numero_serie: "", acessorios: "", justificativa: "" };
+type SaveAction = "close" | "add-another";
+type SaveRequest = { payload: Partial<Eletronico>; action: SaveAction; repeatShared: boolean };
 
 export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaboradorId: string; colaboradorNome: string }) {
   const { canWrite, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Eletronico> | null>(null);
+  const [formSequence, setFormSequence] = useState(0);
+  const [repeatShared, setRepeatShared] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["eletronicos", colaboradorId],
@@ -66,7 +71,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
   });
 
   const save = useMutation({
-    mutationFn: async (payload: Partial<Eletronico>) => {
+    mutationFn: async ({ payload }: SaveRequest) => {
       const { id, ...rest } = payload;
       const clean = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v === "" ? null : v])) as Record<string, unknown>;
       clean.colaborador_id = colaboradorId;
@@ -78,13 +83,26 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      toast.success("Dispositivo salvo");
+    onSuccess: (_result, { payload, action, repeatShared: keepShared }) => {
       qc.invalidateQueries({ queryKey: ["eletronicos", colaboradorId] });
       qc.invalidateQueries({ queryKey: ["dashboard-eletronicos"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
+      if (action === "add-another") {
+        toast.success("Dispositivo salvo. Cadastre o próximo.");
+        setEditing({
+          ...empty,
+          tipo: payload.tipo ?? "celular",
+          descricao: `${colaboradorNome} - `,
+          contato: keepShared ? payload.contato ?? "" : "",
+          justificativa: keepShared ? payload.justificativa ?? "" : "",
+        });
+        setFormSequence((sequence) => sequence + 1);
+        return;
+      }
+      toast.success("Dispositivo salvo");
       setOpen(false);
       setEditing(null);
+      setRepeatShared(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -110,17 +128,19 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
         <div className="flex items-center justify-between">
           <h4 className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Eletrônicos de {colaboradorNome}</h4>
           <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setEditing({ ...empty, descricao: `${colaboradorNome} - ` })}>
+                <Button size="sm" onClick={() => { setRepeatShared(false); setEditing({ ...empty, descricao: `${colaboradorNome} - ` }); setFormSequence((sequence) => sequence + 1); }}>
                   <Plus className="h-4 w-4" /> Cadastrar
                 </Button>
               </DialogTrigger>
               <EletronicoForm
-                key={editing?.id ?? "new"}
+                key={`${editing?.id ?? "new"}-${formSequence}`}
                 value={editing ?? empty}
-                onCancel={() => { setOpen(false); setEditing(null); }}
-                onSave={(v) => save.mutate(v)}
+                onCancel={() => { setOpen(false); setEditing(null); setRepeatShared(false); }}
+                onSave={(payload, action) => save.mutate({ payload, action, repeatShared })}
+                repeatShared={repeatShared}
+                onRepeatSharedChange={setRepeatShared}
                 saving={save.isPending}
               />
             </Dialog>
@@ -163,7 +183,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
                     <TableCell className="text-right">
-                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setRepeatShared(false); setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
                       {isAdmin && <Button size="icon" variant="ghost" aria-label={`Mover ${e.descricao} para a lixeira`} title="Mover para lixeira" onClick={() => { if (confirm("Mover dispositivo para a lixeira? Ele poderá ser restaurado por 15 dias.")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
                   </TableRow>
@@ -177,8 +197,13 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
   );
 }
 
-function EletronicoForm({ value, onCancel, onSave, saving }: {
-  value: Partial<Eletronico>; onCancel: () => void; onSave: (v: Partial<Eletronico>) => void; saving: boolean;
+function EletronicoForm({ value, onCancel, onSave, repeatShared, onRepeatSharedChange, saving }: {
+  value: Partial<Eletronico>;
+  onCancel: () => void;
+  onSave: (v: Partial<Eletronico>, action: SaveAction) => void;
+  repeatShared: boolean;
+  onRepeatSharedChange: (checked: boolean) => void;
+  saving: boolean;
 }) {
   const [v, setV] = useState<Partial<Eletronico>>(value);
   const [marcaPersonalizada, setMarcaPersonalizada] = useState(() => Boolean(value.marca?.trim() && !marcaDaLista(value.marca)));
@@ -187,7 +212,7 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
   return (
     <DialogContent className="max-w-2xl">
       <DialogHeader><DialogTitle>{v.id ? "Editar" : "Cadastrar"} dispositivo</DialogTitle></DialogHeader>
-      <form onSubmit={(e) => { e.preventDefault(); onSave(v); }} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={(e) => { e.preventDefault(); onSave(v, "close"); }} className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label>Tipo *</Label>
           <Select value={v.tipo ?? "celular"} onValueChange={(x) => set("tipo", x as Eletronico["tipo"])}>
@@ -247,9 +272,16 @@ function EletronicoForm({ value, onCancel, onSave, saving }: {
           <Label>Justificativa</Label>
           <Textarea rows={3} value={v.justificativa ?? ""} onChange={(e) => set("justificativa", e.target.value)} placeholder="Motivo apresentado na autorização de entrada/saída." />
         </div>
-        <DialogFooter className="sm:col-span-2 mt-2">
+        {!v.id && (
+          <div className="sm:col-span-2 flex items-center gap-2">
+            <Checkbox id="eletronico-repetir-dados" checked={repeatShared} onCheckedChange={(checked) => onRepeatSharedChange(checked === true)} />
+            <Label htmlFor="eletronico-repetir-dados" className="cursor-pointer font-normal">Repetir contato e justificativa no próximo dispositivo</Label>
+          </div>
+        )}
+        <DialogFooter className="sm:col-span-2 mt-2 flex-wrap">
           <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          {!v.id && <Button type="button" variant="outline" disabled={saving} onClick={() => onSave(v, "add-another")}>Salvar e cadastrar outro</Button>}
+          <Button type="submit" disabled={saving}>{saving ? "Salvando..." : v.id ? "Salvar" : "Salvar e fechar"}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

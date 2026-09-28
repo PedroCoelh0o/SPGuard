@@ -59,6 +59,7 @@ const guias: Guia[] = [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar. Selecione a marca na lista (ou escolha Outra marca para digitá-la) e preencha o modelo manualmente, além do tipo, descrição, IMEI, número de série, acessórios, justificativa e demais informações.",
+      "Se houver mais de um aparelho, use Salvar e cadastrar outro. A janela permanece aberta para o mesmo colaborador, mas limpa os dados do dispositivo anterior. Marque Repetir contato e justificativa se essas informações forem iguais; para terminar, use Salvar e fechar.",
       "O SPGuard bloqueia IMEI, número de série ou número de patrimônio/selo que já estejam vinculados a outro colaborador.",
       "Se quiser guardar o formulário de autorização, anexe o PDF normalmente na aba Documentos da ficha. O arquivo ficará vinculado ao colaborador, mas seus dados não serão preenchidos automaticamente.",
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",
