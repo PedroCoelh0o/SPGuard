@@ -92,7 +92,6 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
         setEditing({
           ...empty,
           tipo: payload.tipo ?? "celular",
-          descricao: `${colaboradorNome} - `,
           contato: keepShared ? payload.contato ?? "" : "",
           justificativa: keepShared ? payload.justificativa ?? "" : "",
         });
@@ -130,7 +129,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
           <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => { setRepeatShared(false); setEditing({ ...empty, descricao: `${colaboradorNome} - ` }); setFormSequence((sequence) => sequence + 1); }}>
+                <Button size="sm" onClick={() => { setRepeatShared(false); setEditing({ ...empty }); setFormSequence((sequence) => sequence + 1); }}>
                   <Plus className="h-4 w-4" /> Cadastrar
                 </Button>
               </DialogTrigger>
@@ -230,7 +229,7 @@ function EletronicoForm({ value, onCancel, onSave, repeatShared, onRepeatSharedC
         </div>
         <div className="sm:col-span-2">
           <Label>Descrição</Label>
-          <Input value={v.descricao ?? ""} onChange={(e) => set("descricao", e.target.value)} placeholder="Ex.: João Silva - Celular corporativo" />
+          <Input value={v.descricao ?? ""} onChange={(e) => set("descricao", e.target.value)} placeholder="Ex.: Pessoal ou corporativo" />
         </div>
         <div>
           <Label htmlFor="eletronico-marca">Marca</Label>

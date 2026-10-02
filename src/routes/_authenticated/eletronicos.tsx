@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Smartphone, Search, Eye, UserX, UserCheck, FileText, Trash2, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
+import { useSyncedTableScroll } from "@/hooks/useSyncedTableScroll";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -55,9 +56,9 @@ function EletronicosPage() {
   const [detalhes, setDetalhes] = useState<{ id: string; nome: string } | null>(null);
   const [excluindo, setExcluindo] = useState<{ id: string; nome: string } | null>(null);
   const [selecionados, setSelecionados] = useState<string[]>([]);
-  const [larguraTabela, setLarguraTabela] = useState(980);
   const tabelaRef = useRef<HTMLTableElement>(null);
   const barraTabelaRef = useRef<HTMLDivElement>(null);
+  const trilhoTabelaRef = useRef<HTMLDivElement>(null);
   const listaTabelaRef = useRef<HTMLDivElement>(null);
 
   const { data: empresas = [] } = useQuery({
@@ -160,7 +161,7 @@ function EletronicosPage() {
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [eletronicos, colabs, empresaSel, empresaMap, qd]);
 
-  const filtroAtivo = Boolean(qd || empresaSel !== "all");
+  const filtroAtivo = Boolean(q.trim() || empresaSel !== "all");
   const chaveFiltro = `${qd}|${empresaSel}`;
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(stats, COLABORADORES_POR_PAGINA, {
     hasMoreRemote: !!hasNextPage,
@@ -178,28 +179,7 @@ function EletronicosPage() {
     void fetchNextPage();
   }, [filtroAtivo, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  useEffect(() => {
-    const table = tabelaRef.current;
-    const tabelaRolavel = table?.parentElement;
-    const barraRolagem = barraTabelaRef.current;
-    if (!table || !tabelaRolavel || !barraRolagem) return;
-
-    const atualizarLargura = () => {
-      const largura = Math.max(980, table.scrollWidth);
-      setLarguraTabela((atual) => atual === largura ? atual : largura);
-      barraRolagem.scrollLeft = tabelaRolavel.scrollLeft;
-    };
-    const sincronizarTabela = () => { barraRolagem.scrollLeft = tabelaRolavel.scrollLeft; };
-    const sincronizarBarra = () => { tabelaRolavel.scrollLeft = barraRolagem.scrollLeft; };
-    const quadro = requestAnimationFrame(atualizarLargura);
-    tabelaRolavel.addEventListener("scroll", sincronizarTabela);
-    barraRolagem.addEventListener("scroll", sincronizarBarra);
-    return () => {
-      cancelAnimationFrame(quadro);
-      tabelaRolavel.removeEventListener("scroll", sincronizarTabela);
-      barraRolagem.removeEventListener("scroll", sincronizarBarra);
-    };
-  }, [shown, empresaSel]);
+  useSyncedTableScroll(listaTabelaRef, tabelaRef, barraTabelaRef, trilhoTabelaRef);
 
   const excluirSelecionados = useMutation({
     mutationFn: async () => {
@@ -276,7 +256,7 @@ function EletronicosPage() {
               : `Colaboradores da empresa "${empresaLabel(empresaSel)}" e seus eletrônicos autorizados.`}
           </p>
           <div ref={listaTabelaRef} className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
-            <Table ref={tabelaRef} className="min-w-[980px] whitespace-nowrap">
+            <Table ref={tabelaRef} containerClassName="overflow-visible" className="min-w-[980px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -336,7 +316,7 @@ function EletronicosPage() {
             </Table>
           </div>
           <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de eletrônicos" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
-            <div className="h-px" style={{ width: larguraTabela }} />
+            <div ref={trilhoTabelaRef} className="h-px" />
           </div>
           <p className="text-xs text-muted-foreground">Use a barra abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">

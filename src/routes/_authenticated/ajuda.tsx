@@ -38,6 +38,8 @@ const guias: Guia[] = [
       "Na ficha, clique na foto do colaborador para ampliá-la. Use Enviar foto ou Trocar foto para atualizar a imagem.",
       "Na ficha, use Exportar ficha PDF para gerar um documento individual com os dados, observações, eletrônicos e relação de documentos anexados.",
       "Use os botões CSV, XLSX ou PDF para exportar somente os colaboradores que aparecem na pesquisa atual.",
+      "Use a barra horizontal abaixo da tabela para chegar às últimas colunas e ao menu Ações (…). Ela acompanha o tamanho da janela e o menu lateral.",
+      "A lista mostra 200 colaboradores por vez. Role para baixo ou clique em Carregar mais para continuar. Ao limpar a pesquisa ou mudar os filtros, a exibição recomeça com até 200 registros, evitando carregar todas as linhas de uma vez.",
     ],
   },
   {
@@ -60,6 +62,7 @@ const guias: Guia[] = [
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar. Selecione a marca na lista (ou escolha Outra marca para digitá-la) e preencha o modelo manualmente, além do tipo, descrição, IMEI, número de série, acessórios, justificativa e demais informações.",
       "Se houver mais de um aparelho, use Salvar e cadastrar outro. A janela permanece aberta para o mesmo colaborador, mas limpa os dados do dispositivo anterior. Marque Repetir contato e justificativa se essas informações forem iguais; para terminar, use Salvar e fechar.",
+      "A Descrição de um novo dispositivo começa vazia. Preencha, por exemplo, Pessoal ou Corporativo; o nome do colaborador não é inserido automaticamente.",
       "O SPGuard bloqueia IMEI, número de série ou número de patrimônio/selo que já estejam vinculados a outro colaborador.",
       "Se quiser guardar o formulário de autorização, anexe o PDF normalmente na aba Documentos da ficha. O arquivo ficará vinculado ao colaborador, mas seus dados não serão preenchidos automaticamente.",
       "Use o ícone de autorização para alternar entre Autorizado e Revogado. Revogar não exclui os dispositivos.",

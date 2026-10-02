@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
+import { useSyncedTableScroll } from "@/hooks/useSyncedTableScroll";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,7 +62,6 @@ function ColabPage() {
   const [turnoFiltro, setTurnoFiltro] = useState("all");
   const [empresaFiltro, setEmpresaFiltro] = useState("all");
   const [pendenciaFiltro, setPendenciaFiltro] = useState("all");
-  const [larguraTabela, setLarguraTabela] = useState(1080);
   
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
@@ -69,7 +69,9 @@ function ColabPage() {
   const pendenciasVerificadas = useRef("");
   const tabelaRef = useRef<HTMLTableElement>(null);
   const barraTabelaRef = useRef<HTMLDivElement>(null);
+  const trilhoTabelaRef = useRef<HTMLDivElement>(null);
   const listaTabelaRef = useRef<HTMLDivElement>(null);
+  useSyncedTableScroll(listaTabelaRef, tabelaRef, barraTabelaRef, trilhoTabelaRef);
 
 
   const { data: empresas = [] } = useQuery({
@@ -224,7 +226,7 @@ function ColabPage() {
   }, [colabs, qd, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
 
 
-  const filtroAtivo = Boolean(qd || turnoFiltro !== "all" || empresaFiltro !== "all" || pendenciaFiltro !== "all");
+  const filtroAtivo = Boolean(q.trim() || turnoFiltro !== "all" || empresaFiltro !== "all" || pendenciaFiltro !== "all");
   const chaveFiltro = `${qd}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, COLABORADORES_POR_PAGINA, {
     hasMoreRemote: !!hasNextPage,
@@ -239,29 +241,6 @@ function ColabPage() {
     if (!filtroAtivo || !hasNextPage || isFetchingNextPage) return;
     void fetchNextPage();
   }, [filtroAtivo, hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  useEffect(() => {
-    const table = tabelaRef.current;
-    const tabelaRolavel = table?.parentElement;
-    const barraRolagem = barraTabelaRef.current;
-    if (!table || !tabelaRolavel || !barraRolagem) return;
-
-    const atualizarLargura = () => {
-      const largura = Math.max(1080, table.scrollWidth);
-      setLarguraTabela((atual) => atual === largura ? atual : largura);
-      barraRolagem.scrollLeft = tabelaRolavel.scrollLeft;
-    };
-    const sincronizarTabela = () => { barraRolagem.scrollLeft = tabelaRolavel.scrollLeft; };
-    const sincronizarBarra = () => { tabelaRolavel.scrollLeft = barraRolagem.scrollLeft; };
-    const quadro = requestAnimationFrame(atualizarLargura);
-    tabelaRolavel.addEventListener("scroll", sincronizarTabela);
-    barraRolagem.addEventListener("scroll", sincronizarBarra);
-    return () => {
-      cancelAnimationFrame(quadro);
-      tabelaRolavel.removeEventListener("scroll", sincronizarTabela);
-      barraRolagem.removeEventListener("scroll", sincronizarBarra);
-    };
-  }, [shown, isLoading]);
 
   return (
     <div className="space-y-6">
@@ -338,7 +317,7 @@ function ColabPage() {
             </Select>
           </div>
           <div ref={listaTabelaRef} className="max-h-[calc(100vh-24rem)] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
-            <Table ref={tabelaRef} className="min-w-[1080px] whitespace-nowrap">
+            <Table ref={tabelaRef} containerClassName="overflow-visible" className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -414,7 +393,7 @@ function ColabPage() {
             </Table>
           </div>
           <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
-            <div className="h-px" style={{ width: larguraTabela }} />
+            <div ref={trilhoTabelaRef} className="h-px" />
           </div>
           <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">

@@ -23,23 +23,29 @@ type InfiniteSliceOptions = {
 };
 
 export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: InfiniteSliceOptions = {}) {
-  const [count, setCount] = useState(pageSize);
+  const resetKey = options.resetKey ?? items;
+  const [slice, setSlice] = useState({ key: resetKey, pageSize, count: pageSize });
+  const isResetting = slice.key !== resetKey || slice.pageSize !== pageSize;
+  // A primeira renderização da nova busca já respeita o limite de linhas.
+  const count = isResetting ? pageSize : slice.count;
   const node = useRef<HTMLElement | null>(null);
 
   // reinicia quando a lista muda (nova busca/filtro)
   useEffect(() => {
-    setCount(pageSize);
-  }, [options.resetKey ?? items, pageSize]);
+    setSlice({ key: resetKey, pageSize, count: pageSize });
+    const root = options.scrollRootRef?.current;
+    if (root) root.scrollTop = 0;
+  }, [resetKey, pageSize, options.scrollRootRef]);
 
   const hasMore = count < items.length || !!options.hasMoreRemote;
 
   const loadMore = useCallback(() => {
     if (count < items.length) {
-      setCount((c) => Math.min(c + pageSize, items.length));
+      setSlice({ key: resetKey, pageSize, count: Math.min(count + pageSize, items.length) });
     } else if (options.hasMoreRemote && !options.loadingRemote) {
       options.onReachEnd?.();
     }
-  }, [count, items.length, options.hasMoreRemote, options.loadingRemote, options.onReachEnd, pageSize]);
+  }, [count, resetKey, items.length, options.hasMoreRemote, options.loadingRemote, options.onReachEnd, pageSize]);
 
   const sentinelRef = useCallback(
     (el: HTMLElement | null) => {
@@ -50,16 +56,17 @@ export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: Infinite
 
   useEffect(() => {
     const el = node.current;
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    if (!el || isResetting || !hasMore || typeof IntersectionObserver === "undefined") return;
+    let active = true;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) loadMore();
+        if (active && entries.some((e) => e.isIntersecting)) loadMore();
       },
       { root: options.scrollRootRef?.current ?? null, rootMargin: "300px" },
     );
     io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore, count, items, options.scrollRootRef]);
+    return () => { active = false; io.disconnect(); };
+  }, [hasMore, isResetting, loadMore, count, items, options.scrollRootRef]);
 
   const visible = useMemo(() => items.slice(0, count), [items, count]);
   return { visible, hasMore, loadMore, sentinelRef, shown: visible.length, total: items.length };
