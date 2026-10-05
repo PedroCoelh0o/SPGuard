@@ -48,6 +48,7 @@ import {
   unlockProtection,
 } from "@/lib/ocorrencias-crypto";
 import { exportOcorrenciaPDF } from "@/lib/export-ocorrencia";
+import { grausOcorrencia, grauOcorrenciaLabel, correspondeGrauOcorrencia, type GrauOcorrencia } from "@/lib/ocorrencia-grau";
 
 export const Route = createFileRoute("/_authenticated/ocorrencias")({ component: Ocorrencias });
 
@@ -69,6 +70,7 @@ type Occurrence = {
   ponto_referencia?: string;
   coordenadas?: string;
   categoria: string;
+  grau?: GrauOcorrencia | null;
   status: "Em análise" | "Encaminhada" | "Encerrada" | "Arquivada";
   relato: string;
   encaminhamentos: string;
@@ -112,6 +114,7 @@ const emptyOccurrence = (): Occurrence => ({
   ponto_referencia: "",
   coordenadas: "",
   categoria: "",
+  grau: null,
   status: "Em análise",
   relato: "",
   encaminhamentos: "",
@@ -152,6 +155,7 @@ function Ocorrencias() {
   const [newOpen, setNewOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("ativos");
+  const [grauFilter, setGrauFilter] = useState("todos");
   const [draft, setDraft] = useState<Occurrence>(emptyOccurrence);
   const [personDraft, setPersonDraft] = useState<Person>({
     id: "",
@@ -327,12 +331,13 @@ function Ocorrencias() {
           `${item.protocolo} ${item.local} ${item.categoria} ${item.relato}`.toLowerCase();
         return (
           (!filter || text.includes(filter.toLowerCase())) &&
+          correspondeGrauOcorrencia(item.grau, grauFilter) &&
           (statusFilter === "todos" || statusFilter === "ativos"
             ? statusFilter !== "ativos" || item.status !== "Arquivada"
             : item.status === statusFilter)
         );
       }),
-    [items, filter, statusFilter],
+    [items, filter, statusFilter, grauFilter],
   );
   const stats = useMemo(
     () =>
@@ -567,6 +572,9 @@ function Ocorrencias() {
         historico: [
           ...selectedItem.historico,
           { data: now(), texto: "Informações gerais editadas" },
+          ...(grauOcorrenciaLabel(editDraft.grau) !== grauOcorrenciaLabel(selectedItem.grau)
+            ? [{ data: now(), texto: `Grau alterado de ${grauOcorrenciaLabel(selectedItem.grau)} para ${grauOcorrenciaLabel(editDraft.grau)}` }]
+            : []),
         ],
       });
       setEditing(false);
@@ -660,7 +668,7 @@ function Ocorrencias() {
         <Metric title="Arquivadas" total={items.filter((i) => i.status === "Arquivada").length} />
       </div>
       <Card>
-        <CardContent className="p-4 grid gap-3 md:grid-cols-[1fr_200px]">
+        <CardContent className="p-4 grid gap-3 md:grid-cols-[1fr_200px_200px]">
           <div className="relative">
             <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
             <Input
@@ -684,6 +692,14 @@ function Ocorrencias() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={grauFilter} onValueChange={setGrauFilter}>
+            <SelectTrigger aria-label="Filtrar pelo grau da ocorrência"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os graus</SelectItem>
+              <SelectItem value="Não informado">Não informado</SelectItem>
+              {grausOcorrencia.map((grau) => <SelectItem key={grau} value={grau}>{grau}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
       <div className="space-y-5">
@@ -701,18 +717,19 @@ function Ocorrencias() {
                     <th className="p-3 font-medium">Categoria</th>
                     <th className="p-3 font-medium">Envolvido</th>
                     <th className="p-3 font-medium">Status</th>
+                    <th className="p-3 font-medium">Grau</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="p-4 text-muted-foreground" colSpan={5}>
+                      <td className="p-4 text-muted-foreground" colSpan={6}>
                         Carregando…
                       </td>
                     </tr>
                   ) : shown.length === 0 ? (
                     <tr>
-                      <td className="p-4 text-muted-foreground" colSpan={5}>
+                      <td className="p-4 text-muted-foreground" colSpan={6}>
                         Nenhuma ocorrência encontrada.
                       </td>
                     </tr>
@@ -739,6 +756,7 @@ function Ocorrencias() {
                         <td className="p-3">
                           <StatusBadge status={item.status} />
                         </td>
+                        <td className="p-3"><GrauBadge grau={item.grau} /></td>
                       </tr>
                     ))
                   )}
@@ -898,6 +916,7 @@ function Ocorrencias() {
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 text-sm">
                     <Info label="Categoria" value={selectedItem.categoria} />
+                    <Info label="Grau da ocorrência" value={grauOcorrenciaLabel(selectedItem.grau)} />
                     <Info label="Local" value={selectedItem.local} />
                     <Info label="Área" value={selectedItem.area ?? ""} />
                     <Info label="Setor" value={selectedItem.setor_local ?? ""} />
@@ -1440,6 +1459,17 @@ function Metric({ title, total }: { title: string; total: number }) {
     </Card>
   );
 }
+function GrauBadge({ grau }: { grau: Occurrence["grau"] }) {
+  const label = grauOcorrenciaLabel(grau);
+  const styles = {
+    Baixo: "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    Médio: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    Alto: "border-red-500/50 bg-red-500/15 text-red-700 dark:text-red-300",
+    "Não informado": "text-muted-foreground",
+  };
+  return <Badge variant="outline" className={`whitespace-nowrap ${styles[label]}`}>{label}</Badge>;
+}
+
 function StatusBadge({ status }: { status: Occurrence["status"] }) {
   const styles: Record<Occurrence["status"], string> = {
     "Em análise": "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
@@ -1495,6 +1525,17 @@ function OccurrenceForm({
             <option value={c} key={c} />
           ))}
         </datalist>
+      </div>
+      <div>
+        <Label htmlFor="ocorrencia-grau">Grau da ocorrência</Label>
+        <Select value={grauOcorrenciaLabel(value.grau)} onValueChange={(grau) => onChange({ ...value, grau: grau === "Não informado" ? null : grau as GrauOcorrencia })}>
+          <SelectTrigger id="ocorrencia-grau"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Não informado">Não informado</SelectItem>
+            {grausOcorrencia.map((grau) => <SelectItem key={grau} value={grau}>{grau}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <p className="mt-1 text-xs text-muted-foreground">Classifique a gravidade: Baixo, Médio ou Alto. O grau é independente do status.</p>
       </div>
       <div>
         <Label>Área</Label>

@@ -103,6 +103,8 @@ const guias: Guia[] = [
       "Na ficha da ocorrência, vincule uma ou mais pessoas, identifique o tipo de vínculo e inclua a foto quando necessário. Clique na foto para ampliá-la e use o ícone de lápis para editar os dados dessa pessoa.",
       "Anexe imagens, PDFs e outros arquivos como evidência. Imagens e PDFs podem ser visualizados dentro do SPGuard; use o ícone de lixeira para excluir um arquivo após confirmar a ação.",
       "Use o status Em análise, Encaminhada, Encerrada ou Arquivada. Arquivar preserva o registro, apenas o remove da lista ativa; escolha Arquivadas ou Todas no filtro para encontrá-lo e reabri-lo.",
+      "No cadastro ou em Editar ocorrência, escolha o Grau da ocorrência: Baixo (verde), Médio (amarelo) ou Alto (vermelho). Essa classificação de gravidade é independente do status. Registros antigos aparecem como Não informado até serem classificados.",
+      "A lista mostra a etiqueta de grau e permite combinar o filtro de grau com a pesquisa e o status. Mudanças de grau ficam registradas no histórico; a classificação acompanha o PDF, os backups e a sincronização local.",
       "Use Exportar PDF para gerar a ficha da ocorrência. Antes de gerar, escolha se deseja incluir fotos das pessoas e/ou imagens de evidências; documentos não visuais continuam relacionados no PDF.",
       "Os gráficos mostram somente contagens de ocorrências por categoria e situação.",
       "Se esquecer a senha, use Esqueci minha senha na tela de acesso ou Alterar senha dentro da aba. Informe a palavra de recuperação e defina uma nova senha: os registros e anexos serão preservados.",
