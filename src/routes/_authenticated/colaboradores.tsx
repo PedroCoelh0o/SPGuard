@@ -66,6 +66,14 @@ function ColabPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
+  const retornoFichaRef = useRef<Colab | null>(null);
+  const fecharEdicao = (atualizado?: Partial<Colab>) => {
+    setOpen(false);
+    setEditing(null);
+    const ficha = retornoFichaRef.current;
+    retornoFichaRef.current = null;
+    if (ficha) setDetalhes({ ...ficha, ...atualizado });
+  };
   const pendenciasVerificadas = useRef("");
   const tabelaRef = useRef<HTMLTableElement>(null);
   const barraTabelaRef = useRef<HTMLDivElement>(null);
@@ -171,12 +179,14 @@ function ColabPage() {
         const resolvidoEm = new Date().toISOString();
         if (cpf) await supabase.from("pendencias_cadastro").update({ resolvido_em: resolvidoEm } as never).eq("colaborador_id", id).eq("campo", "cpf");
         if (String(clean.matricula ?? "").trim()) await supabase.from("pendencias_cadastro").update({ resolvido_em: resolvidoEm } as never).eq("colaborador_id", id).eq("campo", "matricula");
+        const { data } = await supabase.from("colaboradores").select("*").eq("id", id);
+        return ((data ?? [])[0] ?? { id, ...clean }) as Partial<Colab>;
       } else {
         const { error } = await supabase.from("colaboradores").insert(clean as unknown as { nome: string; empresa_id: string });
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (atualizado) => {
       toast.success("Colaborador salvo");
       qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
@@ -184,8 +194,8 @@ function ColabPage() {
       qc.invalidateQueries({ queryKey: ["eletronicos-paginados"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
       qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
-      setOpen(false);
-      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["colaborador-contato"] });
+      fecharEdicao(atualizado);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -267,13 +277,13 @@ function ColabPage() {
           {canWrite && (
             <>
               <ImportarColaboradores empresas={empresas} onDone={() => { qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] }); qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
-              <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <Dialog open={open} onOpenChange={(v) => { if (v) setOpen(true); else if (!save.isPending) fecharEdicao(); }}>
                 <DialogTrigger asChild>
                   <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
                     <Plus className="h-4 w-4" /> Novo colaborador
                   </Button>
                 </DialogTrigger>
-                <ColabForm key={editing?.id ?? "new"} empresas={empresas} value={editing ?? empty} onCancel={() => setOpen(false)} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+                <ColabForm key={editing?.id ?? "new"} empresas={empresas} value={editing ?? empty} onCancel={() => fecharEdicao()} onSave={(v) => save.mutate(v)} saving={save.isPending} />
               </Dialog>
             </>
           )}
@@ -421,7 +431,13 @@ function ColabPage() {
           </div>
         </CardContent>
       </Card>
-      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} />
+      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} onEdit={canWrite ? () => {
+        if (!detalhes) return;
+        retornoFichaRef.current = detalhes;
+        setEditing(detalhes);
+        setDetalhes(null);
+        setOpen(true);
+      } : undefined} />
     </div>
   );
 }
@@ -517,7 +533,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           </TabsContent>
         </Tabs>
         <DialogFooter className="mt-6">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>Cancelar</Button>
           <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </form>

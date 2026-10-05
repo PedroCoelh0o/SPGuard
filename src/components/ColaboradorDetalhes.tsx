@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye, FileDown } from "lucide-react";
+import { Upload, Download, Trash2, Camera, FileText, Loader2, Eye, FileDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { EletronicosTab } from "@/components/EletronicosTab";
@@ -61,8 +61,8 @@ function Field({ label, value, pendente }: { label: string; value: React.ReactNo
   );
 }
 
-export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, defaultTab = "pessoal", pendencias = [] }: {
-  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; defaultTab?: "pessoal" | "eletr"; pendencias?: PendenciaCadastro[];
+export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, onEdit, defaultTab = "pessoal", pendencias = [] }: {
+  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; onEdit?: () => void; defaultTab?: "pessoal" | "eletr"; pendencias?: PendenciaCadastro[];
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();
@@ -285,9 +285,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, d
               </Badge>
               {empresaLabel && <span className="text-sm text-muted-foreground">{empresaLabel}</span>}
             </div>
+            <div className="flex flex-wrap gap-2">
+            {canWrite && onEdit && <Button type="button" size="sm" variant="outline" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar</Button>}
             <Button size="sm" variant="outline" onClick={exportFicha} disabled={exportingFicha || isLoading}>
               <FileDown className="h-4 w-4" /> {exportingFicha ? "Gerando ficha..." : "Exportar ficha PDF"}
             </Button>
+            </div>
           </div>
         </div>
 
