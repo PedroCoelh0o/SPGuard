@@ -52,6 +52,10 @@ function sexoLabel(s: string | null) {
 
 type PendenciaCadastro = { campo: "cpf" | "matricula"; valor_original: string | null; motivo: string };
 
+function focarPainel(node: HTMLDivElement | null) {
+  node?.focus({ preventScroll: true });
+}
+
 function Field({ label, value, pendente }: { label: string; value: React.ReactNode; pendente?: boolean }) {
   return (
     <div className={pendente ? "rounded-md border border-amber-500/70 bg-amber-500/10 p-2 -m-2" : undefined}>
@@ -61,8 +65,8 @@ function Field({ label, value, pendente }: { label: string; value: React.ReactNo
   );
 }
 
-export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, onEdit, defaultTab = "pessoal", pendencias = [] }: {
-  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; onEdit?: () => void; defaultTab?: "pessoal" | "eletr"; pendencias?: PendenciaCadastro[];
+export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, onEdit, editor, defaultTab = "pessoal", pendencias = [] }: {
+  colab: Colab | null; empresaLabel?: string; open: boolean; onOpenChange: (v: boolean) => void; onEdit?: () => void; editor?: React.ReactNode; defaultTab?: "pessoal" | "eletr"; pendencias?: PendenciaCadastro[];
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();
@@ -226,6 +230,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, o
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div key={editor ? "editar" : "visualizar"} tabIndex={-1} ref={focarPainel} className="space-y-4 outline-none motion-safe:animate-in motion-safe:fade-in-90 motion-safe:slide-in-from-right-1 motion-safe:duration-200">
+        {editor ? editor : <>
         <DialogHeader>
           <DialogTitle>Ficha do colaborador</DialogTitle>
           <DialogDescription>Dados completos, documentos e foto</DialogDescription>
@@ -419,6 +425,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, o
             </CardContent></Card>
           </TabsContent>
         </Tabs>
+        </>}
+        </div>
       </DialogContent>
 
       <AlertDialog open={!!docToDelete} onOpenChange={(value) => { if (!value && !deletingDoc) setDocToDelete(null); }}>

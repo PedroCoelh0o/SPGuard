@@ -67,9 +67,11 @@ function ColabPage() {
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
   const retornoFichaRef = useRef<Colab | null>(null);
+  const [editandoFicha, setEditandoFicha] = useState(false);
   const fecharEdicao = (atualizado?: Partial<Colab>) => {
     setOpen(false);
     setEditing(null);
+    setEditandoFicha(false);
     const ficha = retornoFichaRef.current;
     retornoFichaRef.current = null;
     if (ficha) setDetalhes({ ...ficha, ...atualizado });
@@ -431,25 +433,28 @@ function ColabPage() {
           </div>
         </CardContent>
       </Card>
-      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => { if (!v) setDetalhes(null); }} onEdit={canWrite ? () => {
+      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} pendencias={detalhes ? pendenciasPorColaborador.get(detalhes.id) : []} open={!!detalhes} onOpenChange={(v) => {
+        if (v || save.isPending) return;
+        if (editandoFicha) fecharEdicao();
+        else setDetalhes(null);
+      }} editor={editandoFicha ? <ColabForm embedded key={editing?.id} empresas={empresas} value={editing ?? empty} onCancel={() => fecharEdicao()} onSave={(v) => save.mutate(v)} saving={save.isPending} /> : undefined} onEdit={canWrite ? () => {
         if (!detalhes) return;
         retornoFichaRef.current = detalhes;
         setEditing(detalhes);
-        setDetalhes(null);
-        setOpen(true);
+        setEditandoFicha(true);
       } : undefined} />
     </div>
   );
 }
 
-function ColabForm({ empresas, value, onCancel, onSave, saving }: {
+function ColabForm({ empresas, value, onCancel, onSave, saving, embedded = false }: {
   empresas: { id: string; razao_social: string; nome_fantasia: string | null }[];
-  value: Partial<Colab>; onCancel: () => void; onSave: (v: Partial<Colab>) => void; saving: boolean;
+  value: Partial<Colab>; onCancel: () => void; onSave: (v: Partial<Colab>) => void; saving: boolean; embedded?: boolean;
 }) {
   const [v, setV] = useState<Partial<Colab>>(value);
   const set = (k: keyof Colab, val: string) => setV((p) => ({ ...p, [k]: val }));
-  return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+  const content = (
+    <>
       <DialogHeader><DialogTitle>{v.id ? "Editar" : "Novo"} colaborador</DialogTitle></DialogHeader>
       <form onSubmit={(e) => { e.preventDefault(); onSave(v); }}>
         <Tabs defaultValue="pessoal">
@@ -537,6 +542,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving }: {
           <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </form>
-    </DialogContent>
+    </>
   );
+  return embedded ? content : <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">{content}</DialogContent>;
 }
