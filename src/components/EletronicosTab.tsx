@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPhone } from "@/lib/format";
+import { contatoDoColaborador } from "@/lib/colaborador-contato";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,6 +58,15 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
   const [formSequence, setFormSequence] = useState(0);
   const [repeatShared, setRepeatShared] = useState(false);
 
+  const { data: telefoneColaborador = "", isLoading: carregandoContato } = useQuery({
+    queryKey: ["colaborador-contato", colaboradorId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("colaboradores").select("telefone,celular").eq("id", colaboradorId);
+      if (error) throw error;
+      return contatoDoColaborador((data ?? [])[0] as { telefone?: string | null; celular?: string | null } | undefined);
+    },
+  });
+
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["eletronicos", colaboradorId],
     queryFn: async () => {
@@ -92,7 +102,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
         setEditing({
           ...empty,
           tipo: payload.tipo ?? "celular",
-          contato: keepShared ? payload.contato ?? "" : "",
+          contato: keepShared ? payload.contato ?? "" : telefoneColaborador,
           justificativa: keepShared ? payload.justificativa ?? "" : "",
         });
         setFormSequence((sequence) => sequence + 1);
@@ -129,7 +139,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
           <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => { setRepeatShared(false); setEditing({ ...empty }); setFormSequence((sequence) => sequence + 1); }}>
+                <Button size="sm" disabled={carregandoContato} onClick={() => { setRepeatShared(false); setEditing({ ...empty, contato: telefoneColaborador }); setFormSequence((sequence) => sequence + 1); }}>
                   <Plus className="h-4 w-4" /> Cadastrar
                 </Button>
               </DialogTrigger>

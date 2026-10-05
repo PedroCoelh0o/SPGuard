@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { migrateElectronicContacts } from "./eletronicos-contato-migration";
 
 // ---------------------------------------------------------------------------
 // Localização dos arquivos (banco + documentos anexados)
@@ -38,6 +39,7 @@ function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
   ensureSchemaMigrations(db);
+  migrateElectronicContacts(db);
   dbInstance = db;
   return db;
 }
