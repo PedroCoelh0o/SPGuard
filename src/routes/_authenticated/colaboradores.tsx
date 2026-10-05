@@ -337,7 +337,26 @@ function ColabPage() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow>
                 ) : visible.map((c) => (
-                  <TableRow key={c.id} className={pendenciasPorColaborador.has(c.id) ? "group bg-amber-500/5 hover:bg-amber-500/10" : "group"}>
+                  <TableRow
+                    key={c.id}
+                    tabIndex={0}
+                    aria-label={`Visualizar ficha de ${c.nome}`}
+                    title="Clique para visualizar a ficha do colaborador"
+                    onClick={(event) => {
+                      if (event.defaultPrevented || event.button !== 0) return;
+                      if ((event.target as Element).closest("button, a, input, textarea, select, [role='button'], [role='menuitem'], [role='dialog'], [data-row-actions]")) return;
+                      if (window.getSelection()?.toString().trim()) return;
+                      setDetalhes(c);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || event.defaultPrevented || event.repeat) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setDetalhes(c);
+                      }
+                    }}
+                    className={`cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${pendenciasPorColaborador.has(c.id) ? "group bg-amber-500/5 hover:bg-amber-500/10" : "group hover:bg-accent/50"}`}
+                  >
                     <TableCell className="font-medium"><div className="flex items-center gap-2">{c.nome}{pendenciasPorColaborador.has(c.id) && <Badge title={pendenciasPorColaborador.get(c.id)?.map((p) => p.motivo).join(" · ")} className="bg-amber-500 text-black">Pendente de conferência</Badge>}</div></TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
@@ -351,7 +370,7 @@ function ColabPage() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="w-16 min-w-16 text-center">
+                    <TableCell data-row-actions className="w-16 min-w-16 cursor-default text-center" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="icon" variant="ghost" aria-label={`Abrir ações de ${c.nome}`} title="Ações"><MoreHorizontal className="h-4 w-4" /></Button>
@@ -395,7 +414,7 @@ function ColabPage() {
           <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de colaboradores" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
             <div ref={trilhoTabelaRef} className="h-px" />
           </div>
-          <p className="text-xs text-muted-foreground">Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>
+          <p className="text-xs text-muted-foreground">Clique nas informações da linha para visualizar a ficha. Use a barra fixa abaixo da tabela para visualizar os demais dados. Em Ações, clique em <strong>…</strong> para abrir as opções do colaborador.</p>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es) carregado(s)`}</span>
             {hasMore && <Button variant="outline" size="sm" disabled={isFetchingNextPage} onClick={loadMore}>{isFetchingNextPage ? "Carregando..." : "Carregar mais"}</Button>}

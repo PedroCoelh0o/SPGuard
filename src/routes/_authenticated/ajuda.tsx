@@ -35,6 +35,7 @@ const guias: Guia[] = [
       "Na aba Observações, registre informações importantes que devem acompanhar o colaborador.",
       "O CPF informado é conferido antes de salvar. O sistema avisa se estiver inválido ou se já pertencer a outro colaborador.",
       "Abra o ícone de olho para consultar a ficha, anexar documentos, visualizar anexos e conferir eletrônicos vinculados.",
+      "Na lista de Colaboradores, clique em qualquer informação da linha para abrir a ficha em visualização. Pelo teclado, use Tab para focar a linha e Enter ou Espaço para abri-la. O menu Ações (…) funciona separadamente; editar, copiar ou mover para a lixeira não abre a ficha automaticamente. Selecionar um texto da linha para copiá-lo também não abre a ficha.",
       "Na ficha, clique na foto do colaborador para ampliá-la. Use Enviar foto ou Trocar foto para atualizar a imagem.",
       "Na ficha, use Exportar ficha PDF para gerar um documento individual com os dados, observações, eletrônicos e relação de documentos anexados.",
       "Use os botões CSV, XLSX ou PDF para exportar somente os colaboradores que aparecem na pesquisa atual.",
