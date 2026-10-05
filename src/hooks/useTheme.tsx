@@ -14,8 +14,21 @@ export function useTheme() {
 
   useEffect(() => {
     const root = document.documentElement;
+    // Change backgrounds and text together: component hover transitions must
+    // not leave the old text color briefly on a background from the new theme.
+    root.classList.add("theme-changing");
+    void root.offsetWidth;
     root.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
+    let nextFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      nextFrame = requestAnimationFrame(() => root.classList.remove("theme-changing"));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(nextFrame);
+      root.classList.remove("theme-changing");
+    };
   }, [theme]);
 
   useEffect(() => {

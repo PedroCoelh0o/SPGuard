@@ -143,6 +143,14 @@
   }
 }
 
+/* Apply both sides of the theme change in the same paint. Normal hover and
+   sidebar transitions resume as soon as the new theme has been painted. */
+.theme-changing *,
+.theme-changing *::before,
+.theme-changing *::after {
+  transition: none !important;
+}
+
 .welcome-splash {
   align-items: center;
   background:
