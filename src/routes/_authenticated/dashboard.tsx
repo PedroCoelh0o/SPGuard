@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { agruparEletronicosPorSetor } from "@/lib/eletronicos-por-setor";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,20 +49,20 @@ function Dashboard() {
   const [eletEmpresa, setEletEmpresa] = useState<string>("all");
 
 
-  const { data } = useQuery({
+  const { data, isLoading: carregandoPessoas, error: erroPessoas } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
       const [emp, col] = await Promise.all([
         supabase.from("empresas").select("id, razao_social, nome_fantasia, status"),
-        fetchAllRows<{ id: string; empresa_id: string; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null; eletronicos_autorizado: boolean }>(
-          () => supabase.from("colaboradores").select("id, empresa_id, cargo, cidade, status, data_admissao, data_desligamento, eletronicos_autorizado").order("id") as never,
+        fetchAllRows<{ id: string; empresa_id: string; setor: string | null; cargo: string | null; cidade: string | null; status: string; data_admissao: string | null; data_desligamento: string | null; eletronicos_autorizado: boolean }>(
+          () => supabase.from("colaboradores").select("id, empresa_id, setor, cargo, cidade, status, data_admissao, data_desligamento, eletronicos_autorizado").order("id") as never,
         ),
       ]);
       return { empresas: (emp.data ?? []).filter((e) => e.status === "ativa"), colaboradores: col };
     },
   });
 
-  const { data: eletronicos = [] } = useQuery({
+  const { data: eletronicos = [], isLoading: carregandoAparelhos, error: erroAparelhos } = useQuery({
     queryKey: ["dashboard-eletronicos"],
     queryFn: async () => {
       return await fetchAllRows<{ tipo: "celular" | "notebook" | "tablet"; colaborador_id: string }>(
@@ -107,6 +108,8 @@ function Dashboard() {
     [empresas],
   );
   const empresasChartHeight = Math.max(320, porEmpresa.length * 38);
+  const porSetor = useMemo(() => agruparEletronicosPorSetor(colabs, eletronicosAtivos), [colabs, eletronicosAtivos]);
+  const setoresChartHeight = Math.max(120, porSetor.length * 38 + 40);
 
 
 
@@ -179,6 +182,29 @@ function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
           </div>
+        </ChartCard>
+        <ChartCard title="Eletrônicos por Setor" className="lg:col-span-2">
+          <p className="mb-4 text-sm text-muted-foreground">Quantidade de aparelhos com autorização não revogada, pelo setor da ficha. Inclui celulares, notebooks e tablets de todas as empresas.</p>
+          {carregandoPessoas || carregandoAparelhos ? (
+            <p className="py-8 text-center text-muted-foreground" role="status">Carregando eletrônicos por setor…</p>
+          ) : erroPessoas || erroAparelhos ? (
+            <p className="py-8 text-center text-destructive" role="alert">Não foi possível carregar o gráfico. Tente abrir o Dashboard novamente.</p>
+          ) : porSetor.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">Nenhum eletrônico com autorização vigente para exibir.</p>
+          ) : (
+            <div className="max-h-[620px] overflow-y-auto pr-2" aria-label="Quantidade de eletrônicos por setor">
+              <ResponsiveContainer width="100%" height={setoresChartHeight}>
+                <BarChart data={porSetor} layout="vertical" margin={{ left: 16, right: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} />
+                  <XAxis type="number" domain={[0, "auto"]} allowDecimals={false} tick={axisTick} />
+                  <YAxis type="category" dataKey="name" tick={axisTick} width={150} interval={0} tickFormatter={(name: string) => name.length > 23 ? `${name.slice(0, 22)}…` : name} />
+                  <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{ fill: chartText, opacity: 0.1 }} />
+                  <Bar dataKey="total" name="Aparelhos" barSize={28} fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">Sem setor: aparelhos de colaboradores sem setor informado. Passe o mouse nas barras para ver o setor completo e a quantidade.</p>
         </ChartCard>
         <ChartCard title="Admissões x Desligamentos (últimos 6 meses)" className="lg:col-span-2">
 

@@ -24,6 +24,16 @@ type Guia = { icon: typeof Users; titulo: string; descricao: string; passos: str
 
 const guias: Guia[] = [
   {
+    icon: Info,
+    titulo: "Dashboard",
+    descricao: "Acompanhe os indicadores e gráficos dos dados locais.",
+    passos: [
+      "Eletrônicos por Setor mostra a quantidade de aparelhos, não a quantidade de pessoas. Cada celular, notebook ou tablet conta uma vez no setor atual da ficha do colaborador.",
+      "Assim como os indicadores de eletrônicos, o gráfico não inclui autorizações revogadas. Aparelhos de fichas sem setor informado aparecem em Sem setor. O gráfico considera todas as empresas; o seletor de empresa do gráfico Eletrônicos por tipo não altera este gráfico.",
+      "As barras aparecem da maior para a menor quantidade. Passe o mouse para conferir o setor completo e o total. Quando há muitos setores, role dentro do gráfico para ver os demais.",
+    ],
+  },
+  {
     icon: Users,
     titulo: "Colaboradores",
     descricao: "Cadastre e mantenha as fichas dos colaboradores atualizadas.",
