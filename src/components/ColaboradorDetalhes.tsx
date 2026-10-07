@@ -347,8 +347,8 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, o
           <TabsContent value="contato">
             <Card><CardContent className="p-4">
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Telefone" value={colab.telefone} />
-                <Field label="Celular" value={colab.celular} />
+                <Field label="Celular 01" value={colab.telefone} />
+                <Field label="Celular 02" value={colab.celular} />
                 <Field label="E-mail" value={colab.email} />
               </dl>
             </CardContent></Card>

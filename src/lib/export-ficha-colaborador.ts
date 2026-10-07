@@ -134,7 +134,7 @@ export function exportFichaColaboradorPDF(
     startY: y,
     theme: "grid",
     body: [
-      ["Telefone", text(colaborador.telefone), "Celular", text(colaborador.celular)],
+      ["Celular 01", text(colaborador.telefone), "Celular 02", text(colaborador.celular)],
       ["E-mail", text(colaborador.email), "CEP", text(colaborador.cep)],
       ["Endereço", text([colaborador.rua, colaborador.numero].filter(Boolean).join(", ")), "Bairro", text(colaborador.bairro)],
       ["Cidade / UF", text([colaborador.cidade, colaborador.estado].filter(Boolean).join(" - ")), "", ""],

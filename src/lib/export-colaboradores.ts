@@ -98,7 +98,7 @@ export async function exportColaboradoresCSV(
   const anexos = await fetchAnexosCount(colabs.map((c) => c.id));
   const headers = [
     "Nome", "Empresa", "CPF", "Matrícula", "Cargo", "Cidade", "UF",
-    "E-mail", "Telefone", "Admissão", "Desligamento", "Situação", "Anexos",
+    "E-mail", "Celular 01", "Celular 02", "Admissão", "Desligamento", "Situação", "Anexos",
   ];
   const rows = colabs.map((c) => [
     c.nome,
@@ -109,7 +109,8 @@ export async function exportColaboradoresCSV(
     c.cidade ?? "",
     c.estado ?? "",
     c.email ?? "",
-    c.telefone ?? c.celular ?? "",
+    c.telefone ?? "",
+    c.celular ?? "",
     formatDate(c.data_admissao),
     formatDate(c.data_desligamento ?? null),
     c.status === "ativo" ? "Ativo" : "Desligado",
@@ -240,7 +241,7 @@ export async function exportColaboradoresXLSX(
   const anexos = await fetchAnexosCount(colabs.map((c) => c.id));
   const headers = [
     "Nome", "Empresa", "CPF", "Matrícula", "Cargo", "Cidade", "UF",
-    "E-mail", "Telefone", "Admissão", "Desligamento", "Situação", "Anexos",
+    "E-mail", "Celular 01", "Celular 02", "Admissão", "Desligamento", "Situação", "Anexos",
   ];
   const rows = colabs.map((c) => [
     c.nome,
@@ -251,7 +252,8 @@ export async function exportColaboradoresXLSX(
     c.cidade ?? "",
     c.estado ?? "",
     c.email ?? "",
-    c.telefone ?? c.celular ?? "",
+    c.telefone ?? "",
+    c.celular ?? "",
     formatDate(c.data_admissao),
     formatDate(c.data_desligamento ?? null),
     c.status === "ativo" ? "Ativo" : "Desligado",
@@ -268,7 +270,7 @@ export async function exportColaboradoresXLSX(
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [
     { wch: 32 }, { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 22 },
-    { wch: 18 }, { wch: 6 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
+    { wch: 18 }, { wch: 6 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 12 },
     { wch: 12 }, { wch: 12 }, { wch: 8 },
   ];
   const wb = XLSX.utils.book_new();

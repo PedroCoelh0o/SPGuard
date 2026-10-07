@@ -48,7 +48,7 @@ type Row = {
 const HEADERS = [
   "nome","cpf","rg","matricula","empresa","setor","cargo","escolaridade","data_nascimento","sexo",
   "data_admissao","data_desligamento","motivo_desligamento","observacoes","status",
-  "telefone","celular","email","cep","rua","numero","bairro","cidade","estado",
+  "Celular 01","Celular 02","email","cep","rua","numero","bairro","cidade","estado",
 ];
 
 function norm(s: unknown) {
@@ -192,8 +192,8 @@ export function ImportarColaboradores({ empresas, onDone }: { empresas: Empresa[
         motivo_desligamento: String(get("motivo_desligamento") ?? "").trim() || null,
         observacoes: String(get("observacoes") ?? "").trim() || null,
         status: status === "desligado" ? "desligado" : "ativo",
-        telefone: String(get("telefone") ?? "").trim() || null,
-        celular: String(get("celular") ?? "").trim() || null,
+        telefone: String(get("Celular 01") || get("telefone") || "").trim() || null,
+        celular: String(get("Celular 02") || get("celular") || "").trim() || null,
         email: String(get("email") ?? "").trim() || null,
         cep: String(get("cep") ?? "").trim() || null,
         rua: String(get("rua") ?? "").trim() || null,

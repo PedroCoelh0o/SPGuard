@@ -32,7 +32,7 @@ function normalizarPesquisa(texto: string) {
 const fieldLabels: Record<string, string> = {
   empresa_id: "Empresa", nome: "Nome", cpf: "CPF", rg: "RG", matricula: "Matrícula", cargo: "Cargo", setor: "Setor",
   escolaridade: "Escolaridade", turno: "Turno", data_admissao: "Data de admissão", data_desligamento: "Data de desligamento",
-  motivo_desligamento: "Motivo do desligamento", observacoes: "Observação", status: "Status", telefone: "Telefone", celular: "Celular",
+  motivo_desligamento: "Motivo do desligamento", observacoes: "Observação", status: "Status", telefone: "Celular 01", celular: "Celular 02",
   email: "E-mail", cep: "CEP", rua: "Rua", numero: "Número", bairro: "Bairro", cidade: "Cidade", estado: "Estado",
   eletronicos_autorizado: "Autorização de eletrônicos", tipo: "Tipo", descricao: "Descrição", imei: "IMEI", marca: "Marca", modelo: "Modelo",
   contato: "Contato", numero_selo: "Nº do selo", numero_serie: "Nº de série", acessorios: "Acessórios", justificativa: "Justificativa",
