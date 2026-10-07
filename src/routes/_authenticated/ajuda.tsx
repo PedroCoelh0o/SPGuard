@@ -54,6 +54,7 @@ const guias: Guia[] = [
       "Digite nome, CPF, matrícula, empresa, cargo ou cidade no campo de pesquisa.",
       "Combine os filtros de empresa, função, cidade, situação, presença de documentos e período de admissão ou desligamento.",
       "A lista é atualizada conforme os critérios preenchidos; não é necessário clicar em Salvar.",
+      "Clique nas informações da linha para abrir a ficha completa do colaborador. Pelo teclado, foque a linha com Tab e pressione Enter ou Espaço. O botão Copiar continua independente; selecionar texto para copiá-lo não abre a ficha.",
       "Confira o resultado antes de exportar: CSV, XLSX e PDF sempre usam os registros mostrados na tela.",
     ],
   },
@@ -64,6 +65,7 @@ const guias: Guia[] = [
     passos: [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
+      "Você também pode clicar nas informações da linha para abrir os eletrônicos daquele colaborador. Pelo teclado, use Tab e Enter ou Espaço. O menu Ações funciona separadamente: alterar autorização ou escolher dispositivos para a lixeira não abre a ficha por engano.",
       "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar. Selecione a marca na lista (ou escolha Outra marca para digitá-la) e preencha o modelo manualmente, além do tipo, descrição, IMEI, número de série, acessórios, justificativa e demais informações.",
       "Na aba Eletrônicos da ficha, Cadastrar fica à esquerda, abaixo do título. A coluna Ações é a primeira da tabela, com os botões de editar e mover para a lixeira; não é necessário arrastar até a última coluna para usá-los.",
       "Se houver mais de um aparelho, use Salvar e cadastrar outro. A janela permanece aberta para o mesmo colaborador, mas limpa os dados do dispositivo anterior. Marque Repetir contato e justificativa se essas informações forem iguais; para terminar, use Salvar e fechar.",

@@ -12,6 +12,7 @@ import { Smartphone, Search, Eye, UserX, UserCheck, FileText, Trash2, MoreHorizo
 import { Badge } from "@/components/ui/badge";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { useSyncedTableScroll } from "@/hooks/useSyncedTableScroll";
+import { clickableTableRow } from "@/lib/clickable-table-row";
 import { ImportarEletronicos } from "@/components/ImportarEletronicos";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -277,7 +278,7 @@ function EletronicosPage() {
                 ) : stats.length === 0 ? (
                   <TableRow><TableCell colSpan={empresaSel === "all" ? 10 : 9} className="text-center text-muted-foreground py-6">{hasNextPage ? "Carregando colaboradores com eletrônicos..." : "Nenhum colaborador com eletrônicos."}</TableCell></TableRow>
                 ) : visible.map((s) => (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} {...clickableTableRow(`Visualizar eletrônicos de ${s.nome}`, () => setDetalhes({ id: s.id, nome: s.nome }))}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
                     <TableCell>{s.setor ?? "-"}</TableCell>
                     <TableCell>{s.cargo ?? "-"}</TableCell>
@@ -289,7 +290,7 @@ function EletronicosPage() {
                     <TableCell>
                       <Badge variant={s.autorizado ? "default" : "destructive"}>{s.autorizado ? "Autorizado" : "Revogado"}</Badge>
                     </TableCell>
-                    <TableCell className="w-16 min-w-16 text-center">
+                    <TableCell className="w-16 min-w-16 text-center" data-row-actions onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="icon" variant="ghost" aria-label={`Abrir ações de ${s.nome}`} title="Ações"><MoreHorizontal className="h-4 w-4" /></Button>

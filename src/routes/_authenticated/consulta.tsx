@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
+import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
+import { clickableTableRow } from "@/lib/clickable-table-row";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/consulta")({
   component: Consulta,
 });
 
+type ColaboradorFicha = NonNullable<ComponentProps<typeof ColaboradorDetalhes>["colab"]>;
+
 function Consulta() {
+  const [detalhes, setDetalhes] = useState<ColaboradorFicha | null>(null);
   const [q, setQ] = useState("");
   const [fEmpresa, setFEmpresa] = useState("all");
   const [fCargo, setFCargo] = useState("");
@@ -55,11 +60,7 @@ function Consulta() {
     // o mesmo cache com a tela de Colaboradores, que traz páginas de 200 itens.
     queryKey: ["colaboradores-consulta"],
     queryFn: async () => {
-      return await fetchAllRows<{
-        id: string; nome: string; empresa_id: string; cargo: string | null; setor: string | null; matricula: string | null;
-        cpf: string | null; cidade: string | null; status: string;
-        data_admissao: string | null; data_desligamento: string | null;
-      }>(() => supabase.from("colaboradores").select("*").order("nome") as never);
+      return await fetchAllRows<ColaboradorFicha>(() => supabase.from("colaboradores").select("*").order("nome") as never);
     },
   });
 
@@ -205,7 +206,7 @@ function Consulta() {
               </TableHeader>
               <TableBody>
                 {visible.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} {...clickableTableRow(`Visualizar ficha de ${c.nome}`, () => setDetalhes(c))}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell>{empresaLabel(c.empresa_id)}</TableCell>
                     <TableCell>{c.cargo ?? "-"}</TableCell>
@@ -218,7 +219,7 @@ function Consulta() {
                         {c.status === "ativo" ? "Ativo" : "Desligado"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" data-row-actions onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <Button size="icon" variant="ghost" aria-label={`Copiar dados de ${c.nome}`} title="Copiar" onClick={async () => {
                         const text = `${c.nome}, Matr ${c.matricula ?? "-"}, ${c.cargo ?? "-"}`;
                         try { await navigator.clipboard.writeText(text); toast.success("Copiado: " + text); }
@@ -239,6 +240,7 @@ function Consulta() {
         </CardContent>
       </Card>
 
+      <ColaboradorDetalhes colab={detalhes} empresaLabel={detalhes ? empresaLabel(detalhes.empresa_id) : ""} open={!!detalhes} onOpenChange={(value) => { if (!value) setDetalhes(null); }} />
     </div>
   );
 }
