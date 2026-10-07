@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type ComponentProps } from "react";
+import { useMemo, useRef, useState, type ComponentProps } from "react";
 import { ColaboradorDetalhes } from "@/components/ColaboradorDetalhes";
 import { clickableTableRow } from "@/lib/clickable-table-row";
 import { supabase } from "@/integrations/local-db/client";
@@ -17,6 +17,7 @@ import { formatDate } from "@/lib/format";
 import { exportColaboradoresCSV, exportColaboradoresPDF, exportColaboradoresXLSX } from "@/lib/export-colaboradores";
 import { toast } from "sonner";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
+import { useSyncedTableScroll } from "@/hooks/useSyncedTableScroll";
 
 export const Route = createFileRoute("/_authenticated/consulta")({
   head: () => ({
@@ -36,6 +37,11 @@ type ColaboradorFicha = NonNullable<ComponentProps<typeof ColaboradorDetalhes>["
 
 function Consulta() {
   const [detalhes, setDetalhes] = useState<ColaboradorFicha | null>(null);
+  const listaTabelaRef = useRef<HTMLDivElement>(null);
+  const tabelaRef = useRef<HTMLTableElement>(null);
+  const barraTabelaRef = useRef<HTMLDivElement>(null);
+  const trilhoTabelaRef = useRef<HTMLDivElement>(null);
+  useSyncedTableScroll(listaTabelaRef, tabelaRef, barraTabelaRef, trilhoTabelaRef);
   const [q, setQ] = useState("");
   const [fEmpresa, setFEmpresa] = useState("all");
   const [fCargo, setFCargo] = useState("");
@@ -75,11 +81,12 @@ function Consulta() {
   const empresaLabel = (id: string) => empresaMap.get(id) ?? "-";
 
   const qd = useDebounced(q, 250);
+  const buscaEfetiva = q.trim() ? qd : "";
   const colaboradoresComDocumento = useMemo(() => new Set(documentos.map((documento) => documento.colaborador_id)), [documentos]);
   const cargosDisponiveis = useMemo(() => Array.from(new Set(colabs.map((colab) => colab.cargo?.trim()).filter((cargo): cargo is string => !!cargo))).sort((a, b) => a.localeCompare(b, "pt-BR")), [colabs]);
 
   const filtered = useMemo(() => {
-    const s = qd.trim().toLowerCase();
+    const s = buscaEfetiva.trim().toLowerCase();
     return colabs.filter((c) => {
       if (s && !(c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.cidade ?? "").toLowerCase().includes(s) || (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s))) return false;
       if (fEmpresa !== "all" && c.empresa_id !== fEmpresa) return false;
@@ -94,9 +101,13 @@ function Consulta() {
       if (desAte && (!c.data_desligamento || c.data_desligamento > desAte)) return false;
       return true;
     });
-  }, [colabs, empresaMap, qd, fEmpresa, fCargo, fCidade, fStatus, fDocumento, colaboradoresComDocumento, admDe, admAte, desDe, desAte]);
+  }, [colabs, empresaMap, buscaEfetiva, fEmpresa, fCargo, fCidade, fStatus, fDocumento, colaboradoresComDocumento, admDe, admAte, desDe, desAte]);
 
-  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 50);
+  const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 200, {
+    scrollRootRef: listaTabelaRef,
+    resetKey: JSON.stringify([q, fEmpresa, fCargo, fCidade, fStatus, fDocumento, admDe, admAte, desDe, desAte]),
+    requireScrollForAutoLoad: true,
+  });
 
 
   const [exporting, setExporting] = useState<"csv" | "pdf" | "xlsx" | null>(null);
@@ -189,8 +200,8 @@ function Consulta() {
             {isLoading ? "Carregando..." : `${total} colaborador(es) encontrado(s) — exibindo ${shown}`}
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
+          <div ref={listaTabelaRef} className="max-h-[50vh] min-h-64 overflow-x-hidden overflow-y-auto rounded-t-md border border-b-0">
+            <Table ref={tabelaRef} containerClassName="overflow-visible" className="min-w-[1080px] whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -205,6 +216,7 @@ function Consulta() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {isLoading ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow> : visible.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado.</TableCell></TableRow> : null}
                 {visible.map((c) => (
                   <TableRow key={c.id} {...clickableTableRow(`Visualizar ficha de ${c.nome}`, () => setDetalhes(c))}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
@@ -228,15 +240,18 @@ function Consulta() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {!isLoading && <TableRow ref={sentinelRef}><TableCell colSpan={9} className="h-px p-0" /></TableRow>}
               </TableBody>
             </Table>
           </div>
-          {hasMore && (
-            <div className="flex justify-center">
-              <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>
-            </div>
-          )}
-          <div ref={sentinelRef} aria-hidden className="h-px" />
+          <div ref={barraTabelaRef} aria-label="Barra horizontal da tabela de consulta" className="h-4 overflow-x-scroll overflow-y-hidden rounded-b-md border border-t-0 bg-card/70 shadow-[0_-6px_12px_-10px_rgba(0,0,0,0.85)]">
+            <div ref={trilhoTabelaRef} className="h-px" />
+          </div>
+          <p className="text-xs text-muted-foreground">Clique na linha para abrir a ficha. Role dentro da tabela para ver mais colaboradores e use a barra horizontal abaixo para acessar as demais colunas.</p>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>{isLoading ? "Carregando..." : `Exibindo ${shown} de ${total} colaborador(es) encontrado(s)`}</span>
+            {hasMore && <Button variant="outline" size="sm" onClick={loadMore}>Carregar mais</Button>}
+          </div>
         </CardContent>
       </Card>
 

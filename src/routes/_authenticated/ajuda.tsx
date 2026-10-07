@@ -55,6 +55,7 @@ const guias: Guia[] = [
       "Combine os filtros de empresa, função, cidade, situação, presença de documentos e período de admissão ou desligamento.",
       "A lista é atualizada conforme os critérios preenchidos; não é necessário clicar em Salvar.",
       "Clique nas informações da linha para abrir a ficha completa do colaborador. Pelo teclado, foque a linha com Tab e pressione Enter ou Espaço. O botão Copiar continua independente; selecionar texto para copiá-lo não abre a ficha.",
+      "Os resultados ficam em uma tabela com altura limitada e rolagem própria, no mesmo padrão das demais abas. São exibidos até 200 registros inicialmente; role dentro da tabela ou use Carregar mais. Limpar a pesquisa ou alterar os filtros reinicia a exibição. A barra horizontal fica logo abaixo da tabela.",
       "Confira o resultado antes de exportar: CSV, XLSX e PDF sempre usam os registros mostrados na tela.",
     ],
   },
