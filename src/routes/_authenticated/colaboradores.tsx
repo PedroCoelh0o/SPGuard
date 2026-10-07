@@ -3,6 +3,8 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tansta
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced, useInfiniteSlice } from "@/hooks/useListPerf";
 import { useSyncedTableScroll } from "@/hooks/useSyncedTableScroll";
+import { useMatriculaConflitos } from "@/hooks/useMatriculaConflitos";
+import { mensagemConflitosMatricula } from "@/lib/matricula-conflitos";
 import { supabase } from "@/integrations/local-db/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +56,7 @@ type PendenciaCadastro = { id: string; colaborador_id: string; campo: "cpf" | "m
 const empty: Partial<Colab> = { nome: "", status: "ativo" };
 const TURNOS = ["Letra A", "Letra B", "Letra C", "Letra D", "Administrativo", "FIFO", "Híbrido", "Noturno", "Diurno"];
 const COLABORADORES_POR_PAGINA = 200;
+const NOMES_COLLATOR = new Intl.Collator("pt-BR");
 
 function ColabPage() {
   const { canWrite, isAdmin } = useAuth();
@@ -65,6 +68,8 @@ function ColabPage() {
   
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Colab> | null>(null);
+  const [formSession, setFormSession] = useState(0);
+  const [listRevision, setListRevision] = useState(0);
   const [detalhes, setDetalhes] = useState<Colab | null>(null);
   const retornoFichaRef = useRef<Colab | null>(null);
   const [editandoFicha, setEditandoFicha] = useState(false);
@@ -95,6 +100,7 @@ function ColabPage() {
   const { data: paginasColaboradores, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ["colaboradores-paginados"],
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const inicio = pageParam as number;
@@ -202,7 +208,9 @@ function ColabPage() {
     },
     onSuccess: (atualizado) => {
       toast.success("Colaborador salvo");
-      qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
+      setListRevision((n) => n + 1);
+      void qc.resetQueries({ queryKey: ["colaboradores-paginados"] });
+      qc.invalidateQueries({ queryKey: ["matricula-conflitos"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["eletronicos-paginados"] });
@@ -219,7 +227,9 @@ function ColabPage() {
     mutationFn: async (id: string) => { const { error } = await supabase.from("colaboradores").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => {
       toast.success("Colaborador movido para a lixeira. Você pode restaurá-lo em até 15 dias.");
-      qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] });
+      setListRevision((n) => n + 1);
+      void qc.resetQueries({ queryKey: ["colaboradores-paginados"] });
+      qc.invalidateQueries({ queryKey: ["matricula-conflitos"] });
       qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] });
       qc.invalidateQueries({ queryKey: ["lixeira-colaboradores"] });
       qc.invalidateQueries({ queryKey: ["historico-alteracoes"] });
@@ -246,13 +256,13 @@ function ColabPage() {
       return (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s) || c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.turno ?? "").toLowerCase().includes(s);
     });
     const sorted = [...list];
-    sorted.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    sorted.sort((a, b) => NOMES_COLLATOR.compare(a.nome, b.nome));
     return sorted;
   }, [colabs, buscaEfetiva, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
 
 
   const filtroAtivo = Boolean(q.trim() || turnoFiltro !== "all" || empresaFiltro !== "all" || pendenciaFiltro !== "all");
-  const chaveFiltro = `${q}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
+  const chaveFiltro = `${listRevision}|${q}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, COLABORADORES_POR_PAGINA, {
     hasMoreRemote: !!hasNextPage,
     loadingRemote: isFetchingNextPage,
@@ -293,14 +303,14 @@ function ColabPage() {
           }}><FileText className="h-4 w-4" /> PDF</Button>
           {canWrite && (
             <>
-              <ImportarColaboradores empresas={empresas} onDone={() => { qc.invalidateQueries({ queryKey: ["colaboradores-paginados"] }); qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
+              <ImportarColaboradores empresas={empresas} onDone={() => { setListRevision((n) => n + 1); void qc.resetQueries({ queryKey: ["colaboradores-paginados"] }); qc.invalidateQueries({ queryKey: ["matricula-conflitos"] }); qc.invalidateQueries({ queryKey: ["colaboradores-consulta"] }); qc.invalidateQueries({ queryKey: ["historico-alteracoes"] }); }} />
               <Dialog open={open} onOpenChange={(v) => { if (v) setOpen(true); else if (!save.isPending) fecharEdicao(); }}>
                 <DialogTrigger asChild>
-                  <Button disabled={empresas.length === 0} onClick={() => setEditing({ ...empty, empresa_id: empresas[0]?.id })}>
+                  <Button disabled={empresas.length === 0 || save.isPending} onClick={() => { retornoFichaRef.current = null; setEditandoFicha(false); setFormSession((n) => n + 1); setEditing({ ...empty }); }}>
                     <Plus className="h-4 w-4" /> Novo colaborador
                   </Button>
                 </DialogTrigger>
-                <ColabForm key={editing?.id ?? "new"} empresas={empresas} value={editing ?? empty} onCancel={() => fecharEdicao()} onSave={(v) => save.mutate(v)} saving={save.isPending} />
+                {open && editing && <ColabForm key={`${editing.id ?? "new"}:${formSession}`} empresas={empresas} value={editing} onCancel={() => fecharEdicao()} onSave={(v) => save.mutate(v)} saving={save.isPending} />}
               </Dialog>
             </>
           )}
@@ -467,6 +477,10 @@ function ColabForm({ empresas, value, onCancel, onSave, saving, embedded = false
   value: Partial<Colab>; onCancel: () => void; onSave: (v: Partial<Colab>) => void; saving: boolean; embedded?: boolean;
 }) {
   const [v, setV] = useState<Partial<Colab>>(value);
+  const matriculaConsulta = useDebounced(v.matricula, 250);
+  const { conflitos: conflitosMatricula, isFetching: conferindoMatricula, error: erroMatricula } = useMatriculaConflitos(v.empresa_id, matriculaConsulta, v.id, true);
+  const empresaMatricula = empresas.find((e) => e.id === v.empresa_id);
+  const avisoMatricula = mensagemConflitosMatricula(conflitosMatricula, empresaMatricula?.nome_fantasia || empresaMatricula?.razao_social || "Empresa não identificada");
   const set = (k: keyof Colab, val: string) => setV((p) => ({ ...p, [k]: val }));
   const content = (
     <>
@@ -484,7 +498,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving, embedded = false
             <div className="sm:col-span-2"><Label>Nome Completo *</Label><Input required value={v.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
             <div><Label>CPF</Label><Input value={v.cpf ?? ""} onChange={(e) => set("cpf", formatCPF(e.target.value))} onBlur={(e) => set("cpf", formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" /></div>
             <div><Label>RG</Label><Input value={v.rg ?? ""} onChange={(e) => set("rg", e.target.value)} /></div>
-            <div><Label>Matrícula</Label><Input value={v.matricula ?? ""} onChange={(e) => set("matricula", e.target.value)} /></div>
+            <div><Label>Matrícula</Label><Input value={v.matricula ?? ""} onChange={(e) => set("matricula", e.target.value)} aria-describedby="aviso-matricula" /><div id="aviso-matricula" className="mt-1 text-xs" aria-live="polite">{v.matricula !== matriculaConsulta || conferindoMatricula ? <span className="text-muted-foreground">Conferindo matrícula…</span> : erroMatricula ? <span className="text-destructive">Não foi possível conferir a matrícula. Tente abrir a ficha novamente.</span> : conflitosMatricula.length > 0 ? <span className="text-amber-700 dark:text-amber-300">{avisoMatricula}</span> : null}</div></div>
             <div className="sm:col-span-2"><Label>Empresa *</Label>
               <Select value={v.empresa_id ?? ""} onValueChange={(x) => set("empresa_id", x)}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -554,7 +568,7 @@ function ColabForm({ empresas, value, onCancel, onSave, saving, embedded = false
         </Tabs>
         <DialogFooter className="mt-6">
           <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>Cancelar</Button>
-          <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          <Button type="submit" disabled={saving || !v.empresa_id}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </form>
     </>

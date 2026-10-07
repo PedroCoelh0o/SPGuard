@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/local-db/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatriculaConflitos } from "@/hooks/useMatriculaConflitos";
+import { mensagemConflitosMatricula } from "@/lib/matricula-conflitos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -70,6 +72,9 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, o
 }) {
   const { canWrite, isAdmin, user } = useAuth();
   const qc = useQueryClient();
+  const matriculaConferencia = colab?.matricula?.trim() || pendencias.find((p) => p.campo === "matricula")?.valor_original;
+  const { conflitos: conflitosMatricula } = useMatriculaConflitos(colab?.empresa_id, matriculaConferencia, colab?.id, open && !editor);
+  const mensagemMatricula = mensagemConflitosMatricula(conflitosMatricula, empresaLabel || "Empresa não identificada");
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -241,10 +246,12 @@ export function ColaboradorDetalhes({ colab, empresaLabel, open, onOpenChange, o
           <div className="rounded-md border border-amber-500/70 bg-amber-500/10 p-3 text-sm">
             <p className="font-medium text-amber-700 dark:text-amber-300">Pendente de conferência</p>
             <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-              {pendencias.map((item) => <li key={item.campo}><strong>{item.campo === "cpf" ? "CPF" : "Matrícula"}:</strong> {item.motivo}{item.valor_original ? ` (${item.valor_original})` : ""}. Edite o cadastro para corrigir.</li>)}
+              {pendencias.map((item) => <li key={item.campo}><strong>{item.campo === "cpf" ? "CPF" : "Matrícula"}:</strong> {item.campo === "matricula" && conflitosMatricula.length > 0 ? mensagemMatricula : item.motivo}{item.valor_original ? ` (${item.valor_original})` : ""}. Edite o cadastro para corrigir.</li>)}
             </ul>
           </div>
         )}
+
+        {conflitosMatricula.length > 0 && !pendencias.some((p) => p.campo === "matricula") && <div className="rounded-md border border-amber-500/70 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300" role="status">{mensagemMatricula}</div>}
 
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <div className="flex flex-col items-center gap-3">

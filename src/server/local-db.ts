@@ -599,7 +599,12 @@ function runUpdate(db: Database.Database, table: string, q: QueryDescriptor): un
   const setClause = cols.map((c) => `${c} = ?`).join(", ");
   const setValues = cols.map((c) => toSqlValue(c, values[c]));
   db.prepare(`UPDATE ${table} SET ${setClause} ${clause}`).run(...setValues, ...params);
-  if (table === "colaboradores") normalizeAndMergeDuplicateCollaborators(db);
+  // Contato, foto ou observações não mudam a identidade da pessoa. Evita
+  // varrer todas as fichas em cada edição desses campos, mantendo a junção
+  // quando nome, empresa, CPF ou restauração realmente forem alterados.
+  if (table === "colaboradores" && before.some((row) =>
+    ["nome", "empresa_id", "cpf", "excluido_em"].some((column) => Object.prototype.hasOwnProperty.call(values, column) && values[column] !== row[column])
+  )) normalizeAndMergeDuplicateCollaborators(db);
   const afterWhere = values.excluido_em === null
     ? buildWhere(table, q.filters, "active")
     : { clause, params };

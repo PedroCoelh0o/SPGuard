@@ -49,6 +49,9 @@ const guias: Guia[] = [
     descricao: "Cadastre e mantenha as fichas dos colaboradores atualizadas.",
     passos: [
       "Clique em Novo colaborador para abrir uma ficha vazia.",
+      "Cada novo cadastro começa limpo, sem reutilizar os dados da ficha anterior. Selecione a empresa antes de salvar.",
+      "Ao conferir uma matrícula duplicada na mesma empresa, a ficha e o formulário mostram o nome e a empresa dos outros colaboradores que utilizam essa matrícula, mesmo que eles ainda não tenham aparecido na lista. A verificação não inclui registros na lixeira nem considera a mesma matrícula em empresas diferentes como conflito.",
+      "Após salvar, excluir ou importar colaboradores, a lista reinicia pelo primeiro bloco de 200 para evitar recarregar todas as páginas de uma vez. Continue pela rolagem ou pelo botão Carregar mais. A pesquisa continua considerando os demais cadastros em segundo plano.",
       "Preencha ao menos o nome e a empresa; depois complete os demais dados nas abas da ficha.",
       "O nome é padronizado automaticamente; as partículas da, das, de, do e dos ficam em minúsculas.",
       "Se houver um cadastro com o mesmo nome normalizado na mesma empresa, o SPGuard o unifica, preservando documentos, eletrônicos e as informações do registro atualizado mais recentemente.",
