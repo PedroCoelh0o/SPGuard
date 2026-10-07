@@ -45,6 +45,7 @@ function Consulta() {
   const [q, setQ] = useState("");
   const [fEmpresa, setFEmpresa] = useState("all");
   const [fCargo, setFCargo] = useState("");
+  const [fSetor, setFSetor] = useState("");
   const [fCidade, setFCidade] = useState("");
   const [fStatus, setFStatus] = useState("all");
   const [fDocumento, setFDocumento] = useState("all");
@@ -84,6 +85,7 @@ function Consulta() {
   const buscaEfetiva = q.trim() ? qd : "";
   const colaboradoresComDocumento = useMemo(() => new Set(documentos.map((documento) => documento.colaborador_id)), [documentos]);
   const cargosDisponiveis = useMemo(() => Array.from(new Set(colabs.map((colab) => colab.cargo?.trim()).filter((cargo): cargo is string => !!cargo))).sort((a, b) => a.localeCompare(b, "pt-BR")), [colabs]);
+  const setoresDisponiveis = useMemo(() => Array.from(new Set(colabs.map((colab) => colab.setor?.trim()).filter((setor): setor is string => !!setor))).sort((a, b) => a.localeCompare(b, "pt-BR")), [colabs]);
 
   const filtered = useMemo(() => {
     const s = buscaEfetiva.trim().toLowerCase();
@@ -91,6 +93,7 @@ function Consulta() {
       if (s && !(c.nome.toLowerCase().includes(s) || (c.cpf ?? "").includes(s) || (c.matricula ?? "").toLowerCase().includes(s) || (c.cargo ?? "").toLowerCase().includes(s) || (c.cidade ?? "").toLowerCase().includes(s) || (empresaMap.get(c.empresa_id) ?? "").toLowerCase().includes(s))) return false;
       if (fEmpresa !== "all" && c.empresa_id !== fEmpresa) return false;
       if (fCargo && !(c.cargo ?? "").toLowerCase().includes(fCargo.toLowerCase())) return false;
+      if (fSetor && (c.setor ?? "").trim() !== fSetor) return false;
       if (fCidade && !(c.cidade ?? "").toLowerCase().includes(fCidade.toLowerCase())) return false;
       if (fStatus !== "all" && c.status !== fStatus) return false;
       if (fDocumento === "com" && !colaboradoresComDocumento.has(c.id)) return false;
@@ -101,11 +104,11 @@ function Consulta() {
       if (desAte && (!c.data_desligamento || c.data_desligamento > desAte)) return false;
       return true;
     });
-  }, [colabs, empresaMap, buscaEfetiva, fEmpresa, fCargo, fCidade, fStatus, fDocumento, colaboradoresComDocumento, admDe, admAte, desDe, desAte]);
+  }, [colabs, empresaMap, buscaEfetiva, fEmpresa, fCargo, fSetor, fCidade, fStatus, fDocumento, colaboradoresComDocumento, admDe, admAte, desDe, desAte]);
 
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, 200, {
     scrollRootRef: listaTabelaRef,
-    resetKey: JSON.stringify([q, fEmpresa, fCargo, fCidade, fStatus, fDocumento, admDe, admAte, desDe, desAte]),
+    resetKey: JSON.stringify([q, fEmpresa, fCargo, fSetor, fCidade, fStatus, fDocumento, admDe, admAte, desDe, desAte]),
     requireScrollForAutoLoad: true,
   });
 
@@ -113,7 +116,7 @@ function Consulta() {
   const [exporting, setExporting] = useState<"csv" | "pdf" | "xlsx" | null>(null);
   const currentFilters = {
     Busca: q, Empresa: fEmpresa !== "all" ? (empresas.find(e => e.id === fEmpresa)?.nome_fantasia || empresas.find(e => e.id === fEmpresa)?.razao_social) : "all",
-    Cargo: fCargo || "all", Cidade: fCidade || "all", Situação: fStatus, Documentos: fDocumento === "all" ? "all" : fDocumento === "com" ? "Com documentos" : "Sem documentos",
+    Cargo: fCargo || "all", Setor: fSetor || "all", Cidade: fCidade || "all", Situação: fStatus, Documentos: fDocumento === "all" ? "all" : fDocumento === "com" ? "Com documentos" : "Sem documentos",
     "Admitidos de": admDe, "Admitidos até": admAte, "Desligados de": desDe, "Desligados até": desAte,
   };
   async function doExport(kind: "csv" | "pdf" | "xlsx") {
@@ -168,6 +171,12 @@ function Consulta() {
                 <SelectContent><SelectItem value="all">Todas</SelectItem>{cargosDisponiveis.map((cargo) => <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div><Label className="text-xs">Setor</Label>
+              <Select value={fSetor || "all"} onValueChange={(value) => setFSetor(value === "all" ? "" : value)}>
+                <SelectTrigger aria-label="Filtrar por setor"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Todos</SelectItem>{setoresDisponiveis.map((setor) => <SelectItem key={setor} value={setor}>{setor}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label className="text-xs">Cidade</Label><Input value={fCidade} onChange={(e) => setFCidade(e.target.value)} /></div>
             <div><Label className="text-xs">Situação</Label>
               <Select value={fStatus} onValueChange={setFStatus}>
@@ -191,7 +200,7 @@ function Consulta() {
             <div><Label className="text-xs">Desligados até</Label><Input type="date" value={desAte} onChange={(e) => setDesAte(e.target.value)} /></div>
           </div>
           <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setFEmpresa("all"); setFCargo(""); setFCidade(""); setFStatus("all"); setFDocumento("all"); setAdmDe(""); setAdmAte(""); setDesDe(""); setDesAte(""); }}>
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setFEmpresa("all"); setFCargo(""); setFSetor(""); setFCidade(""); setFStatus("all"); setFDocumento("all"); setAdmDe(""); setAdmAte(""); setDesDe(""); setDesAte(""); }}>
               <RotateCcw className="h-4 w-4" /> Limpar filtros
             </Button>
           </div>
