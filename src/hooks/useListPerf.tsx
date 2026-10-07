@@ -20,6 +20,7 @@ type InfiniteSliceOptions = {
   onReachEnd?: () => void;
   scrollRootRef?: RefObject<HTMLElement | null>;
   resetKey?: string;
+  requireScrollForAutoLoad?: boolean;
 };
 
 export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: InfiniteSliceOptions = {}) {
@@ -43,6 +44,9 @@ export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: Infinite
     if (count < items.length) {
       setSlice({ key: resetKey, pageSize, count: Math.min(count + pageSize, items.length) });
     } else if (options.hasMoreRemote && !options.loadingRemote) {
+      // Reserve the next slice now: once the remote page arrives, the table
+      // grows without needing another scroll in an already exhausted viewport.
+      setSlice({ key: resetKey, pageSize, count: items.length + pageSize });
       options.onReachEnd?.();
     }
   }, [count, resetKey, items.length, options.hasMoreRemote, options.loadingRemote, options.onReachEnd, pageSize]);
@@ -58,15 +62,35 @@ export function useInfiniteSlice<T>(items: T[], pageSize = 50, options: Infinite
     const el = node.current;
     if (!el || isResetting || !hasMore || typeof IntersectionObserver === "undefined") return;
     let active = true;
+    const root = options.scrollRootRef?.current;
+    let intersecting = false;
+    let previousTop = root?.scrollTop ?? 0;
+    let scrolledDown = false;
+    let requested = false;
+    const onScroll = () => {
+      const top = root?.scrollTop ?? 0;
+      const movedDown = top > previousTop;
+      if (movedDown) scrolledDown = true;
+      previousTop = top;
+      if (active && intersecting && movedDown && !requested) {
+        requested = true;
+        loadMore();
+      }
+    };
+    if (options.requireScrollForAutoLoad && root) root.addEventListener("scroll", onScroll, { passive: true });
     const io = new IntersectionObserver(
       (entries) => {
-        if (active && entries.some((e) => e.isIntersecting)) loadMore();
+        intersecting = entries.some((e) => e.isIntersecting);
+        if (active && intersecting && (!options.requireScrollForAutoLoad || scrolledDown) && !requested) {
+          requested = true;
+          loadMore();
+        }
       },
       { root: options.scrollRootRef?.current ?? null, rootMargin: "300px" },
     );
     io.observe(el);
-    return () => { active = false; io.disconnect(); };
-  }, [hasMore, isResetting, loadMore, count, items, options.scrollRootRef]);
+    return () => { active = false; io.disconnect(); root?.removeEventListener("scroll", onScroll); };
+  }, [hasMore, isResetting, loadMore, count, items, options.scrollRootRef, options.requireScrollForAutoLoad]);
 
   const visible = useMemo(() => items.slice(0, count), [items, count]);
   return { visible, hasMore, loadMore, sentinelRef, shown: visible.length, total: items.length };

@@ -120,6 +120,7 @@ function ColabPage() {
   // Atualiza somente a sinalização: nenhum campo do cadastro antigo é alterado.
   useEffect(() => {
     if (!colabs.length) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
     const conhecidas = new Set(pendencias.map((p) => `${p.colaborador_id}:${p.campo}`));
     const candidatos: { colaborador_id: string; campo: "cpf" | "matricula"; valor_original: string | null; motivo: string }[] = [];
@@ -151,11 +152,22 @@ function ColabPage() {
     const assinatura = candidatos.map((item) => `${item.colaborador_id}:${item.campo}`).sort().join("|");
     if (!assinatura || assinatura === pendenciasVerificadas.current) return;
     pendenciasVerificadas.current = assinatura;
-    void Promise.all(candidatos.map((item) => supabase.from("pendencias_cadastro").insert(item as never))).then(() => {
-      qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
-    });
+    // One local transaction per batch, not hundreds of concurrent RPCs.
+    void (async () => {
+      try {
+        for (let index = 0; index < candidatos.length && !cancelled; index += 100) {
+          const { error } = await supabase.from("pendencias_cadastro").insert(candidatos.slice(index, index + 100) as never);
+          if (error) throw error;
+          await new Promise((resolve) => window.setTimeout(resolve, 25));
+        }
+      } catch {
+        pendenciasVerificadas.current = "";
+      } finally {
+        qc.invalidateQueries({ queryKey: ["pendencias-cadastro"] });
+      }
+    })();
     }, 350);
-    return () => window.clearTimeout(timer);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [colabs, pendencias, qc]);
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.id, e.nome_fantasia || e.razao_social])), [empresas]);
@@ -217,12 +229,13 @@ function ColabPage() {
 
 
   const qd = useDebounced(q, 250);
+  const buscaEfetiva = q.trim() ? qd : "";
   const turnosDisponiveis = useMemo(
     () => Array.from(new Set([...TURNOS, ...colabs.map((c) => c.turno).filter((t): t is string => !!t)])),
     [colabs],
   );
   const filtered = useMemo(() => {
-    const s = qd.trim().toLowerCase();
+    const s = buscaEfetiva.trim().toLowerCase();
     const list = colabs.filter((c) => {
       if (turnoFiltro !== "all" && (c.turno ?? "") !== turnoFiltro) return false;
       if (empresaFiltro !== "all" && c.empresa_id !== empresaFiltro) return false;
@@ -235,24 +248,26 @@ function ColabPage() {
     const sorted = [...list];
     sorted.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     return sorted;
-  }, [colabs, qd, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
+  }, [colabs, buscaEfetiva, turnoFiltro, empresaFiltro, pendenciaFiltro, empresaMap, pendenciasPorColaborador]);
 
 
   const filtroAtivo = Boolean(q.trim() || turnoFiltro !== "all" || empresaFiltro !== "all" || pendenciaFiltro !== "all");
-  const chaveFiltro = `${qd}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
+  const chaveFiltro = `${q}|${turnoFiltro}|${empresaFiltro}|${pendenciaFiltro}`;
   const { visible, hasMore, loadMore, sentinelRef, shown, total } = useInfiniteSlice(filtered, COLABORADORES_POR_PAGINA, {
     hasMoreRemote: !!hasNextPage,
     loadingRemote: isFetchingNextPage,
     onReachEnd: () => { void fetchNextPage(); },
     scrollRootRef: listaTabelaRef,
     resetKey: chaveFiltro,
+    requireScrollForAutoLoad: true,
   });
 
   // Quando houver busca ou filtro, a base é completada em segundo plano para a consulta considerar todos os cadastros.
   useEffect(() => {
-    if (!filtroAtivo || !hasNextPage || isFetchingNextPage) return;
-    void fetchNextPage();
-  }, [filtroAtivo, hasNextPage, isFetchingNextPage, fetchNextPage]);
+    if (!filtroAtivo || q !== qd || !hasNextPage || isFetchingNextPage) return;
+    const timer = window.setTimeout(() => { void fetchNextPage(); }, 150);
+    return () => window.clearTimeout(timer);
+  }, [filtroAtivo, q, qd, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <div className="space-y-6">

@@ -137,7 +137,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
         <div className="flex items-center justify-between">
           <h4 className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Eletrônicos de {colaboradorNome}</h4>
           <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
+            <Dialog open={open} onOpenChange={(v) => { if (save.isPending) return; setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
               <DialogTrigger asChild>
                 <Button size="sm" disabled={carregandoContato} onClick={() => { setRepeatShared(false); setEditing({ ...empty, contato: telefoneColaborador }); setFormSequence((sequence) => sequence + 1); }}>
                   <Plus className="h-4 w-4" /> Cadastrar
@@ -146,8 +146,8 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
               <EletronicoForm
                 key={`${editing?.id ?? "new"}-${formSequence}`}
                 value={editing ?? empty}
-                onCancel={() => { setOpen(false); setEditing(null); setRepeatShared(false); }}
-                onSave={(payload, action) => save.mutate({ payload, action, repeatShared })}
+                onCancel={() => { if (!save.isPending) { setOpen(false); setEditing(null); setRepeatShared(false); } }}
+                onSave={(payload, action) => { if (!save.isPending) save.mutate({ payload, action, repeatShared }); }}
                 repeatShared={repeatShared}
                 onRepeatSharedChange={setRepeatShared}
                 saving={save.isPending}
@@ -288,7 +288,7 @@ function EletronicoForm({ value, onCancel, onSave, repeatShared, onRepeatSharedC
           </div>
         )}
         <DialogFooter className="sm:col-span-2 mt-2 flex-wrap">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>Cancelar</Button>
           {!v.id && <Button type="button" variant="outline" disabled={saving} onClick={() => onSave(v, "add-another")}>Salvar e cadastrar outro</Button>}
           <Button type="submit" disabled={saving}>{saving ? "Salvando..." : v.id ? "Salvar" : "Salvar e fechar"}</Button>
         </DialogFooter>

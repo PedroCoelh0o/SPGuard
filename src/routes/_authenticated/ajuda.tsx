@@ -42,6 +42,7 @@ const guias: Guia[] = [
       "Use os botões CSV, XLSX ou PDF para exportar somente os colaboradores que aparecem na pesquisa atual.",
       "Use a barra horizontal abaixo da tabela para chegar às últimas colunas e ao menu Ações (…). Ela acompanha o tamanho da janela e o menu lateral.",
       "A lista mostra 200 colaboradores por vez. Role para baixo ou clique em Carregar mais para continuar. Ao limpar a pesquisa ou mudar os filtros, a exibição recomeça com até 200 registros, evitando carregar todas as linhas de uma vez.",
+      "Durante uma pesquisa, os demais cadastros são consultados em segundo plano. Ao apagar o texto, esse carregamento automático é interrompido e novas linhas só aparecem quando você rola a tabela ou usa Carregar mais.",
     ],
   },
   {
@@ -64,6 +65,7 @@ const guias: Guia[] = [
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar. Selecione a marca na lista (ou escolha Outra marca para digitá-la) e preencha o modelo manualmente, além do tipo, descrição, IMEI, número de série, acessórios, justificativa e demais informações.",
       "Se houver mais de um aparelho, use Salvar e cadastrar outro. A janela permanece aberta para o mesmo colaborador, mas limpa os dados do dispositivo anterior. Marque Repetir contato e justificativa se essas informações forem iguais; para terminar, use Salvar e fechar.",
+      "O salvamento de dispositivos funciona também sem conexão com a internet. Aguarde a confirmação antes de fechar o formulário; enquanto ele estiver salvando, não é possível reenviar ou cancelar a mesma gravação.",
       "A Descrição de um novo dispositivo começa vazia. Preencha, por exemplo, Pessoal ou Corporativo; o nome do colaborador não é inserido automaticamente.",
       "O Contato de um novo celular, notebook ou tablet é preenchido com o número do campo Telefone da ficha; se ele estiver vazio, usa o campo Celular. Se ambos estiverem vazios, não preenche. Você pode editar ou apagar o número antes de salvar. Ao cadastrar outro aparelho, o número da ficha é usado novamente; se marcar Repetir contato e justificativa, será repetido o contato que você informou no aparelho anterior.",
       "Na primeira abertura após a atualização 1.8.18, eletrônicos já cadastrados com contato vazio recebem o número da ficha do colaborador, desde que ambos estejam fora da lixeira. Contatos preenchidos são preservados, colaboradores sem número não são alterados e itens da lixeira ficam intactos. O preenchimento fica registrado no histórico e não é repetido a cada abertura.",
