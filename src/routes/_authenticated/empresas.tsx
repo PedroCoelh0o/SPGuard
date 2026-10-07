@@ -96,8 +96,8 @@ function EmpresasPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex h-[calc(100dvh-6.5rem)] min-h-80 flex-col gap-6">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Empresas Contratadas</h1>
           <p className="text-sm text-muted-foreground">Cadastro e gestão das empresas parceiras</p>
@@ -112,13 +112,13 @@ function EmpresasPage() {
         )}
       </div>
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="relative max-w-md">
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+          <div className="relative max-w-md shrink-0">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por razão social, fantasia ou CNPJ..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <div className="max-h-[50vh] overflow-x-hidden overflow-y-auto rounded-md border" role="region" aria-label="Lista de empresas" tabIndex={0}>
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto rounded-md border" role="region" aria-label="Lista de empresas" tabIndex={0}>
             <Table containerClassName="overflow-visible" className="table-fixed break-words">
               <TableHeader>
                 <TableRow>

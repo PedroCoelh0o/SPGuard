@@ -29,7 +29,7 @@ const guias: Guia[] = [
     descricao: "Consulte e mantenha as empresas contratadas.",
     passos: [
       "Pesquise por razão social, nome fantasia ou CNPJ para localizar uma empresa.",
-      "A tabela tem altura limitada e rolagem vertical interna. Role dentro da lista para chegar às últimas empresas; a pesquisa e o botão Nova empresa permanecem fora dessa rolagem. Não há barra horizontal adicional.",
+      "A tabela aproveita a altura disponível da janela até perto do rodapé, com rolagem vertical interna. Role dentro da lista para chegar às últimas empresas; a pesquisa e o botão Nova empresa permanecem fora dessa rolagem. Ao redimensionar a janela, a área se adapta automaticamente. Não há barra horizontal adicional.",
       "Use as ações da linha para editar ou excluir, conforme suas permissões. Empresas com colaboradores vinculados não podem ser excluídas.",
     ],
   },
