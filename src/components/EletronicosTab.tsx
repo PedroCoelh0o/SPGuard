@@ -134,9 +134,9 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start gap-3">
           <h4 className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Eletrônicos de {colaboradorNome}</h4>
-          <div className="flex flex-wrap gap-2 justify-end">{canWrite && (
+          <div className="flex flex-wrap gap-2 justify-start">{canWrite && (
             <Dialog open={open} onOpenChange={(v) => { if (save.isPending) return; setOpen(v); if (!v) { setEditing(null); setRepeatShared(false); } }}>
               <DialogTrigger asChild>
                 <Button size="sm" disabled={carregandoContato} onClick={() => { setRepeatShared(false); setEditing({ ...empty, contato: telefoneColaborador }); setFormSequence((sequence) => sequence + 1); }}>
@@ -159,6 +159,7 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
           <Table className="min-w-[1280px] whitespace-nowrap">
             <TableHeader>
               <TableRow>
+                <TableHead>Ações</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Marca</TableHead>
@@ -169,7 +170,6 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 <TableHead>Justificativa</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Nº Selo</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,6 +181,10 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                 const Icon = tipoIcon[e.tipo];
                 return (
                   <TableRow key={e.id}>
+                    <TableCell>
+                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setRepeatShared(false); setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                      {isAdmin && <Button size="icon" variant="ghost" aria-label={`Mover ${e.descricao} para a lixeira`} title="Mover para lixeira" onClick={() => { if (confirm("Mover dispositivo para a lixeira? Ele poderá ser restaurado por 15 dias.")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                    </TableCell>
                     <TableCell><Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{tipoLabel[e.tipo]}</Badge></TableCell>
                     <TableCell className="font-medium">{e.descricao ?? "-"}</TableCell>
                     <TableCell>{e.marca ?? "-"}</TableCell>
@@ -191,10 +195,6 @@ export function EletronicosTab({ colaboradorId, colaboradorNome }: { colaborador
                     <TableCell className="max-w-[260px] truncate" title={e.justificativa ?? undefined}>{e.justificativa ?? "-"}</TableCell>
                     <TableCell>{e.contato ?? "-"}</TableCell>
                     <TableCell>{e.numero_selo ?? "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {canWrite && <Button size="icon" variant="ghost" aria-label={`Editar ${e.descricao}`} title="Editar" onClick={() => { setRepeatShared(false); setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                      {isAdmin && <Button size="icon" variant="ghost" aria-label={`Mover ${e.descricao} para a lixeira`} title="Mover para lixeira" onClick={() => { if (confirm("Mover dispositivo para a lixeira? Ele poderá ser restaurado por 15 dias.")) del.mutate(e.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
-                    </TableCell>
                   </TableRow>
                 );
               })}

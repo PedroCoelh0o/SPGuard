@@ -65,6 +65,7 @@ const guias: Guia[] = [
       "Pesquise o colaborador pelo nome, setor ou função; também é possível filtrar por empresa.",
       "Use o ícone de olho para abrir a lista de celulares, notebooks e tablets daquele colaborador.",
       "Na ficha do colaborador, abra a aba Eletrônicos e clique em Cadastrar. Selecione a marca na lista (ou escolha Outra marca para digitá-la) e preencha o modelo manualmente, além do tipo, descrição, IMEI, número de série, acessórios, justificativa e demais informações.",
+      "Na aba Eletrônicos da ficha, Cadastrar fica à esquerda, abaixo do título. A coluna Ações é a primeira da tabela, com os botões de editar e mover para a lixeira; não é necessário arrastar até a última coluna para usá-los.",
       "Se houver mais de um aparelho, use Salvar e cadastrar outro. A janela permanece aberta para o mesmo colaborador, mas limpa os dados do dispositivo anterior. Marque Repetir contato e justificativa se essas informações forem iguais; para terminar, use Salvar e fechar.",
       "O salvamento de dispositivos funciona também sem conexão com a internet. Aguarde a confirmação antes de fechar o formulário; enquanto ele estiver salvando, não é possível reenviar ou cancelar a mesma gravação.",
       "A Descrição de um novo dispositivo começa vazia. Preencha, por exemplo, Pessoal ou Corporativo; o nome do colaborador não é inserido automaticamente.",
