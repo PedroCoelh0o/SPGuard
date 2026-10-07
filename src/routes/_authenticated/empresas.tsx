@@ -118,16 +118,16 @@ function EmpresasPage() {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por razão social, fantasia ou CNPJ..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
+          <div className="max-h-[50vh] overflow-x-hidden overflow-y-auto rounded-md border" role="region" aria-label="Lista de empresas" tabIndex={0}>
+            <Table containerClassName="overflow-visible" className="table-fixed break-words">
               <TableHeader>
                 <TableRow>
                   <TableHead>Razão Social</TableHead>
                   <TableHead>CNPJ</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Cidade/UF</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="w-24">Status</TableHead>
+                  <TableHead className="w-24 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,7 +151,7 @@ function EmpresasPage() {
                         <Badge variant="outline" className="border-destructive text-destructive font-semibold">INATIVO</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="whitespace-nowrap text-right">
                       {canWrite && (
                         <Button size="icon" variant="ghost" aria-label={`Editar ${e.razao_social ?? e.nome_fantasia}`} title="Editar" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                       )}

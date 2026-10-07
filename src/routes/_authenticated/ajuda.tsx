@@ -24,6 +24,16 @@ type Guia = { icon: typeof Users; titulo: string; descricao: string; passos: str
 
 const guias: Guia[] = [
   {
+    icon: Users,
+    titulo: "Empresas",
+    descricao: "Consulte e mantenha as empresas contratadas.",
+    passos: [
+      "Pesquise por razão social, nome fantasia ou CNPJ para localizar uma empresa.",
+      "A tabela tem altura limitada e rolagem vertical interna. Role dentro da lista para chegar às últimas empresas; a pesquisa e o botão Nova empresa permanecem fora dessa rolagem. Não há barra horizontal adicional.",
+      "Use as ações da linha para editar ou excluir, conforme suas permissões. Empresas com colaboradores vinculados não podem ser excluídas.",
+    ],
+  },
+  {
     icon: Info,
     titulo: "Dashboard",
     descricao: "Acompanhe os indicadores e gráficos dos dados locais.",
